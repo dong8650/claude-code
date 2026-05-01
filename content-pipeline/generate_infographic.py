@@ -1,12 +1,13 @@
 """
 generate_infographic.py
 =======================
-데이터형 인포그래픽 이미지 생성기 (PIL 기반)
+데이터형 인포그래픽 이미지 생성기 (PIL 기반) — 다크 오렌지 스타일
 지원 타입: ranking (순위형), table (표형)
 
 사용법:
   python generate_infographic.py --data sample_ranking.json
   python generate_infographic.py --data sample_table.json --output my_infographic.jpg
+  python generate_infographic.py --data sample_ranking.json --video --bgm bgm/bgm_philosophy.mp3
 
 ranking JSON:
 {
@@ -36,6 +37,7 @@ table JSON:
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
@@ -46,42 +48,25 @@ from PIL import Image, ImageDraw, ImageFont
 # 캔버스
 # ─────────────────────────────────────────────
 W, H = 1080, 1920
-PAD  = 64
+PAD  = 60
 
 # ─────────────────────────────────────────────
-# 색상 — ranking (크림 베이지 계열)
+# 다크 오렌지 팔레트 (@매일의설계 채널 통일)
 # ─────────────────────────────────────────────
-R_BG        = (245, 238, 216)
-R_TITLE     = (35,  25,  15)
-R_SUBTITLE  = (110, 85,  50)
-R_TOP_COLS  = [
-    (160, 115, 40),   # 1위 — 진한 골드
-    (140, 100, 45),   # 2위 — 미디엄 골드
-    (120, 90,  50),   # 3위 — 연한 골드
-]
-R_TOP_TXT   = (255, 250, 235)
-R_ROW_A     = (225, 208, 168)
-R_ROW_B     = (238, 224, 190)
-R_ROW_TXT   = (40,  28,  12)
-R_LINE      = (160, 130, 80)
-R_MARK      = (130, 100, 55)
-
-# ─────────────────────────────────────────────
-# 색상 — table (다크 그린 계열)
-# ─────────────────────────────────────────────
-T_BG        = (18,  48,  28)
-T_TITLE     = (255, 255, 255)
-T_SUBTITLE  = (190, 240, 120)
-T_NOTE_BG   = (55,  45,  5)
-T_NOTE_TXT  = (230, 200, 60)
-T_HDR_BG    = (35,  85,  45)
-T_HDR_TXT   = (200, 255, 180)
-T_ROW_A     = (25,  62,  35)
-T_ROW_B     = (35,  82,  48)
-T_ROW_TXT   = (215, 255, 215)
-T_ACCENT    = (170, 235, 90)
-T_FOOTER    = (160, 210, 140)
-T_MARK      = (120, 180, 100)
+D_BG           = (17,  17,  17)    # #111111 — 배경
+D_BG_ALT       = (26,  26,  26)    # #1A1A1A — 행 교대
+D_BG_ALT2      = (34,  34,  34)    # #222222 — 행 교대2
+D_WHITE        = (255, 255, 255)
+D_ORANGE       = (255, 140,   0)   # #FF8C00 — 주 강조색
+D_ORANGE_MID   = (220, 110,   0)   # #DC6E00 — 2위
+D_ORANGE_DARK  = (180,  85,   0)   # #B45500 — 3위
+D_TITLE        = (255, 255, 255)
+D_SUBTITLE     = (255, 140,   0)   # 오렌지
+D_DESC         = (153, 153, 153)   # #999999
+D_DIVIDER      = (42,  42,  42)    # #2A2A2A
+D_NOTE_BG      = (30,  20,   0)    # 아주 어두운 앰버
+D_NOTE_TXT     = (255, 140,   0)
+D_CHANNEL      = (80,  80,  80)    # #505050
 
 
 # ─────────────────────────────────────────────
@@ -108,15 +93,18 @@ def _tw(draw: ImageDraw.Draw, text: str, font) -> int:
     return draw.textbbox((0, 0), text, font=font)[2]
 
 
+def _th(draw: ImageDraw.Draw, text: str, font) -> int:
+    bb = draw.textbbox((0, 0), text, font=font)
+    return bb[3] - bb[1]
+
+
 def _center(draw: ImageDraw.Draw, y: int, text: str, font, color, canvas_w: int = W):
     x = (canvas_w - _tw(draw, text, font)) // 2
     draw.text((x, y), text, font=font, fill=color)
 
 
 def _wrap(draw: ImageDraw.Draw, text: str, font, max_w: int) -> list[str]:
-    """한국어/영어 혼합 텍스트를 max_w에 맞게 줄바꿈."""
     lines, line = [], ""
-    # 스페이스로 먼저 단어 분리 시도, 없으면 글자 단위
     tokens = text.split(" ") if " " in text else list(text)
     sep    = " " if " " in text else ""
     for tok in tokens:
@@ -132,52 +120,59 @@ def _wrap(draw: ImageDraw.Draw, text: str, font, max_w: int) -> list[str]:
     return lines or [""]
 
 
-def _rounded_rect(draw: ImageDraw.Draw, xy, fill, radius: int = 14):
+def _rounded_rect(draw: ImageDraw.Draw, xy, fill, radius: int = 16, outline=None, outline_width: int = 2):
     x0, y0, x1, y1 = xy
-    draw.rounded_rectangle([x0, y0, x1, y1], radius=radius, fill=fill)
+    draw.rounded_rectangle([x0, y0, x1, y1], radius=radius, fill=fill,
+                           outline=outline, width=outline_width)
 
 
 # ─────────────────────────────────────────────
-# RANKING 스타일
+# RANKING — 다크 오렌지 스타일
 # ─────────────────────────────────────────────
 
 def _draw_ranking(data: dict) -> Image.Image:
-    img  = Image.new("RGB", (W, H), R_BG)
+    img  = Image.new("RGB", (W, H), D_BG)
     draw = ImageDraw.Draw(img)
 
-    title     = data.get("title", "")
-    subtitle  = data.get("subtitle", "")
-    items     = data.get("items", [])
-    hi_top    = data.get("highlight_top", 3)
-    channel   = data.get("channel", "@life-architecture")
+    title    = data.get("title", "")
+    subtitle = data.get("subtitle", "")
+    items    = data.get("items", [])
+    hi_top   = data.get("highlight_top", 3)
+    channel  = data.get("channel", "@life-architecture")
 
-    f_title = _font(60)
-    f_sub   = _font(36)
-    f_rank  = _font(42)
-    f_label = _font(40)
-    f_desc  = _font(30)
-    f_mark  = _font(27)
+    f_title   = _font(58)
+    f_sub     = _font(34)
+    f_rank    = _font(38)
+    f_rank_hi = _font(44)
+    f_label   = _font(38)
+    f_label_hi= _font(42)
+    f_desc    = _font(28)
+    f_mark    = _font(26)
 
-    y = 72
+    y = 80
+
+    # 상단 오렌지 액센트 바
+    draw.rectangle([(PAD, y), (PAD + 6, y + 80)], fill=D_ORANGE)
 
     # 제목
-    for line in _wrap(draw, title, f_title, W - PAD * 2):
-        _center(draw, y, line, f_title, R_TITLE)
-        y += 76
-    y += 8
+    tx = PAD + 22
+    for line in _wrap(draw, title, f_title, W - tx - PAD):
+        draw.text((tx, y), line, font=f_title, fill=D_TITLE)
+        y += 72
+    y += 6
 
     # 부제목
-    _center(draw, y, subtitle, f_sub, R_SUBTITLE)
-    y += 52
+    draw.text((tx, y), subtitle, font=f_sub, fill=D_SUBTITLE)
+    y += 50
 
     # 구분선
-    draw.line([(PAD, y), (W - PAD, y)], fill=R_LINE, width=2)
-    y += 18
+    draw.line([(PAD, y), (W - PAD, y)], fill=D_DIVIDER, width=2)
+    y += 20
 
-    # 아이템 영역 계산
-    n       = len(items)
-    avail   = H - y - 90
-    row_h   = max(78, min(160, avail // max(n, 1)))
+    # 아이템 영역
+    n     = len(items)
+    avail = H - y - 80
+    row_h = max(80, min(220, avail // max(n, 1)))
 
     for item in items:
         rank  = item.get("rank", 0)
@@ -185,49 +180,57 @@ def _draw_ranking(data: dict) -> Image.Image:
         desc  = str(item.get("desc", item.get("description", "")))
         is_hi = isinstance(rank, int) and rank <= hi_top
 
-        # 배경
+        # 카드 배경
         if is_hi:
-            idx    = min(rank - 1, len(R_TOP_COLS) - 1)
-            bg     = R_TOP_COLS[idx]
-            txt_c  = R_TOP_TXT
+            idx    = min(rank - 1, 2)
+            bg     = [D_ORANGE, D_ORANGE_MID, D_ORANGE_DARK][idx]
+            txt_c  = D_WHITE
+            desc_c = (255, 220, 170)
         else:
-            bg    = R_ROW_A if rank % 2 == 0 else R_ROW_B
-            txt_c = R_ROW_TXT
+            bg     = D_BG_ALT if rank % 2 == 1 else D_BG_ALT2
+            txt_c  = D_WHITE
+            desc_c = D_DESC
 
-        _rounded_rect(draw, (PAD, y, W - PAD, y + row_h - 4), fill=bg)
+        _rounded_rect(draw, (PAD, y + 3, W - PAD, y + row_h - 3), fill=bg, radius=14)
 
         # 순위 번호
-        rank_str = f"{rank}위"
-        rank_f   = _font(44 if is_hi else 38)
-        ry = y + (row_h - 50) // 2
-        draw.text((PAD + 18, ry), rank_str, font=rank_f, fill=txt_c)
-        rank_end = PAD + 18 + _tw(draw, "99위", rank_f) + 16
+        rf   = f_rank_hi if is_hi else f_rank
+        rstr = str(rank)
+        ry   = y + (row_h - _th(draw, rstr, rf)) // 2
+        draw.text((PAD + 20, ry), rstr, font=rf, fill=txt_c if is_hi else D_ORANGE)
+        rank_end = PAD + 20 + _tw(draw, "10", f_rank_hi) + 20
 
         # 레이블
-        lbl_f = _font(42 if is_hi else 38)
-        draw.text((rank_end, y + 10), label, font=lbl_f, fill=txt_c)
+        lf  = f_label_hi if is_hi else f_label
+        lh  = _th(draw, label, lf)
+        if desc:
+            label_y = y + (row_h // 2) - lh - 4
+        else:
+            label_y = y + (row_h - lh) // 2
+        draw.text((rank_end, label_y), label, font=lf, fill=txt_c)
 
-        # 설명 (두 줄까지)
-        desc_lines = _wrap(draw, desc, f_desc, W - PAD - rank_end - PAD)
-        dy = y + 10 + (50 if is_hi else 44)
-        for dl in desc_lines[:2]:
-            draw.text((rank_end, dy), dl, font=f_desc, fill=txt_c)
-            dy += 33
+        # 설명
+        if desc:
+            desc_lines = _wrap(draw, desc, f_desc, W - PAD - rank_end - PAD)
+            dy = label_y + lh + 6
+            for dl in desc_lines[:2]:
+                draw.text((rank_end, dy), dl, font=f_desc, fill=desc_c)
+                dy += 34
 
         y += row_h
 
-    # 하단 채널명
-    _center(draw, H - 68, channel, f_mark, R_MARK)
+    # 채널명
+    _center(draw, H - 58, channel, f_mark, D_CHANNEL)
 
     return img
 
 
 # ─────────────────────────────────────────────
-# TABLE 스타일
+# TABLE — 다크 오렌지 스타일
 # ─────────────────────────────────────────────
 
 def _draw_table(data: dict) -> Image.Image:
-    img  = Image.new("RGB", (W, H), T_BG)
+    img  = Image.new("RGB", (W, H), D_BG)
     draw = ImageDraw.Draw(img)
 
     title   = data.get("title", "")
@@ -238,73 +241,81 @@ def _draw_table(data: dict) -> Image.Image:
     footer  = data.get("footer", "")
     channel = data.get("channel", "@life-architecture")
 
-    f_title = _font(56)
-    f_sub   = _font(42)
-    f_note  = _font(27)
-    f_hdr   = _font(36)
-    f_cell  = _font(34)
-    f_foot  = _font(28)
-    f_mark  = _font(26)
+    f_title = _font(54)
+    f_sub   = _font(38)
+    f_note  = _font(26)
+    f_hdr   = _font(34)
+    f_cell  = _font(32)
+    f_foot  = _font(27)
+    f_mark  = _font(25)
 
-    y = 68
+    y = 72
+
+    # 상단 오렌지 액센트 바
+    draw.rectangle([(PAD, y), (PAD + 6, y + 72)], fill=D_ORANGE)
+    tx = PAD + 22
 
     # 제목
-    for line in _wrap(draw, title, f_title, W - PAD * 2):
-        _center(draw, y, line, f_title, T_TITLE)
-        y += 70
+    for line in _wrap(draw, title, f_title, W - tx - PAD):
+        draw.text((tx, y), line, font=f_title, fill=D_TITLE)
+        y += 66
     y += 4
 
     # 부제목
-    _center(draw, y, subtitle, f_sub, T_SUBTITLE)
-    y += 60
+    draw.text((tx, y), subtitle, font=f_sub, fill=D_SUBTITLE)
+    y += 54
 
     # 노트 박스
     if note:
-        nw = _tw(draw, note, f_note) + 30
-        nx = (W - nw) // 2
-        _rounded_rect(draw, (nx, y, nx + nw, y + 42), fill=T_NOTE_BG, radius=10)
-        _center(draw, y + 8, note, f_note, T_NOTE_TXT)
+        nw = _tw(draw, note, f_note) + 32
+        nx = PAD
+        _rounded_rect(draw, (nx, y, nx + nw, y + 44), fill=D_NOTE_BG, radius=10)
+        draw.text((nx + 16, y + 10), note, font=f_note, fill=D_NOTE_TXT)
         y += 58
 
-    y += 8
+    y += 10
 
     # 테이블 레이아웃
     n_col  = len(columns)
-    avail  = H - y - 150
+    avail  = H - y - 130
     n_rows = len(rows)
-    hdr_h  = 56
-    row_h  = max(52, min(110, (avail - hdr_h) // max(n_rows, 1)))
+    hdr_h  = 58
+    row_h  = max(54, min(160, (avail - hdr_h) // max(n_rows, 1)))
     col_w  = (W - PAD * 2) // n_col
     tx     = PAD
 
-    # 컬럼 헤더
+    # 컬럼 헤더 (오렌지)
     for ci, col in enumerate(columns):
         cx = tx + ci * col_w
-        _rounded_rect(draw, (cx, y, cx + col_w - 3, y + hdr_h), fill=T_HDR_BG, radius=6)
+        r  = 12 if ci == 0 else (12 if ci == n_col - 1 else 0)
+        _rounded_rect(draw, (cx, y, cx + col_w - 2, y + hdr_h), fill=D_ORANGE, radius=r)
         cw = _tw(draw, col, f_hdr)
-        draw.text((cx + (col_w - cw) // 2, y + (hdr_h - 38) // 2), col, font=f_hdr, fill=T_HDR_TXT)
-    y += hdr_h + 3
+        draw.text((cx + (col_w - cw) // 2, y + (hdr_h - 36) // 2), col, font=f_hdr, fill=D_WHITE)
+    y += hdr_h + 2
 
     # 데이터 행
     for ri, row in enumerate(rows):
-        bg = T_ROW_A if ri % 2 == 0 else T_ROW_B
+        bg = D_BG_ALT if ri % 2 == 0 else D_BG_ALT2
         for ci, cell in enumerate(row[:n_col]):
             cx  = tx + ci * col_w
-            _rounded_rect(draw, (cx, y, cx + col_w - 3, y + row_h - 2), fill=bg, radius=4)
+            _rounded_rect(draw, (cx, y, cx + col_w - 2, y + row_h - 2), fill=bg, radius=4)
             txt = str(cell)
-            tc  = T_ACCENT if ci == 0 else T_ROW_TXT
-            cw  = _tw(draw, txt, f_cell)
-            draw.text((cx + (col_w - cw) // 2, y + (row_h - 36) // 2), txt, font=f_cell, fill=tc)
+            tc  = D_ORANGE if ci == 0 else D_WHITE
+            fw  = _font(32) if ci == 0 else f_cell
+            cw  = _tw(draw, txt, fw)
+            draw.text((cx + (col_w - cw) // 2, y + (row_h - 34) // 2), txt, font=fw, fill=tc)
+        # 행 구분선
+        draw.line([(PAD, y + row_h - 1), (W - PAD, y + row_h - 1)], fill=D_DIVIDER, width=1)
         y += row_h
 
     # 푸터
-    y += 16
+    y += 18
     if footer:
         for line in _wrap(draw, footer, f_foot, W - PAD * 2):
-            _center(draw, y, line, f_foot, T_FOOTER)
+            _center(draw, y, line, f_foot, D_DESC)
             y += 36
 
-    _center(draw, H - 58, channel, f_mark, T_MARK)
+    _center(draw, H - 52, channel, f_mark, D_CHANNEL)
 
     return img
 
@@ -325,14 +336,54 @@ def generate_infographic(data: dict, output_path: str) -> str:
     return str(out)
 
 
+def generate_video(image_path: str, output_path: str, duration: int = 7,
+                   bgm_path: Optional[str] = None) -> str:
+    """JPG 인포그래픽을 FFmpeg으로 쇼츠 MP4 영상으로 변환한다."""
+    if bgm_path and Path(bgm_path).exists():
+        fade_start = max(0, duration - 1.5)
+        cmd = [
+            "ffmpeg", "-y",
+            "-loop", "1", "-framerate", "30", "-i", image_path,
+            "-stream_loop", "-1", "-i", bgm_path,
+            "-c:v", "libx264",
+            "-c:a", "aac", "-b:a", "128k",
+            "-af", f"volume=0.25,afade=t=in:st=0:d=0.5,afade=t=out:st={fade_start}:d=1.5",
+            "-t", str(duration),
+            "-pix_fmt", "yuv420p",
+            "-vf", "scale=1080:1920",
+            "-map", "0:v", "-map", "1:a",
+            output_path,
+        ]
+    else:
+        cmd = [
+            "ffmpeg", "-y",
+            "-loop", "1", "-framerate", "30",
+            "-i", image_path,
+            "-c:v", "libx264",
+            "-t", str(duration),
+            "-pix_fmt", "yuv420p",
+            "-vf", "scale=1080:1920",
+            output_path,
+        ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"FFmpeg 실패:\n{result.stderr}")
+    bgm_tag = " (BGM 포함)" if bgm_path and Path(bgm_path).exists() else ""
+    print(f"✅ 영상 저장: {output_path}  ({duration}초){bgm_tag}")
+    return output_path
+
+
 # ─────────────────────────────────────────────
 # CLI
 # ─────────────────────────────────────────────
 
 def main():
-    p = argparse.ArgumentParser(description="인포그래픽 이미지 생성기")
-    p.add_argument("--data",   required=True, help="JSON 데이터 파일 경로")
-    p.add_argument("--output", default=None,  help="출력 이미지 경로 (기본: 데이터파일명.jpg)")
+    p = argparse.ArgumentParser(description="인포그래픽 이미지/영상 생성기 (다크 오렌지 스타일)")
+    p.add_argument("--data",     required=True,       help="JSON 데이터 파일 경로")
+    p.add_argument("--output",   default=None,        help="출력 경로 (기본: 데이터파일명.jpg/.mp4)")
+    p.add_argument("--video",    action="store_true", help="MP4 쇼츠 영상으로 변환")
+    p.add_argument("--duration", type=int, default=7, help="영상 길이 초 (기본 7)")
+    p.add_argument("--bgm",      default=None,        help="배경음악 경로 (mp3)")
     args = p.parse_args()
 
     src = Path(args.data)
@@ -340,9 +391,17 @@ def main():
         print(f"❌ 파일 없음: {src}", file=sys.stderr)
         sys.exit(1)
 
-    data   = json.loads(src.read_text(encoding="utf-8"))
-    output = args.output or str(src.with_suffix(".jpg"))
-    generate_infographic(data, output)
+    data = json.loads(src.read_text(encoding="utf-8"))
+
+    if args.video:
+        jpg_path = args.output.replace(".mp4", ".jpg") if args.output and args.output.endswith(".mp4") \
+                   else str(src.with_suffix(".jpg"))
+        mp4_path = args.output or str(src.with_suffix(".mp4"))
+        generate_infographic(data, jpg_path)
+        generate_video(jpg_path, mp4_path, args.duration, bgm_path=args.bgm)
+    else:
+        output = args.output or str(src.with_suffix(".jpg"))
+        generate_infographic(data, output)
 
 
 if __name__ == "__main__":
