@@ -219,6 +219,30 @@ desktop      → QR 코드 표시
 
 ---
 
+## 현재 진행 상황
+
+### 2026-05-01 완료 작업
+
+| 작업 | 결과 |
+|------|------|
+| AdSense "가치 없는 콘텐츠" 원인 분석 | JS 렌더링만 → HTML 크롤 불가 → index.html 실제 HTML 콘텐츠 추가 |
+| index.html 개선 | 게임 5개 article 추가, 성운궤도 브랜드 통일, 메타태그, footer (privacy/terms 링크) |
+| Google Search Console 등록 | kdclab.kr URL 접두어 방식, 소유권 확인 완료, 색인 생성 요청 완료 |
+| AdSense 재검토 신청 | 체크박스 선택 → 검토 요청 버튼 클릭 완료 (결과: 1~4주 내 dong8650@gmail.com) |
+| 뒤로가기 종료 버그 수정 | doExit() → intent:// URI 브릿지로 네이티브 종료 |
+| TWA native 수정 | LauncherActivity.java onNewIntent 추가, AndroidManifest.xml singleTop + intent-filter 추가 |
+| v1.0.30 빌드 및 업로드 | bubblewrap build → app-release-bundle.aab → Play Console 비공개 테스트 업로드 |
+| 종료 버그 수정 확인 | "뒤로가기 → 종료 버튼 → 게임종료" 정상 동작 확인 |
+| claude-code 레포 구성 | github.com/dong8650/claude-code 생성, 프로젝트별 CLAUDE.md 작성 |
+
+### 다음 할 일
+
+- **5/3 (2026-05-03)**: Play Console → 비공개 테스트 12명 14일 충족 → 프로덕션 신청 버튼 클릭
+- **AdSense**: 재검토 결과 대기 (1~4주, dong8650@gmail.com)
+- **content-pipeline/CLAUDE.md**: claude.ai 웹 채팅 내용 정리 필요
+
+---
+
 ## 마지막 업데이트
 
 2026-05-01 — 뒤로가기 종료 버그 수정, AdSense 재검토 신청, Search Console 등록, TWA intent 브릿지 추가 (v1.0.30)
