@@ -35,20 +35,22 @@
 ```
 /root/auto_pipeline/
 ├── config.py                  # API Key, 경로 설정
-├── generate_script.py         # Claude+GPT 대본 생성
-├── ai_orchestrator.py         # Claude→GPT 오케스트레이터
+├── generate_script.py         # GPT-4o 초안 → Claude 검수/교정 → script.json
+├── ai_orchestrator.py         # 전체 파이프라인 오케스트레이터 (단일/배치 CLI)
 ├── generate_image.py          # DALL-E 3 이미지 생성
 ├── generate_tts.py            # TTS + ASS 자막 생성
 ├── make_video.py              # FFmpeg 영상 합성
 ├── run_all.py                 # 배치 실행 (전체 에피소드)
 ├── sync_to_backup.sh          # 백업 서버 동기화
+├── batch_report.json          # 배치 실행 결과 리포트 (자동 생성)
 ├── bgm/
 │   ├── bgm_philosophy.mp3
 │   ├── bgm_dark_cinematic.mp3
 │   └── bgm_dramatic_ambient.mp3
 └── episodes/
     └── ep001~ep020/
-        ├── script.json
+        ├── script.json        # 최종 대본 (_meta, 품질 점수 포함)
+        ├── review_log.json    # Claude 검수 결과 (자동 생성)
         ├── bg1~bg8.jpg
         ├── voice_ko.mp3
         ├── subtitles_tts.ass
@@ -58,11 +60,38 @@
 
 ---
 
+## 대본 생성 파이프라인 구조 (v2 — 2026-05-01 변경)
+
+```
+[이전] Claude 초안 → GPT-4o 검수
+[현재] GPT-4o 초안 → Claude 검수/교정/저장
+```
+
+| 단계 | 역할 | 모델 |
+|------|------|------|
+| ① 초안 생성 | 바이럴 최적화 대본 작성 (100만 조회수 프레임) | GPT-4o |
+| ② 검수/교정 | 규칙 위반 탐지·자동 교정, 품질 점수 평가, script.json 저장 | Claude Sonnet |
+
+### Claude 검수 항목
+- `R1` hook 8자 이내 / `R2` script_ko 3~5문장·60~100자·문장별 18자 이하 / `R3` closing_ko 10자 이내
+- `R4` 설명형 문장 탐지 → 직격형 교정
+- `R5` 금지어·비속어·법적 위험 요소 탐지·수정
+- `R6` scenes 8개 보장
+
+### 품질 지표 (review_log.json에 기록)
+| 지표 | 설명 |
+|------|------|
+| scroll_stop_power | hook의 스크롤 정지 유도력 (1~10) |
+| emotional_attack | 감정 자극 강도 (1~10) |
+| repeat_value | 반복 시청 가치 (1~10) |
+
+---
+
 ## 기술 스택
 
 | 항목 | 기술 |
 |------|------|
-| 대본 생성 | Claude API (claude-sonnet) + GPT-4o |
+| 대본 생성 | GPT-4o (초안) + Claude Sonnet (검수/교정) |
 | 이미지 생성 | DALL-E 3 HD (8장, 9:16) |
 | 음성 합성 | Edge TTS (HyunsuNeural/SunHiNeural) + ElevenLabs API |
 | 자막 | ASS 블러박스 자막 (단어별 \kf, 흰색→브론즈) |
@@ -220,38 +249,32 @@ ASS MarginV = 480             # 자막 위치 (이미지 영역 내 하단)
 ## 주요 명령어
 
 ```bash
-# 단일 에피소드 생성
-cd /root/auto_pipeline && python3 - << 'EOF'
-import json, os, sys
-sys.path.insert(0, "/root/auto_pipeline")
-from generate_script import generate_best_script
-from generate_image import generate_images
-from generate_tts import generate_tts
-from make_video import make_video
+# ── 단일 에피소드 전체 파이프라인 ───────────────────────────
+cd /root/auto_pipeline
+python3 ai_orchestrator.py --ep ep011 --topic "참을수록 망가지는 이유" --style docsul
 
-topic = "주제 입력"
-style = "docsul"  # docsul / janas / list / seulki
-ep_dir = "/root/auto_pipeline/episodes/ep011"
-os.makedirs(ep_dir, exist_ok=True)
+# ── 대본만 생성 (영상 없이) ─────────────────────────────────
+python3 ai_orchestrator.py --ep ep011 --topic "..." --style docsul --script-only
 
-script = generate_best_script(topic, style)
-with open(f"{ep_dir}/script.json", "w", encoding="utf-8") as f:
-    json.dump(script, f, ensure_ascii=False, indent=2)
-generate_images(script.get("scenes", []), ep_dir)
-generate_tts(script, f"{ep_dir}/voice_ko.mp3", style=style)
-make_video(ep_dir, script, style=style)
-EOF
+# ── 대본 단독 테스트 (generate_script.py 직접 실행) ──────────
+python3 generate_script.py --topic "주제 입력" --style docsul --ep-dir ./test_ep
 
-# 배치 실행
-cd /root/auto_pipeline && nohup python3 -u run_all.py > batch.log 2>&1 &
+# ── 배치 실행 (EP011~EP020) ──────────────────────────────────
+cd /root/auto_pipeline && nohup python3 -u ai_orchestrator.py --batch > batch.log 2>&1 &
 
-# 로그 확인
+# ── 배치 로그 확인 ────────────────────────────────────────────
 tail -f /root/auto_pipeline/batch.log
 
-# 백업 동기화
+# ── 배치 결과 리포트 확인 ─────────────────────────────────────
+cat /root/auto_pipeline/batch_report.json | python3 -m json.tool
+
+# ── 검수 결과 확인 (에피소드별) ──────────────────────────────
+cat /root/auto_pipeline/episodes/ep011/review_log.json
+
+# ── 백업 동기화 ───────────────────────────────────────────────
 /root/auto_pipeline/sync_to_backup.sh
 
-# 영상 다운로드 (로컬에서)
+# ── 영상 다운로드 (로컬에서) ─────────────────────────────────
 scp root@192.168.0.21:/root/auto_pipeline/episodes/ep011/output_final.mp4 ./ep011.mp4
 ```
 
@@ -268,4 +291,4 @@ scp root@192.168.0.21:/root/auto_pipeline/episodes/ep011/output_final.mp4 ./ep01
 
 ## 마지막 업데이트
 
-2026-05-01 — 프로젝트 초기화, EP001~EP009 완료, EP010 진행 중
+2026-05-01 — 대본 파이프라인 v2 적용 (GPT-4o 초안 → Claude 검수), EP001~EP009 완료, EP010 진행 중
