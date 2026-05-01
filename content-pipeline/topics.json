@@ -1,0 +1,302 @@
+[
+  {
+    "id": "emotion_001",
+    "content_type": "emotion",
+    "topic": "참을수록 망가지는 이유",
+    "angle": "억압이 자아를 지운다",
+    "target_emotion": "찔림",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "emotion_002",
+    "content_type": "emotion",
+    "topic": "착한 사람이 손해 보는 구조",
+    "angle": "선의가 착취로 이어진다",
+    "target_emotion": "분노",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "emotion_003",
+    "content_type": "emotion",
+    "topic": "조용히 참는 사람이 먼저 망하는 이유",
+    "angle": "침묵의 대가",
+    "target_emotion": "공포",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "emotion_004",
+    "content_type": "emotion",
+    "topic": "일 잘하는 게 함정인 이유",
+    "angle": "능력이 착취로 이어진다",
+    "target_emotion": "허탈",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "emotion_005",
+    "content_type": "emotion",
+    "topic": "나는 왜 항상 을이 되는가",
+    "angle": "관계 구조 속 자기 위치",
+    "target_emotion": "자괴감",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "emotion_006",
+    "content_type": "emotion",
+    "topic": "좋은 사람이 번아웃 먼저 오는 이유",
+    "angle": "선량함의 역설",
+    "target_emotion": "충격",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "emotion_007",
+    "content_type": "emotion",
+    "topic": "30대가 체감하는 진짜 한계",
+    "angle": "성장 기대 vs 현실 충돌",
+    "target_emotion": "허무",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "emotion_008",
+    "content_type": "emotion",
+    "topic": "눈치를 많이 보면 뇌가 망가진다",
+    "angle": "과도한 사회적 감시의 대가",
+    "target_emotion": "충격",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "emotion_009",
+    "content_type": "emotion",
+    "topic": "거절 못 하는 사람의 말로",
+    "angle": "NO를 못 하면 자아가 사라진다",
+    "target_emotion": "찔림",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "ranking_001",
+    "content_type": "ranking",
+    "topic": "40대 되면 후회하는 30대 결정 TOP3",
+    "angle": "선택의 복리 효과",
+    "target_emotion": "후회",
+    "render_mode": "scene",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "ranking_002",
+    "content_type": "ranking",
+    "topic": "직장에서 조용히 도태되는 신호 TOP3",
+    "angle": "눈에 안 보이는 위기",
+    "target_emotion": "공포",
+    "render_mode": "scene",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "ranking_003",
+    "content_type": "ranking",
+    "topic": "번아웃 오기 전 몸이 보내는 신호 TOP3",
+    "angle": "경고를 무시한 대가",
+    "target_emotion": "불안",
+    "render_mode": "scene",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "ranking_004",
+    "content_type": "ranking",
+    "topic": "돈 못 버는 사람 공통점 TOP3",
+    "angle": "습관이 가난을 만든다",
+    "target_emotion": "찔림",
+    "render_mode": "scene",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "ranking_005",
+    "content_type": "ranking",
+    "topic": "퇴사하고 싶을 때 나타나는 신호 TOP3",
+    "angle": "한계 인식",
+    "target_emotion": "공감",
+    "render_mode": "scene",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "ranking_006",
+    "content_type": "ranking",
+    "topic": "착한 척하는 사람 옆에 있으면 생기는 일 TOP3",
+    "angle": "관계의 독성",
+    "target_emotion": "분노",
+    "render_mode": "scene",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "ranking_007",
+    "content_type": "ranking",
+    "topic": "30대가 돈 못 모으는 이유 TOP3",
+    "angle": "소비 구조 함정",
+    "target_emotion": "허탈",
+    "render_mode": "scene",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "ranking_008",
+    "content_type": "ranking",
+    "topic": "직장에서 인정받지 못하는 사람 특징 TOP3",
+    "angle": "보이지 않는 규칙",
+    "target_emotion": "찔림",
+    "render_mode": "scene",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "ranking_009",
+    "content_type": "ranking",
+    "topic": "스트레스를 받아도 버티는 사람의 비밀 TOP3",
+    "angle": "내성 vs 회피",
+    "target_emotion": "충격",
+    "render_mode": "scene",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "money_001",
+    "content_type": "money",
+    "topic": "3억이면 몇 년 버티냐",
+    "angle": "노후 생존 기간의 현실",
+    "target_emotion": "불안",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "money_002",
+    "content_type": "money",
+    "topic": "월급 300만원의 진짜 수명",
+    "angle": "세후 실수령의 현실",
+    "target_emotion": "충격",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "money_003",
+    "content_type": "money",
+    "topic": "퇴직금 실수령이 얼마인지 아는가",
+    "angle": "기대 vs 현실 격차",
+    "target_emotion": "공포",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "money_004",
+    "content_type": "money",
+    "topic": "10년 모아도 집 못 사는 구조",
+    "angle": "저축의 무력감",
+    "target_emotion": "분노",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "money_005",
+    "content_type": "money",
+    "topic": "연봉 5000이 실제로 주는 생활",
+    "angle": "숫자 vs 체감의 격차",
+    "target_emotion": "허탈",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "money_006",
+    "content_type": "money",
+    "topic": "노후 준비 안 하면 65세에 얼마 남나",
+    "angle": "시간의 복리 역효과",
+    "target_emotion": "불안",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "quote_001",
+    "content_type": "quote",
+    "topic": "노력하면 더 망하는 사람",
+    "angle": "방향 없는 노력의 역설",
+    "target_emotion": "찔림",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "quote_002",
+    "content_type": "quote",
+    "topic": "착하게 살아서 잘 됐냐",
+    "angle": "선량함의 현실 보상",
+    "target_emotion": "비꼼",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "quote_003",
+    "content_type": "quote",
+    "topic": "참으면 해결된다는 거짓말",
+    "angle": "인내의 실제 대가",
+    "target_emotion": "충격",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "quote_004",
+    "content_type": "quote",
+    "topic": "성실한 게 왜 독이 되는가",
+    "angle": "성실함의 역설적 함정",
+    "target_emotion": "반전",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "quote_005",
+    "content_type": "quote",
+    "topic": "일희일비가 왜 강한 사람인가",
+    "angle": "감정 반응의 역설",
+    "target_emotion": "충격",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  },
+  {
+    "id": "quote_006",
+    "content_type": "quote",
+    "topic": "포기한 게 왜 용기인가",
+    "angle": "포기의 재정의",
+    "target_emotion": "위로",
+    "render_mode": "static",
+    "last_used": null,
+    "use_count": 0
+  }
+]
