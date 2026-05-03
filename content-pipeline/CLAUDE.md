@@ -97,6 +97,7 @@
 ├── make_video.py                # [내레이션형] Ken Burns + 자막 영상 합성
 ├── make_video_stock.py          # [다큐형] 실사 클립 + 자막 영상 합성
 ├── generate_infographic.py      # [인포그래픽형] PIL 이미지 + FFmpeg 영상 생성
+├── auto_upload.py               # n8n webhook으로 YouTube 자동 업로드 요청
 ├── sync_to_backup.sh            # 백업 서버 동기화
 ├── bgm/
 │   ├── bgm_philosophy.mp3
@@ -287,6 +288,27 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 
 ---
 
+## n8n YouTube 자동 업로드
+
+### 워크플로우 파일
+`n8n_workflow_youtube_upload.json` — n8n에 import하여 사용 (자세한 설정은 `requirements.md` 참조)
+
+### 업로드 명령어
+```bash
+# 반드시 /root/auto_pipeline 에서 실행
+cd /root/auto_pipeline
+python3 auto_upload.py --ep episodes/YYYYMMDD_NNN --style docsul --privacy private
+```
+
+### 주의사항
+- `--ep`는 `episodes/YYYYMMDD_NNN` 형식 (접두사 포함) — `ai_orchestrator.py --ep`와 다름
+- n8n Webhook이 body를 `item.json.body`에 래핑 → Code 노드에서 `item.json.body || item.json` 처리
+- YouTube Upload 노드: `description`, `privacyStatus`, `tags`, `madeForKids`는 반드시 `options` 하위에 위치해야 적용됨
+- YouTube Comment 노드 없음 — n8n 2.x 전 버전 미지원 확인됨. 업로드 후 YouTube Studio에서 수동 고정 댓글 필요
+- n8n Docker: `--privileged` 필수 (DHI 보안 모델이 seccomp + AppArmor 동시 적용)
+
+---
+
 ## 주요 명령어
 
 ```bash
@@ -312,6 +334,10 @@ scp root@192.168.0.21:/root/auto_pipeline/data_burnout.mp4 ./
 # ── 배치 로그 확인 ───────────────────────────────────────
 tail -f /root/auto_pipeline/batch.log
 
+# ── YouTube 자동 업로드 (n8n 경유) ──────────────────────
+cd /root/auto_pipeline
+python3 auto_upload.py --ep episodes/YYYYMMDD_NNN --style docsul --privacy private
+
 # ── 백업 동기화 ──────────────────────────────────────────
 /root/auto_pipeline/sync_to_backup.sh
 ```
@@ -327,6 +353,7 @@ tail -f /root/auto_pipeline/batch.log
 5. **Pexels 저작권**: 상업 사용 무료, 크레딧 불필요
 6. **Kevin MacLeod BGM**: CC BY 3.0 — 유튜브 설명란에 크레딧 필수
 7. **백업 동기화** 작업 후 sync_to_backup.sh 실행 확인
+8. **ai_orchestrator.py `--ep`**: `YYYYMMDD_NNN` (episodes/ 없이) / **auto_upload.py `--ep`**: `episodes/YYYYMMDD_NNN` (접두사 포함) — 혼용 주의
 
 ---
 
@@ -339,6 +366,14 @@ tail -f /root/auto_pipeline/batch.log
 ---
 
 ## 마지막 업데이트
+
+2026-05-03 — v3.3 n8n YouTube 자동 업로드 완성.
+- n8n 워크플로우 1번(YouTube 자동 업로드) 실전 검증 완료
+- auto_upload.py → n8n webhook → YouTube Upload → Slack 알림 파이프라인 동작
+- Docker n8n: `--privileged` 필수 이유 확인 및 requirements.md 문서화
+- YouTube Upload 노드 파라미터 구조 확정 (options 하위 배치)
+- YouTube Comment 노드 제거 (n8n 2.x 전 버전 미지원)
+- 첫 자동 업로드 성공: 20260503_money004 "10년 모아도 집 못 사는 현실" (비공개)
 
 2026-05-02 — v3.2 3가지 영상 스타일 완성.
 - 내레이션형: 기존 DALL-E 파이프라인 유지, 관점 전환 방향 강화
