@@ -1,39 +1,32 @@
-# content-pipeline-v2 — S급 드라마 쇼츠 파이프라인
+# content-pipeline-v2 — 건강 상식 연구소
 
-> v1(매일의 설계 자기계발)과 독립 운영. Claude API 전용 (OpenAI 불필요).
+> v1(매일의 설계 자기계발)과 독립 운영. Claude API 전용 (OpenAI = DALL-E만 사용).
 
 ---
 
-## 콘셉트
+## 채널 정체성
 
 | 항목 | 내용 |
 |------|------|
-| 채널 | 매일의 설계 (@life-architecture) |
-| 포맷 | 한국 드라마 명대사 / 복선해석 / 반전요약 |
-| 목표 | S급 영상 (반복재생·저장·공유 유발) |
-| 길이 | 10초 (명대사) / 20초 (복선해석·반전요약) |
-| 이미지 | DALL-E 3 — 드라마 분위기 재현 (실제 배우 금지) |
-| 저작권 | AI 이미지 + 자막 + 나레이션 조합 → 안전 |
+| 채널명 | 건강 상식 연구소 |
+| 워터마크 | @health.lab.kr |
+| 슬로건 | 매일 하나씩, 건강 상식을 쌓자 |
+| 콘텐츠 | 잘못된 건강 상식 뒤집기 — 반복재생·저장 폭발 |
+| 길이 | 25초 고정 (S급 루프 구조) |
+| 이미지 | DALL-E 3 귀여운 장기/캐릭터 스타일 (실제 사람 금지) |
 
 ---
 
-## S급 포맷 구조
+## S급 포맷 (25초 고정)
 
-### 명대사 (10초)
 ```
-0~2초   Hook     — "이 대사 듣고 멈칫한 사람"
-3~6초   핵심대사  — 드라마 명대사 자막 + 나레이션
-7~9초   저장유도  — "저장해두고 힘들 때 꺼내봐요"
-10초    루프트리거 — "처음부터 다시 보면 소름 돋음 👀"
-```
-
-### 복선해석 / 반전요약 (20초)
-```
-0~2초   Hook       — "이 장면이 복선인 거 아무도 말 안 해줬음"
-3~13초  내용 설명  — 복선/반전 포인트 설명
-14~17초 감정충격   — "복선이었다..."
-18~19초 저장유도   — "저장 안 하면 다시 못 찾음"
-20초    루프트리거 — "1초에 힌트 숨겨져 있음 👀"
+0~3초   🔥 Hook       — "의사들이 매일 하는데 우리만 모름"
+4~8초   ✅ 과학설명1  — 핵심 메커니즘 + 수치
+9~14초  ✅ 과학설명2  — 추가 효과 + 이모지
+15~19초 ⚠️ 잘못된상식 — 반전 포인트 "근데 대부분이..."
+20~22초 😱 감정충격   — "매일 이렇게 했던 당신..."
+23~24초 💾 저장유도   — "저장해두고 내일부터 해봐"
+25초    👀 루프트리거 — "처음부터 보면 복선 있음"
 ```
 
 ---
@@ -43,68 +36,87 @@
 ```
 content-pipeline-v2/
 ├── CLAUDE.md
-├── topics_drama.json          # 드라마 주제 풀 30개
-├── drama_used.json            # 서버 고유 — git 미포함
-├── generate_script_v2.py      # Claude API → S급 대본 JSON
-├── generate_image_v2.py       # DALL-E 3 → 드라마 분위기 이미지
-├── make_video_v2.py           # FFmpeg → 10~20초 S급 영상
-├── ai_orchestrator_v2.py      # CLI 오케스트레이터
-├── get_episode_info_v2.py     # n8n SSH 노드용 메타데이터 출력
-└── n8n/
-    └── (워크플로우 추후 추가)
+├── topics_health.json          # 건강 주제 풀 30개
+├── health_used.json            # 서버 고유 — git 미포함
+├── generate_script_v2.py       # Claude API → S급 대본 JSON
+├── generate_image_v2.py        # DALL-E 3 → 귀여운 장기 캐릭터 이미지 (9:16)
+├── make_video_v2.py            # FFmpeg → 25초 S급 영상 (v1 효과 이식)
+├── ai_orchestrator_v2.py       # CLI 오케스트레이터 (자동화용)
+├── run_custom_v2.py            # 사전 정의 스크립트 즉시 실행
+├── get_episode_info_v2.py      # n8n SSH 노드용
 
 episodes_v2/                   # 서버 고유 — git 미포함
 └── YYYYMMDD_NNN/
     ├── script_v2.json
-    ├── bg1~bgN.jpg
-    ├── voice_ko.mp3
+    ├── bg1~bg7.jpg
+    ├── tts_scene*.mp3          # 장면별 TTS
+    ├── voice_ko.mp3            # concat TTS
     ├── subtitles_v2.ass
     └── output_final.mp4
 ```
 
-### v1에서 공유하는 파일 (서버 경로)
-- `generate_tts.py` — `/root/auto_pipeline/generate_tts.py` import
-- `config.py` — `/root/auto_pipeline/config.py` import
-- `bgm/` — `/root/auto_pipeline/bgm/` 재사용
-
 ---
 
-## 드라마 주제 풀 (topics_drama.json)
+## 영상 효과 (v1 이식)
 
-| 드라마 | 콘텐츠 타입 | 테마 |
-|--------|------------|------|
-| 더 글로리 | 명대사 / 복선해석 / 반전요약 | 복수의 무게 |
-| 눈물의 여왕 | 명대사 / 복선해석 | 사랑과 이별 |
-| 이상한 변호사 우영우 | 명대사 | 다름의 가치 |
-| 나의 해방일지 | 명대사 / 반전요약 | 해방의 의미 |
-| 스물다섯 스물하나 | 명대사 / 복선해석 | 청춘의 끝 |
-| 오징어 게임 | 명대사 / 복선해석 | 돈과 인간 |
-| 무빙 | 명대사 / 복선해석 | 부모의 희생 |
-| 닥터슬럼프 | 명대사 | 번아웃과 회복 |
-| 선재 업고 튀어 | 명대사 / 복선해석 | 시간을 돌린다면 |
-| 사랑의 불시착 | 명대사 / 반전요약 | 운명과 사랑 |
-| + 20개 추가 | ... | ... |
+| 효과 | v1 | v2 |
+|------|----|----|
+| Ken Burns | zoompan 짝수=줌인/홀수=줌아웃 | ✅ 동일 |
+| 상단 검은 바 | 22% + 채널명 | ✅ 20% + "건강 상식 연구소" |
+| 하단 검은 바 | 22% + 워터마크 | ✅ 18% + @health.lab.kr |
+| 자막 스타일 | ASS Karaoke (노래방 효과) | ✅ ASS 장면별 (Hook=오렌지, Main=흰색, Save=노랑, Loop=시안) |
+| BGM 믹싱 | voice 1.0 + bgm 0.18 | ✅ 동일 |
+| TTS | 3분할 (hook/body/closing) | ✅ 장면별 TTS + duration 패딩 |
+| 해상도 | 1080×1920 25fps | ✅ 동일 |
+| CRF | 18 | ✅ 동일 |
 
 ---
 
 ## 실행 명령어
 
 ```bash
+# 자동 (주제 풀에서 순서대로)
 cd /root/auto_pipeline_v2
-
-# 단일 실행 (자동 주제 선택)
 python3 ai_orchestrator_v2.py --batch --count 1 --auto
 
 # 특정 주제 지정
-python3 ai_orchestrator_v2.py --topic glory_quote_revenge
+python3 ai_orchestrator_v2.py --topic morning_water
 
-# 배치 3편
-python3 ai_orchestrator_v2.py --batch --count 3 --auto
+# 사전 정의 스크립트 즉시 실행
+python3 run_custom_v2.py
 
-# 백그라운드 실행 (n8n용)
+# 백그라운드 (n8n용)
 setsid python3 -u ai_orchestrator_v2.py --batch --count 1 --auto \
   > /root/auto_pipeline_v2/daily_gen_v2.log 2>&1 </dev/null &
 echo "PID=$!"
+
+# 로그 확인
+tail -f /root/auto_pipeline_v2/daily_gen_v2.log
+
+# 영상 다운로드
+scp root@192.168.0.21:/root/auto_pipeline_v2/episodes_v2/YYYYMMDD_NNN/output_final.mp4 ~/Downloads/
+```
+
+---
+
+## 서버 최초 세팅
+
+```bash
+cd /root/claude-code && git pull origin main
+mkdir -p /root/auto_pipeline_v2
+cp /root/claude-code/content-pipeline-v2/*.py /root/auto_pipeline_v2/
+cp /root/claude-code/content-pipeline-v2/topics_health.json /root/auto_pipeline_v2/
+cp /root/auto_pipeline/config.py /root/auto_pipeline_v2/
+```
+
+---
+
+## Git Sync (n8n 자동화용)
+
+```bash
+cd /root/claude-code && git pull origin main && \
+cp /root/claude-code/content-pipeline-v2/*.py /root/auto_pipeline_v2/ && \
+cp /root/claude-code/content-pipeline-v2/topics_health.json /root/auto_pipeline_v2/
 ```
 
 ---
@@ -113,28 +125,33 @@ echo "PID=$!"
 
 | 지표 | 목표 | 적용 방법 |
 |------|------|---------|
-| 완시율 | 85%+ | 10~20초 이내 유지 |
-| 좋아요율 | 5%+ | 저장유도 자막 |
+| 완시율 | 85%+ | 25초 이내 + 2초마다 새 정보 |
+| 좋아요율 | 5%+ | 공감 자막 "매일 이렇게 했던 당신" |
 | 반복시청 | 발생 | 루프트리거 마지막 장면 |
-| 저장 | 발생 | 7~9초 / 18~19초 저장유도 |
-| 공유 | 발생 | 감정 충격 장면 |
+| 저장 | 발생 | 23~24초 저장유도 |
+| 공유 | 발생 | 잘못된 상식 반전 + 감정충격 |
 
 ---
 
 ## 주의사항
 
-- DALL-E 이미지 프롬프트: 실제 배우/캐릭터 이름 절대 금지
-- 드라마 원본 영상 클립 사용 금지 (Content ID 위험)
-- OST 원곡 사용 금지 — BGM은 `/root/auto_pipeline/bgm/` 재사용
-- `drama_used.json` — 서버 고유, git push 금지
+- DALL-E image_prompt: 실제 사람 얼굴 금지 (cute cartoon 스타일만)
+- `health_used.json` — 서버 고유, git push 금지
+- BGM 재사용: `/root/auto_pipeline/bgm/bgm_dramatic_ambient.mp3`
+- config.py 재사용: `/root/auto_pipeline/config.py` 복사
 
 ---
 
 ## 마지막 업데이트
 
-2026-05-04 — v2.0 초기 구조 생성
-- topics_drama.json: 30개 주제 (명대사 16 / 복선해석 9 / 반전요약 5)
-- S급 포맷: 10초(명대사) / 20초(복선해석·반전요약)
-- Claude API 전용 (OpenAI 의존 제거)
-- DALL-E 드라마 분위기 이미지 (배우 금지)
-- 루프트리거 + 저장유도 자막 구조
+2026-05-04 — v2.1 건강 상식 연구소 채널 전환 완료
+- 드라마 콘텐츠 제거 → 건강 상식 단일 채널
+- topics_health.json: 30개 주제 (잘못된 상식 반전 포맷)
+- make_video_v2.py: v1 영상 효과 완전 이식
+  - Ken Burns zoompan (짝수=줌인, 홀수=줌아웃)
+  - 상하 검은 바 + 채널 브랜딩
+  - 장면별 TTS + duration 패딩 (장면별 싱크)
+  - BGM 믹싱 voice 1.0 + bgm 0.18
+  - ASS 자막 (Hook=오렌지, Main=흰색, Save=노랑, Loop=시안)
+- generate_script_v2.py: 건강상식 단일 타입, 25초 고정 구조
+- run_custom_v2.py: "달리기 후 뇌 변화" 즉시 실행 스크립트

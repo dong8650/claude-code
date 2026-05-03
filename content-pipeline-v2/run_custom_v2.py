@@ -103,16 +103,11 @@ def main():
     generate_all_images(SCRIPT["scenes"], ep_dir)
     print(f"✅ 이미지 생성 완료")
 
-    # 3. TTS
-    print(f"\n🎙️ TTS 생성 중...")
-    voice_file = ep_dir / "voice_ko.mp3"
-    generate_tts_simple(SCRIPT["scenes"], voice_file)
-
-    # 4. 영상 합성
-    print(f"\n🎬 영상 합성 중...")
+    # 3+4. 영상 합성 (TTS + Ken Burns + BGM — make_video_v2가 모두 처리)
+    print(f"\n🎬 영상 합성 중 (TTS + Ken Burns + BGM)...")
     from make_video_v2 import make_video
     bgm_path = "/root/auto_pipeline/bgm/bgm_dramatic_ambient.mp3"
-    output = make_video(ep_dir, SCRIPT, bgm_path if Path(bgm_path).exists() else None)
+    output = make_video(ep_dir, SCRIPT, bgm_path if Path(bgm_path).exists() else None, generate_tts=True)
     print(f"\n✅ 완성: {output}")
 
 

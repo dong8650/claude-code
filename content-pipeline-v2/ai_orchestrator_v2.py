@@ -40,7 +40,7 @@ def get_next_ep_dir(base: Path) -> Path:
 def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health") -> dict:
     from generate_script_v2 import generate_script, load_used, save_used, pick_topic
 
-    pool_file = BASE_DIR / ("topics_health.json" if channel == "health" else "topics_drama.json")
+    pool_file = BASE_DIR / "topics_health.json"
     pool = json.loads(pool_file.read_text(encoding="utf-8"))
 
     if topic_id:
@@ -78,27 +78,12 @@ def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health
         logger.error(f"[{ep_name}] 이미지 생성 실패: {e}")
         return {"error": str(e), "ep_dir": str(ep_dir)}
 
-    # 3. TTS 생성
-    logger.info(f"[{ep_name}] TTS 생성 중...")
-    try:
-        tts_script = _build_tts_script(script)
-        tts_file = ep_dir / "tts_input.txt"
-        tts_file.write_text(tts_input := _build_tts_input(script), encoding="utf-8")
-
-        v1_path = "/root/auto_pipeline"
-        sys.path.insert(0, v1_path)
-        from generate_tts import generate_tts
-        voice_file = ep_dir / "voice_ko.mp3"
-        generate_tts(tts_input, str(voice_file), style="list")
-    except Exception as e:
-        logger.warning(f"[{ep_name}] TTS 실패 (계속 진행): {e}")
-
-    # 4. 영상 합성
-    logger.info(f"[{ep_name}] 영상 합성 중...")
+    # 3+4. 영상 합성 (TTS 포함 — make_video_v2가 장면별 TTS 처리)
+    logger.info(f"[{ep_name}] 영상 합성 중 (TTS + Ken Burns + BGM)...")
     try:
         from make_video_v2 import make_video
         bgm_path = "/root/auto_pipeline/bgm/bgm_dramatic_ambient.mp3"
-        output = make_video(ep_dir, script, bgm_path if Path(bgm_path).exists() else None)
+        output = make_video(ep_dir, script, bgm_path if Path(bgm_path).exists() else None, generate_tts=True)
     except Exception as e:
         logger.error(f"[{ep_name}] 영상 합성 실패: {e}")
         return {"error": str(e), "ep_dir": str(ep_dir)}
@@ -123,18 +108,6 @@ def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health
         "elapsed": elapsed,
     }
 
-
-def _build_tts_input(script: dict) -> str:
-    parts = []
-    for scene in script.get("scenes", []):
-        narration = scene.get("narration", "").strip()
-        if narration:
-            parts.append(narration)
-    return " ".join(parts) if parts else script.get("hook", "")
-
-
-def _build_tts_script(script: dict) -> str:
-    return _build_tts_input(script)
 
 
 def main():
