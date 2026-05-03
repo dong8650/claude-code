@@ -37,10 +37,10 @@ def get_next_ep_dir(base: Path) -> Path:
     return ep_dir
 
 
-def run_episode(topic_id: str = None, auto: bool = False) -> dict:
+def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health") -> dict:
     from generate_script_v2 import generate_script, load_used, save_used, pick_topic
 
-    pool_file = BASE_DIR / "topics_drama.json"
+    pool_file = BASE_DIR / ("topics_health.json" if channel == "health" else "topics_drama.json")
     pool = json.loads(pool_file.read_text(encoding="utf-8"))
 
     if topic_id:
@@ -87,9 +87,9 @@ def run_episode(topic_id: str = None, auto: bool = False) -> dict:
 
         v1_path = "/root/auto_pipeline"
         sys.path.insert(0, v1_path)
-        from generate_tts import generate_tts_edge
+        from generate_tts import generate_tts
         voice_file = ep_dir / "voice_ko.mp3"
-        generate_tts_edge(tts_input, str(voice_file), style="janas")
+        generate_tts(tts_input, str(voice_file), style="list")
     except Exception as e:
         logger.warning(f"[{ep_name}] TTS 실패 (계속 진행): {e}")
 
@@ -114,7 +114,7 @@ def run_episode(topic_id: str = None, auto: bool = False) -> dict:
     return {
         "ep_dir": str(ep_dir),
         "ep_name": ep_name,
-        "drama": topic["drama"],
+        "drama": topic.get("drama", topic.get("title", "")),
         "content_type": topic["content_type"],
         "hook": script.get("hook", ""),
         "video_path": str(output),
@@ -143,6 +143,7 @@ def main():
     parser.add_argument("--count", type=int, default=1)
     parser.add_argument("--auto", action="store_true")
     parser.add_argument("--topic", type=str, default=None, help="특정 topic_id 지정")
+    parser.add_argument("--channel", type=str, default="health", help="health | drama")
     args = parser.parse_args()
 
     results = []
@@ -152,7 +153,7 @@ def main():
     logger.info("=" * 55)
 
     for i in range(count):
-        result = run_episode(topic_id=args.topic if not args.batch else None, auto=args.auto)
+        result = run_episode(topic_id=args.topic if not args.batch else None, auto=args.auto, channel=args.channel)
         results.append(result)
         if result.get("error"):
             logger.warning(f"  FAIL — {result['error']}")

@@ -1,12 +1,13 @@
 """
 generate_script_v2.py
 =====================
-S급 유튜브 쇼츠 드라마 대본 생성 (Claude API 전용, OpenAI 불필요)
+S급 유튜브 쇼츠 대본 생성 (Claude API 전용)
 
 콘텐츠 타입:
-  명대사   — 10초: Hook → 대사 → 저장유도 → 루프트리거
-  복선해석 — 20초: Hook → 복선 설명 → 소름포인트 → 루프트리거
-  반전요약 — 20초: Hook → 1화 vs 마지막 → 반전 → 감정충격 → 루프트리거
+  건강상식 — 25초: Hook → 과학설명 → 잘못된상식반전 → 감정충격 → 저장유도 → 루프트리거
+  명대사   — 10초: Hook → 대사 → 저장유도 → 루프트리거  (드라마, 레거시)
+  복선해석 — 20초: Hook → 복선설명 → 소름포인트 → 루프트리거  (드라마, 레거시)
+  반전요약 — 20초: Hook → 1화vs마지막 → 반전 → 감정충격 → 루프트리거  (드라마, 레거시)
 """
 import json
 import re
@@ -39,7 +40,54 @@ def pick_topic(pool: list, used_ids: set) -> tuple:
     return unused[0], used_ids
 
 
+def _build_health_prompt(topic: dict) -> str:
+    title = topic["title"]
+    theme = topic.get("theme", "")
+    myth = topic.get("myth", "")
+
+    return f"""건강 상식 연구소 채널의 S급 유튜브 쇼츠 대본을 만들어줘.
+
+주제: {title}
+테마: {theme}
+잘못된 상식 (반전 포인트): {myth}
+
+S급 조건:
+- 총 길이: 25초
+- Hook (0~2초): "의사들이 매일 하는데 우리만 모르는" 또는 "이거 알면 병원 덜 가도 됨" 류. 멈추게 만드는 문장.
+- 과학설명 (3~12초): 짧고 임팩트 있는 과학적 근거 2~3개. 자막에 "→" 기호와 수치 적극 활용.
+- 잘못된상식 반전 (13~17초): "근데 대부분이 이렇게 한다..." 또는 "반대로 하면?" 전환
+- 감정충격 (18~20초): "매일 이렇게 했던 당신..." 공감 유발
+- 저장유도 (21~23초): "저장해두고 내일부터 해봐" 류
+- 루프트리거 (24~25초): "처음부터 보면 이미 알고 있었음 👀" 류
+- image_prompt: DALL-E용 영문. 귀여운 장기 캐릭터 또는 건강 인포그래픽 스타일. 밝고 컬러풀.
+- narration: 각 장면 나레이션 (간결하게)
+- tags_ko: 5개 (건강상식연구소 포함)
+
+JSON만 출력 (마크다운/설명 없이):
+{{
+  "title": "{title}",
+  "content_type": "건강상식",
+  "hook": "Hook 문장 (15자 이내)",
+  "scenes": [
+    {{"duration": 2, "caption": "Hook 자막", "narration": "Hook 나레이션", "image_prompt": "cute cartoon health character, bright colorful Korean health infographic style, 9:16 vertical..."}},
+    {{"duration": 5, "caption": "과학설명1\\n→ 효과1", "narration": "나레이션", "image_prompt": "..."}},
+    {{"duration": 5, "caption": "과학설명2\\n→ 효과2 💧", "narration": "나레이션", "image_prompt": "..."}},
+    {{"duration": 5, "caption": "잘못된 상식\\n반전 설명 ⚠️", "narration": "나레이션", "image_prompt": "..."}},
+    {{"duration": 3, "caption": "감정충격 문장 😱", "narration": "나레이션", "image_prompt": "..."}},
+    {{"duration": 3, "caption": "저장유도 💾", "narration": "나레이션", "image_prompt": "..."}},
+    {{"duration": 2, "caption": "루프트리거 👀", "narration": "", "image_prompt": "..."}}
+  ],
+  "total_duration": 25,
+  "save_trigger": "저장유도 문장",
+  "loop_trigger": "루프트리거 문장",
+  "tags_ko": ["건강상식연구소", "건강", "쇼츠", "건강습관", "건강상식"]
+}}"""
+
+
 def _build_prompt(topic: dict) -> str:
+    if topic.get("content_type") == "건강상식":
+        return _build_health_prompt(topic)
+
     drama = topic["drama"]
     content_type = topic["content_type"]
     mood = topic["mood"]
