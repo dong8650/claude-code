@@ -77,7 +77,7 @@
       "position": [1340, 300],
       "parameters": {
         "resource": "command",
-        "command": "={{ 'cd /root/auto_pipeline && python3 generate_infographic.py --data ' + $('Parse Infographic Topic').item.json.data_file + ' --video --duration 7 --bgm bgm/bgm_dark_cinematic.mp3 2>&1' }}"
+        "command": "={{ 'cd /root/auto_pipeline && python3 generate_infographic.py --data ' + $('Parse Infographic Topic').item.json.data_file + ' --video --duration 7 2>&1' }}"
       },
       "credentials": {
         "sshPassword": {
@@ -110,7 +110,7 @@
       "typeVersion": 2,
       "position": [1780, 300],
       "parameters": {
-        "jsCode": "const data = JSON.parse($json.stdout.trim());\nconst title = data.title || $('Parse Infographic Topic').item.json.title || '';\nconst subtitle = data.subtitle || '';\nconst tags = data.tags_ko || ['매일의설계','직장인','쇼츠','인포그래픽','데이터'];\nconst dataFile = $('Parse Infographic Topic').item.json.data_file;\nconst video_path = '/root/auto_pipeline/' + dataFile.replace('.json', '.mp4');\nconst tagsLine = tags.map(t => '#' + t).join(' ');\nconst lines = [\n  subtitle, '',\n  '─────────────────────────',\n  '📌 매일의설계 | 어제보다 나은 오늘을 설계하자',\n  '구독 · 좋아요 · 알림 설정으로 매일 인사이트를 받아보세요.'\n];\nif (tagsLine) { lines.push('', tagsLine); }\nlines.push(\n  '', '─────────────────────────',\n  '🎵 BGM: \"Volatile Reaction\" by Kevin MacLeod (incompetech.com)',\n  'Licensed under Creative Commons: By Attribution 3.0',\n  'http://creativecommons.org/licenses/by/3.0/'\n);\nconst desc = lines.join('\\n');\nreturn [{ json: { title, description_full: desc, tags_ko: tags, video_path, privacy: 'private' } }];"
+        "jsCode": "const data = JSON.parse($json.stdout.trim());\nconst title = data.title || $('Parse Infographic Topic').item.json.title || '';\nconst subtitle = data.subtitle || '';\nconst tags = data.tags_ko || ['매일의설계','직장인','쇼츠','인포그래픽','데이터'];\nconst dataFile = $('Parse Infographic Topic').item.json.data_file;\nconst video_path = '/root/auto_pipeline/' + dataFile.replace('.json', '.mp4');\nconst tagsLine = tags.map(t => '#' + t).join(' ');\nconst lines = [\n  subtitle, '',\n  '─────────────────────────',\n  '📌 매일의설계 | 어제보다 나은 오늘을 설계하자',\n  '구독 · 좋아요 · 알림 설정으로 매일 인사이트를 받아보세요.'\n];\nif (tagsLine) { lines.push('', tagsLine); }\nconst desc = lines.join('\\n');\nreturn [{ json: { title, description_full: desc, tags_ko: tags, video_path, privacy: 'private' } }];"
       }
     },
     {
