@@ -313,19 +313,21 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 | 월·수·금·일 | ✅ | — | ✅ (매일) |
 | 화·목·토 | — | ✅ | ✅ (매일) |
 
-→ 하루 2편 자동 업로드. 인포그래픽은 10개 data_*.json 파일 로테이션.
+→ 하루 2편 자동 업로드. 인포그래픽은 Claude API가 매일 새 주제 생성 (50개 풀 순환).
 
 ### 일일 자동화 실행 흐름 (n8n_workflow_daily_auto.json)
 ```
 00:00 Cron
-    ↓ Code — 요일 판단 + 인포그래픽 데이터 로테이션
-    ↓ SSH — git pull + cp *.py data_*.json → /root/auto_pipeline/ (Git Sync)
-    ↓ SSH — generate_infographic.py (~5분)
-    ↓ SSH — cat data_*.json (메타데이터 읽기)
+    ↓ Code — 요일 판단 (videoType: narration/docu)
+    ↓ SSH — git pull + cp *.py + infographic_topic_pool.json (Git Sync)
+    ↓ SSH — generate_infographic_data.py (Claude API로 오늘 주제 데이터 생성)
+    ↓ Code — data_file 경로 파싱 (Parse Infographic Topic)
+    ↓ SSH — generate_infographic.py --video --duration 7 (BGM 없음, ~5분)
+    ↓ SSH — cat data_YYYYMMDD.json (메타데이터 읽기)
     ↓ Code — 인포그래픽 YouTube 설명/태그 생성
     ↓ Read File — 인포그래픽 mp4 직접 읽기
     ↓ YouTube Upload — 인포그래픽 업로드
-    ↓ SSH — ai_orchestrator.py nohup 백그라운드 시작
+    ↓ SSH — setsid ai_orchestrator.py --video-type narration|docu (백그라운드)
     ↓ Wait 2시간 30분
     ↓ SSH — get_episode_info.py (에피소드 메타데이터 JSON)
     ↓ Code — 에피소드 YouTube 설명/태그 생성
@@ -334,25 +336,54 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
         ↓ 실패: Slack ❌
 ```
 
-### 서버 최초 1회 세팅 (양쪽 서버 모두)
+### 서버 최초 1회 세팅
 
 ```bash
-# git 레포 클론 (최초 1회만)
+# 1. git 클론
 git clone https://github.com/dong8650/claude-code.git /root/claude-code
 
+# 2. 최신 파일 복사
+cp /root/claude-code/content-pipeline/*.py /root/auto_pipeline/
+cp /root/claude-code/content-pipeline/infographic_data/infographic_topic_pool.json /root/auto_pipeline/
+cp /root/claude-code/content-pipeline/topics.json /root/auto_pipeline/
+
 # 이후 n8n이 매일 자동으로 git pull + cp 처리
-# topics.json은 서버 고유 사용 이력이 있으므로 cp 대상에서 제외됨
+# topics.json / infographic_used.json은 서버 고유 — git에서 복사하지 않음
+```
+
+### n8n Docker 배포
+
+```bash
+# zbx-proxy-dc1 (192.168.0.21) — kdclab.kr
+docker run -d --name n8n --privileged --user root \
+  -p 8080:8080 -e N8N_PORT=8080 -e N8N_SECURE_COOKIE=false \
+  -e N8N_HOST=kdclab.kr -e N8N_PROTOCOL=http \
+  -e WEBHOOK_URL=http://kdclab.kr:8084/ \
+  -e GENERIC_TIMEZONE=Asia/Seoul -e TZ=Asia/Seoul \
+  -e N8N_RESTRICT_FILE_ACCESS_TO=/root \
+  -v /root/.n8n:/root/.n8n -v /root/auto_pipeline:/root/auto_pipeline \
+  --restart always n8nio/n8n
+
+# arkime-dc2 (7.7.7.254) — tossdata.fortiddns.com (DDNS 외부 8084 → 내부 8080)
+docker run -d --name n8n --privileged --user root \
+  -p 8080:8080 -e N8N_PORT=8080 -e N8N_SECURE_COOKIE=false \
+  -e N8N_HOST=tossdata.fortiddns.com -e N8N_PROTOCOL=http \
+  -e WEBHOOK_URL=http://tossdata.fortiddns.com:8084/ \
+  -e GENERIC_TIMEZONE=Asia/Seoul -e TZ=Asia/Seoul \
+  -e N8N_RESTRICT_FILE_ACCESS_TO=/root \
+  -v /root/.n8n:/root/.n8n -v /root/auto_pipeline:/root/auto_pipeline \
+  --restart always n8nio/n8n
 ```
 
 ### Git Sync 아키텍처
 - **코드 관리**: `/root/claude-code/` (git repo) — n8n이 매일 00:00에 `git pull`
-- **실행 디렉토리**: `/root/auto_pipeline/` — git pull 후 `*.py`, `infographic_data/data_*.json` 자동 복사
-- **topics.json**: 서버 고유 (use_count/last_used 보존) — git에서 복사하지 않음
-- **서버 이중화**: 192.168.0.21 / 7.7.7.254 — 동일 git 구조, n8n SSH Credential만 다름
+- **실행 디렉토리**: `/root/auto_pipeline/` — git pull 후 `*.py` + `infographic_topic_pool.json` 자동 복사
+- **topics.json / infographic_used.json**: 서버 고유 보존 — git에서 복사하지 않음
+- **서버 이중화**: 192.168.0.21 (메인 Active) / 7.7.7.254 (백업 — 메인 장애 시 Active ON)
 
-### n8n import 후 설정 필요 항목 (단 1가지)
-- `REPLACE_WITH_SSH_CREDENTIAL_ID` → n8n SSH Credential ID 4곳 교체
-- YouTube/Slack Credential ID는 기존 값 재사용
+### n8n import 후 설정 필요 항목
+- SSH 노드 6곳: `REPLACE_WITH_SSH_CREDENTIAL_ID` → 해당 서버 SSH Credential 지정
+- YouTube/Slack Credential ID는 각 서버에서 새로 등록 (OAuth 재인증 필요)
 
 ### n8n 주의사항
 - YouTube Upload 노드: `description`, `privacyStatus`, `tags`는 반드시 `options` 하위
@@ -427,6 +458,15 @@ nohup python3 -u ai_orchestrator.py --batch --count 1 --auto --video-type docu >
 ---
 
 ## 마지막 업데이트
+
+2026-05-04 — v3.9 자동화 첫 실행 성공 + 이중화 서버 세팅 완료.
+- 192.168.0.21 n8n 자동화 첫 실행 성공: 인포그래픽 + 에피소드 2편 YouTube 업로드
+- 인포그래픽 BGM 제거 (--bgm 옵션 및 설명란 크레딧 삭제)
+- 인포그래픽 주제 풀 중복 4개 교체 (기존 data_*.json 콘텐츠와 겹치는 항목)
+- 7.7.7.254 (arkime-dc2) n8n Docker 설치 완료: tossdata.fortiddns.com:8084
+- arkime-dc2 Credentials 등록 완료 (SSH/YouTube/Slack)
+- arkime-dc2 인포그래픽 자동화 성공 확인, 에피소드 내일 재테스트 예정
+- Episode Generate SSH 노드: setsid + </dev/null 적용 확인 (PID 즉시 반환)
 
 2026-05-03 — v3.8 인포그래픽 AI 생성 로직 완성.
 - generate_infographic_data.py 신규: Claude API로 매일 새 주제 데이터 생성
