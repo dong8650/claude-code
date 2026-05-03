@@ -1,0 +1,145 @@
+{
+  "name": "📹 YouTube Auto-Upload",
+  "nodes": [
+    {
+      "id": "node-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "youtube-upload",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "youtube-upload-v1"
+    },
+    {
+      "id": "node-code",
+      "name": "Build YouTube Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst {\n  script_ko = '',\n  closing_ko = '',\n  tags_ko = [],\n  style = 'docsul',\n  ep_dir = ''\n} = item.json;\n\nconst tagsLine = (Array.isArray(tags_ko) ? tags_ko : [])\n  .map(t => '#' + t).join(' ');\n\nlet desc = `${script_ko}\\n\\n💡 ${closing_ko}\\n\\n─────────────────────────\\n📌 매일의설계 | 어제보다 나은 오늘을 설계하자\\n구독 · 좋아요 · 알림 설정으로 매일 인사이트를 받아보세요.`;\n\nif (tagsLine) desc += `\\n\\n${tagsLine}`;\n\nif (style === 'docsul') {\n  desc += '\\n\\n─────────────────────────\\n🎵 BGM: \"Dark Cinematic\" by Kevin MacLeod (incompetech.com)\\nLicensed under Creative Commons: By Attribution 3.0\\nhttp://creativecommons.org/licenses/by/3.0/';\n}\n\nconst video_path = `/root/auto_pipeline/episodes/${ep_dir}/output_final.mp4`;\n\nreturn [{ json: { ...item.json, description_full: desc, video_path } }];"
+      }
+    },
+    {
+      "id": "node-read-file",
+      "name": "Read Video File",
+      "type": "n8n-nodes-base.filesReadWrite",
+      "typeVersion": 1,
+      "position": [720, 300],
+      "parameters": {
+        "operation": "read",
+        "filePath": "={{ $json.video_path }}"
+      }
+    },
+    {
+      "id": "node-yt-upload",
+      "name": "YouTube Upload",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [960, 300],
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $('Build YouTube Metadata').item.json.title }}",
+        "description": "={{ $('Build YouTube Metadata').item.json.description_full }}",
+        "privacyStatus": "={{ $('Webhook').item.json.privacy || 'private' }}",
+        "categoryId": "22",
+        "binaryPropertyName": "data",
+        "options": {
+          "tags": "={{ (Array.isArray($('Webhook').item.json.tags_ko) ? $('Webhook').item.json.tags_ko : []).join(',') }}",
+          "madeForKids": false
+        }
+      },
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_YOUTUBE_CREDENTIAL_ID",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "id": "node-yt-comment",
+      "name": "YouTube Comment",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [1200, 300],
+      "parameters": {
+        "resource": "videoComment",
+        "operation": "create",
+        "videoId": "={{ $json.id }}",
+        "text": "={{ $('Webhook').item.json.closing_ko + '\\n\\n#매일의설계 #직장인 #자기계발 #쇼츠' }}"
+      },
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_YOUTUBE_CREDENTIAL_ID",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "id": "node-slack",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1440, 300],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "={{ '✅ *YouTube 업로드 완료*\\n📹 ' + $('Webhook').item.json.title + '\\n🔗 https://youtube.com/watch?v=' + $('YouTube Upload').item.json.id + '\\n\\n⚠️ YouTube Studio에서 최상단 댓글 고정 필요' }}",
+        "otherOptions": {}
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_WITH_YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "id": "node-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1680, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'ok', videoId: $('YouTube Upload').item.json.id, url: 'https://youtube.com/watch?v=' + $('YouTube Upload').item.json.id }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Build YouTube Metadata", "type": "main", "index": 0}]]
+    },
+    "Build YouTube Metadata": {
+      "main": [[{"node": "Read Video File", "type": "main", "index": 0}]]
+    },
+    "Read Video File": {
+      "main": [[{"node": "YouTube Upload", "type": "main", "index": 0}]]
+    },
+    "YouTube Upload": {
+      "main": [[{"node": "YouTube Comment", "type": "main", "index": 0}]]
+    },
+    "YouTube Comment": {
+      "main": [[{"node": "Slack Notification", "type": "main", "index": 0}]]
+    },
+    "Slack Notification": {
+      "main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
