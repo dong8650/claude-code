@@ -85,7 +85,8 @@ def run_episode(topic_id: str = None, auto: bool = False) -> dict:
         tts_file = ep_dir / "tts_input.txt"
         tts_file.write_text(tts_input := _build_tts_input(script), encoding="utf-8")
 
-        sys.path.insert(0, str(BASE_DIR.parent / "content-pipeline"))
+        v1_path = "/root/auto_pipeline"
+        sys.path.insert(0, v1_path)
         from generate_tts import generate_tts_edge
         voice_file = ep_dir / "voice_ko.mp3"
         generate_tts_edge(tts_input, str(voice_file), style="janas")
@@ -96,7 +97,7 @@ def run_episode(topic_id: str = None, auto: bool = False) -> dict:
     logger.info(f"[{ep_name}] 영상 합성 중...")
     try:
         from make_video_v2 import make_video
-        bgm_path = str(BASE_DIR.parent / "content-pipeline" / "bgm" / "bgm_dramatic_ambient.mp3")
+        bgm_path = "/root/auto_pipeline/bgm/bgm_dramatic_ambient.mp3"
         output = make_video(ep_dir, script, bgm_path if Path(bgm_path).exists() else None)
     except Exception as e:
         logger.error(f"[{ep_name}] 영상 합성 실패: {e}")
