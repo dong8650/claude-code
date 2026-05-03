@@ -49,7 +49,7 @@ docker run -d \
   -e WEBHOOK_URL=http://kdclab.kr:8084/ \
   -e GENERIC_TIMEZONE=Asia/Seoul \
   -e TZ=Asia/Seoul \
-  -e N8N_RESTRICT_FILE_ACCESS_TO=/root/.n8n:/root/auto_pipeline \
+  -e N8N_RESTRICT_FILE_ACCESS_TO=/root \
   -v /root/.n8n:/root/.n8n \
   -v /root/auto_pipeline:/root/auto_pipeline \
   --restart always \
