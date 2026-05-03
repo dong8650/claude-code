@@ -175,7 +175,14 @@ python3 generate_infographic.py --data data_burnout.json --video --duration 7 --
 scp root@192.168.0.21:/root/auto_pipeline/data_burnout.mp4 ./
 ```
 
-### 인포그래픽 데이터 파일 현황
+### 인포그래픽 데이터 자동 생성 (v3.8~)
+
+- `generate_infographic_data.py` — Claude API로 매일 새 주제 데이터 생성
+- `infographic_data/infographic_topic_pool.json` — 50개 주제 풀 (랭킹 40개 + 표 10개)
+- `infographic_used.json` — 서버 고유, git 미포함 (사용된 topic_id 추적)
+- 50개 소진 시 자동 리셋 후 재순환 (Claude가 매번 새 데이터 생성)
+
+### 인포그래픽 기존 데이터 파일 현황 (수동 테스트용)
 
 | 파일 | 제목 | 타입 |
 |------|------|------|
@@ -420,6 +427,13 @@ nohup python3 -u ai_orchestrator.py --batch --count 1 --auto --video-type docu >
 ---
 
 ## 마지막 업데이트
+
+2026-05-03 — v3.8 인포그래픽 AI 생성 로직 완성.
+- generate_infographic_data.py 신규: Claude API로 매일 새 주제 데이터 생성
+- infographic_topic_pool.json 신규: 50개 주제 풀 (랭킹 40개 + 표 10개)
+- infographic_used.json 서버 고유 (git 미포함) — 중복 방지
+- n8n 워크플로우: Git Sync → Generate Infographic Data → Parse Infographic Topic → 기존 흐름
+- Episode Generate: setsid + </dev/null 적용 (SSH 즉시 반환 버그 수정)
 
 2026-05-03 — v3.7 JSON 파일 구조 정리.
 - n8n/ 폴더: n8n 워크플로우 JSON 2개
