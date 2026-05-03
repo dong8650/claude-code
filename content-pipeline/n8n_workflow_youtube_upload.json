@@ -58,26 +58,7 @@
       },
       "credentials": {
         "youTubeOAuth2Api": {
-          "id": "REPLACE_WITH_YOUR_YOUTUBE_CREDENTIAL_ID",
-          "name": "YouTube account"
-        }
-      }
-    },
-    {
-      "id": "node-yt-comment",
-      "name": "YouTube Comment",
-      "type": "n8n-nodes-base.youTube",
-      "typeVersion": 1,
-      "position": [1200, 300],
-      "parameters": {
-        "resource": "videoComment",
-        "operation": "create",
-        "videoId": "={{ $json.id }}",
-        "text": "={{ $('Build YouTube Metadata').item.json.closing_ko + '\\n\\n#매일의설계 #직장인 #자기계발 #쇼츠' }}"
-      },
-      "credentials": {
-        "youTubeOAuth2Api": {
-          "id": "REPLACE_WITH_YOUR_YOUTUBE_CREDENTIAL_ID",
+          "id": "ML4AqCQPad3bYiT3",
           "name": "YouTube account"
         }
       }
@@ -87,7 +68,7 @@
       "name": "Slack Notification",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2,
-      "position": [1440, 300],
+      "position": [1200, 300],
       "parameters": {
         "resource": "message",
         "operation": "post",
@@ -97,12 +78,12 @@
           "value": "C0951952WKS",
           "mode": "id"
         },
-        "text": "={{ '✅ *YouTube 업로드 완료*\\n📹 ' + $('Build YouTube Metadata').item.json.title + '\\n🔗 https://youtube.com/watch?v=' + $('YouTube Upload').item.json.id + '\\n\\n⚠️ YouTube Studio에서 최상단 댓글 고정 필요' }}",
+        "text": "={{ '✅ *YouTube 업로드 완료*\\n📹 ' + $('Build YouTube Metadata').item.json.title + '\\n🔗 https://youtube.com/watch?v=' + $('YouTube Upload').item.json.id }}",
         "otherOptions": {}
       },
       "credentials": {
         "slackApi": {
-          "id": "REPLACE_WITH_YOUR_SLACK_CREDENTIAL_ID",
+          "id": "dcPtOSkSv11jKp0Z",
           "name": "Slack account"
         }
       }
@@ -112,7 +93,7 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1680, 300],
+      "position": [1440, 300],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ status: 'ok', videoId: $('YouTube Upload').item.json.id, url: 'https://youtube.com/watch?v=' + $('YouTube Upload').item.json.id }) }}"
@@ -130,9 +111,6 @@
       "main": [[{"node": "YouTube Upload", "type": "main", "index": 0}]]
     },
     "YouTube Upload": {
-      "main": [[{"node": "YouTube Comment", "type": "main", "index": 0}]]
-    },
-    "YouTube Comment": {
       "main": [[{"node": "Slack Notification", "type": "main", "index": 0}]]
     },
     "Slack Notification": {
