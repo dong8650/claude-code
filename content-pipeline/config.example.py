@@ -26,3 +26,6 @@ BGM_MAP = {
     "janas":  "/root/auto_pipeline/bgm/bgm_dramatic_ambient.mp3",
     "list":   "/root/auto_pipeline/bgm/bgm_philosophy.mp3",
 }
+
+# n8n 자동화
+N8N_WEBHOOK_URL = "http://localhost:5678/webhook/youtube-upload"

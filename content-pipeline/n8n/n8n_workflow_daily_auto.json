@@ -170,13 +170,13 @@
     },
     {
       "id": "node-wait",
-      "name": "Wait 2h30m",
+      "name": "Wait 1h",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
       "position": [2660, 300],
       "parameters": {
         "resume": "timeInterval",
-        "amount": 150,
+        "amount": 60,
         "unit": "minutes"
       },
       "webhookId": "daily-auto-wait-v2"
@@ -311,8 +311,8 @@
     "Infographic Metadata":       { "main": [[{ "node": "Read Infographic Video",    "type": "main", "index": 0 }]] },
     "Read Infographic Video":     { "main": [[{ "node": "YouTube Infographic",       "type": "main", "index": 0 }]] },
     "YouTube Infographic":        { "main": [[{ "node": "Episode Generate",          "type": "main", "index": 0 }]] },
-    "Episode Generate":           { "main": [[{ "node": "Wait 2h30m",               "type": "main", "index": 0 }]] },
-    "Wait 2h30m":                 { "main": [[{ "node": "Get Episode Info",          "type": "main", "index": 0 }]] },
+    "Episode Generate":           { "main": [[{ "node": "Wait 1h",                  "type": "main", "index": 0 }]] },
+    "Wait 1h":                    { "main": [[{ "node": "Get Episode Info",          "type": "main", "index": 0 }]] },
     "Get Episode Info":           { "main": [[{ "node": "Episode Metadata",          "type": "main", "index": 0 }]] },
     "Episode Metadata":           { "main": [[{ "node": "Episode OK?",              "type": "main", "index": 0 }]] },
     "Episode OK?": {
