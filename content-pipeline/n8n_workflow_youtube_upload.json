@@ -33,7 +33,7 @@
       "position": [720, 300],
       "parameters": {
         "operation": "read",
-        "filePath": "={{ $json.video_path }}"
+        "fileSelector": "={{ $json.video_path }}"
       }
     },
     {
