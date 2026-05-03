@@ -312,6 +312,7 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 ```
 00:00 Cron
     ↓ Code — 요일 판단 + 인포그래픽 데이터 로테이션
+    ↓ SSH — git pull + cp *.py data_*.json → /root/auto_pipeline/ (Git Sync)
     ↓ SSH — generate_infographic.py (~5분)
     ↓ SSH — cat data_*.json (메타데이터 읽기)
     ↓ Code — 인포그래픽 YouTube 설명/태그 생성
@@ -325,6 +326,22 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
         ↓ 성공: Read File → YouTube Upload → Slack ✅
         ↓ 실패: Slack ❌
 ```
+
+### 서버 최초 1회 세팅 (양쪽 서버 모두)
+
+```bash
+# git 레포 클론 (최초 1회만)
+git clone https://github.com/dong8650/claude-code.git /root/claude-code
+
+# 이후 n8n이 매일 자동으로 git pull + cp 처리
+# topics.json은 서버 고유 사용 이력이 있으므로 cp 대상에서 제외됨
+```
+
+### Git Sync 아키텍처
+- **코드 관리**: `/root/claude-code/` (git repo) — n8n이 매일 00:00에 `git pull`
+- **실행 디렉토리**: `/root/auto_pipeline/` — git pull 후 `*.py`, `data_*.json` 자동 복사
+- **topics.json**: 서버 고유 (use_count/last_used 보존) — git에서 복사하지 않음
+- **서버 이중화**: 192.168.0.21 / 7.7.7.254 — 동일 git 구조, n8n SSH Credential만 다름
 
 ### n8n import 후 설정 필요 항목 (단 1가지)
 - `REPLACE_WITH_SSH_CREDENTIAL_ID` → n8n SSH Credential ID 4곳 교체
@@ -403,6 +420,12 @@ nohup python3 -u ai_orchestrator.py --batch --count 1 --auto --video-type docu >
 ---
 
 ## 마지막 업데이트
+
+2026-05-03 — v3.6 Git Sync 아키텍처 완성.
+- n8n_workflow_daily_auto.json: Git Sync 노드 추가 (매일 git pull → cp *.py data_*.json)
+- 코드 관리=git, 서버=기술스택만 실행하는 구조로 완성
+- 서버 이중화 지원: 192.168.0.21 / 7.7.7.254 동일 git 클론, SSH Credential만 교체
+- topics.json은 서버 고유 보존 (use_count/last_used 이력)
 
 2026-05-03 — v3.5 n8n 단일 통합 워크플로우 완성.
 - n8n_workflow_daily_auto.json: 서버→n8n 콜백 루프 제거, 단일 직선 파이프라인
