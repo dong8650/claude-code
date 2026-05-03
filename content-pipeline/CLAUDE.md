@@ -110,7 +110,7 @@
 │       ├── rocket_power.mp3
 │       ├── volatile_reaction.mp3
 │       └── hyperfun.mp3
-├── data_*.json                  # 인포그래픽 데이터 파일
+├── data_*.json                  # 인포그래픽 데이터 파일 (git에서 infographic_data/에서 복사)
 └── episodes/
     └── YYYYMMDD_NNN/
         ├── script.json          # 최종 대본
@@ -296,8 +296,8 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 
 | 파일 | 용도 | 상태 |
 |------|------|------|
-| `n8n_workflow_daily_auto.json` | **메인** — 매일 00:00 자동 생성+업로드 (단일 통합) | ✅ 완료 |
-| `n8n_workflow_youtube_upload.json` | 수동 one-off 업로드용 (webhook 방식) | ✅ 완료 |
+| `n8n/n8n_workflow_daily_auto.json` | **메인** — 매일 00:00 자동 생성+업로드 (단일 통합) | ✅ 완료 |
+| `n8n/n8n_workflow_youtube_upload.json` | 수동 one-off 업로드용 (webhook 방식) | ✅ 완료 |
 
 ### 일일 자동화 스케줄
 
@@ -339,7 +339,7 @@ git clone https://github.com/dong8650/claude-code.git /root/claude-code
 
 ### Git Sync 아키텍처
 - **코드 관리**: `/root/claude-code/` (git repo) — n8n이 매일 00:00에 `git pull`
-- **실행 디렉토리**: `/root/auto_pipeline/` — git pull 후 `*.py`, `data_*.json` 자동 복사
+- **실행 디렉토리**: `/root/auto_pipeline/` — git pull 후 `*.py`, `infographic_data/data_*.json` 자동 복사
 - **topics.json**: 서버 고유 (use_count/last_used 보존) — git에서 복사하지 않음
 - **서버 이중화**: 192.168.0.21 / 7.7.7.254 — 동일 git 구조, n8n SSH Credential만 다름
 
@@ -420,6 +420,12 @@ nohup python3 -u ai_orchestrator.py --batch --count 1 --auto --video-type docu >
 ---
 
 ## 마지막 업데이트
+
+2026-05-03 — v3.7 JSON 파일 구조 정리.
+- n8n/ 폴더: n8n 워크플로우 JSON 2개
+- infographic_data/ 폴더: data_*.json 10개
+- samples/ 폴더: sample_*.json 2개
+- Git Sync 명령어: infographic_data/data_*.json 경로로 수정
 
 2026-05-03 — v3.6 Git Sync 아키텍처 완성.
 - n8n_workflow_daily_auto.json: Git Sync 노드 추가 (매일 git pull → cp *.py data_*.json)

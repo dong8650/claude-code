@@ -1,0 +1,12 @@
+# 생성된 이미지/영상 파일
+*.jpg
+*.mp4
+*.mp3
+infographics/
+bgm_candidates/
+
+# 로컬 설정
+config.py
+__pycache__/
+*.pyc
+.env
