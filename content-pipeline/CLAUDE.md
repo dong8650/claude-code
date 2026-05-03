@@ -97,8 +97,9 @@
 ├── make_video.py                # [내레이션형] Ken Burns + 자막 영상 합성
 ├── make_video_stock.py          # [다큐형] 실사 클립 + 자막 영상 합성
 ├── generate_infographic.py      # [인포그래픽형] PIL 이미지 + FFmpeg 영상 생성
-├── auto_upload.py               # n8n webhook으로 YouTube 자동 업로드 요청 (에피소드형)
-├── infographic_upload.py        # n8n webhook으로 YouTube 자동 업로드 요청 (인포그래픽형)
+├── get_episode_info.py          # n8n SSH 노드 전용 — 오늘 에피소드 메타데이터 JSON 출력
+├── auto_upload.py               # 수동 업로드용 (n8n webhook 경유, 자동화에는 불필요)
+├── infographic_upload.py        # 수동 업로드용 (n8n webhook 경유, 자동화에는 불필요)
 ├── sync_to_backup.sh            # 백업 서버 동기화
 ├── bgm/
 │   ├── bgm_philosophy.mp3
@@ -295,8 +296,8 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 
 | 파일 | 용도 | 상태 |
 |------|------|------|
-| `n8n_workflow_youtube_upload.json` | YouTube 업로드 (webhook 수신 → 업로드 → Slack) | ✅ 완료 |
-| `n8n_workflow_daily_auto.json` | 매일 00:00 자동 생성+업로드 | ✅ 완료 |
+| `n8n_workflow_daily_auto.json` | **메인** — 매일 00:00 자동 생성+업로드 (단일 통합) | ✅ 완료 |
+| `n8n_workflow_youtube_upload.json` | 수동 one-off 업로드용 (webhook 방식) | ✅ 완료 |
 
 ### 일일 자동화 스케줄
 
@@ -307,26 +308,30 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 
 → 하루 2편 자동 업로드. 인포그래픽은 10개 data_*.json 파일 로테이션.
 
-### 일일 자동화 실행 흐름
+### 일일 자동화 실행 흐름 (n8n_workflow_daily_auto.json)
 ```
 00:00 Cron
     ↓ Code — 요일 판단 + 인포그래픽 데이터 로테이션
-    ↓ SSH — 인포그래픽 생성 (~5분, 동기)
-    ↓ SSH — infographic_upload.py (즉시 업로드)
+    ↓ SSH — generate_infographic.py (~5분)
+    ↓ SSH — cat data_*.json (메타데이터 읽기)
+    ↓ Code — 인포그래픽 YouTube 설명/태그 생성
+    ↓ Read File — 인포그래픽 mp4 직접 읽기
+    ↓ YouTube Upload — 인포그래픽 업로드
     ↓ SSH — ai_orchestrator.py nohup 백그라운드 시작
     ↓ Wait 2시간 30분
-    ↓ SSH — 오늘 ep 탐색 + auto_upload.py
-    ↓ Slack 성공/실패 알림
+    ↓ SSH — get_episode_info.py (에피소드 메타데이터 JSON)
+    ↓ Code — 에피소드 YouTube 설명/태그 생성
+    ↓ IF — 에피소드 생성 성공?
+        ↓ 성공: Read File → YouTube Upload → Slack ✅
+        ↓ 실패: Slack ❌
 ```
 
-### n8n import 후 설정 필요 항목
-- `REPLACE_WITH_YOUR_SSH_CREDENTIAL_ID` → n8n SSH Credential ID로 교체
-- Slack Credential ID (`dcPtOSkSv11jKp0Z`)는 기존 값 재사용
+### n8n import 후 설정 필요 항목 (단 1가지)
+- `REPLACE_WITH_SSH_CREDENTIAL_ID` → n8n SSH Credential ID 4곳 교체
+- YouTube/Slack Credential ID는 기존 값 재사용
 
-### n8n YouTube 업로드 주의사항
-- `auto_upload.py --ep`는 `episodes/YYYYMMDD_NNN` 형식 (접두사 포함) — `ai_orchestrator.py --ep`와 다름
-- n8n Webhook body는 `item.json.body`에 래핑 → Code 노드에서 `item.json.body || item.json` 처리
-- YouTube Upload 노드: `description`, `privacyStatus`, `tags`, `madeForKids`는 반드시 `options` 하위
+### n8n 주의사항
+- YouTube Upload 노드: `description`, `privacyStatus`, `tags`는 반드시 `options` 하위
 - YouTube Comment 노드 없음 — n8n 2.x 전 버전 미지원. YouTube Studio에서 수동 고정 댓글 필요
 - n8n Docker: `--privileged` 필수 (DHI 보안 모델이 seccomp + AppArmor 동시 적용)
 
@@ -398,6 +403,12 @@ nohup python3 -u ai_orchestrator.py --batch --count 1 --auto --video-type docu >
 ---
 
 ## 마지막 업데이트
+
+2026-05-03 — v3.5 n8n 단일 통합 워크플로우 완성.
+- n8n_workflow_daily_auto.json: 서버→n8n 콜백 루프 제거, 단일 직선 파이프라인
+- get_episode_info.py 신규: n8n SSH 노드에서 에피소드 메타데이터 JSON 출력
+- n8n에서 직접 Read File → YouTube Upload (webhook 방식 불필요)
+- 구조: Cron→인포그래픽생성/업로드→에피소드생성(nohup)→Wait→에피소드업로드→Slack
 
 2026-05-03 — v3.4 일일 자동화 파이프라인 완성.
 - n8n_workflow_daily_auto.json 신규: 매일 00:00 인포그래픽+내레이션/다큐 자동 생성+업로드
