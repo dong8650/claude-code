@@ -22,7 +22,7 @@
       "typeVersion": 2,
       "position": [480, 300],
       "parameters": {
-        "jsCode": "const item = $input.first();\nconst {\n  script_ko = '',\n  closing_ko = '',\n  tags_ko = [],\n  style = 'docsul',\n  ep_dir = ''\n} = item.json;\n\nconst tagsLine = (Array.isArray(tags_ko) ? tags_ko : [])\n  .map(t => '#' + t).join(' ');\n\nlet desc = `${script_ko}\\n\\n💡 ${closing_ko}\\n\\n─────────────────────────\\n📌 매일의설계 | 어제보다 나은 오늘을 설계하자\\n구독 · 좋아요 · 알림 설정으로 매일 인사이트를 받아보세요.`;\n\nif (tagsLine) desc += `\\n\\n${tagsLine}`;\n\nif (style === 'docsul') {\n  desc += '\\n\\n─────────────────────────\\n🎵 BGM: \"Dark Cinematic\" by Kevin MacLeod (incompetech.com)\\nLicensed under Creative Commons: By Attribution 3.0\\nhttp://creativecommons.org/licenses/by/3.0/';\n}\n\nconst video_path = `/root/auto_pipeline/episodes/${ep_dir}/output_final.mp4`;\n\nreturn [{ json: { ...item.json, description_full: desc, video_path } }];"
+        "jsCode": "const item = $input.first();\nconst body = item.json.body || item.json;\nconst {\n  script_ko = '',\n  closing_ko = '',\n  tags_ko = [],\n  style = 'docsul',\n  ep_dir = ''\n} = body;\n\nconst tagsLine = (Array.isArray(tags_ko) ? tags_ko : [])\n  .map(t => '#' + t).join(' ');\n\nlet desc = `${script_ko}\\n\\n💡 ${closing_ko}\\n\\n─────────────────────────\\n📌 매일의설계 | 어제보다 나은 오늘을 설계하자\\n구독 · 좋아요 · 알림 설정으로 매일 인사이트를 받아보세요.`;\n\nif (tagsLine) desc += `\\n\\n${tagsLine}`;\n\nif (style === 'docsul') {\n  desc += '\\n\\n─────────────────────────\\n🎵 BGM: \"Dark Cinematic\" by Kevin MacLeod (incompetech.com)\\nLicensed under Creative Commons: By Attribution 3.0\\nhttp://creativecommons.org/licenses/by/3.0/';\n}\n\nconst video_path = `/root/auto_pipeline/episodes/${ep_dir}/output_final.mp4`;\n\nreturn [{ json: { ...body, description_full: desc, video_path } }];"
       }
     },
     {
@@ -47,12 +47,12 @@
         "operation": "upload",
         "title": "={{ $('Build YouTube Metadata').item.json.title }}",
         "description": "={{ $('Build YouTube Metadata').item.json.description_full }}",
-        "privacyStatus": "={{ $('Webhook').item.json.privacy || 'private' }}",
+        "privacyStatus": "={{ $('Build YouTube Metadata').item.json.privacy || 'private' }}",
         "regionCode": "KR",
         "categoryId": "22",
         "binaryPropertyName": "data",
         "options": {
-          "tags": "={{ (Array.isArray($('Webhook').item.json.tags_ko) ? $('Webhook').item.json.tags_ko : []).join(',') }}",
+          "tags": "={{ (Array.isArray($('Build YouTube Metadata').item.json.tags_ko) ? $('Build YouTube Metadata').item.json.tags_ko : []).join(',') }}",
           "madeForKids": false
         }
       },
@@ -73,7 +73,7 @@
         "resource": "videoComment",
         "operation": "create",
         "videoId": "={{ $json.id }}",
-        "text": "={{ $('Webhook').item.json.closing_ko + '\\n\\n#매일의설계 #직장인 #자기계발 #쇼츠' }}"
+        "text": "={{ $('Build YouTube Metadata').item.json.closing_ko + '\\n\\n#매일의설계 #직장인 #자기계발 #쇼츠' }}"
       },
       "credentials": {
         "youTubeOAuth2Api": {
@@ -97,7 +97,7 @@
           "value": "C0951952WKS",
           "mode": "id"
         },
-        "text": "={{ '✅ *YouTube 업로드 완료*\\n📹 ' + $('Webhook').item.json.title + '\\n🔗 https://youtube.com/watch?v=' + $('YouTube Upload').item.json.id + '\\n\\n⚠️ YouTube Studio에서 최상단 댓글 고정 필요' }}",
+        "text": "={{ '✅ *YouTube 업로드 완료*\\n📹 ' + $('Build YouTube Metadata').item.json.title + '\\n🔗 https://youtube.com/watch?v=' + $('YouTube Upload').item.json.id + '\\n\\n⚠️ YouTube Studio에서 최상단 댓글 고정 필요' }}",
         "otherOptions": {}
       },
       "credentials": {
