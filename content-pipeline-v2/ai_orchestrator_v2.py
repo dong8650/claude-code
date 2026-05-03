@@ -53,7 +53,7 @@ def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health
 
     ep_dir = get_next_ep_dir(BASE_DIR)
     ep_name = ep_dir.name
-    logger.info(f"[{ep_name}] 시작 — {topic['drama']} / {topic['content_type']} / {topic['theme']}")
+    logger.info(f"[{ep_name}] 시작 — {topic.get('drama', topic.get('title', ''))} / {topic['content_type']} / {topic['theme']}")
 
     start_time = time.time()
 
