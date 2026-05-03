@@ -28,7 +28,7 @@
     {
       "id": "node-read-file",
       "name": "Read Video File",
-      "type": "n8n-nodes-base.filesReadWrite",
+      "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
       "position": [720, 300],
       "parameters": {
@@ -48,6 +48,7 @@
         "title": "={{ $('Build YouTube Metadata').item.json.title }}",
         "description": "={{ $('Build YouTube Metadata').item.json.description_full }}",
         "privacyStatus": "={{ $('Webhook').item.json.privacy || 'private' }}",
+        "regionCode": "KR",
         "categoryId": "22",
         "binaryPropertyName": "data",
         "options": {
