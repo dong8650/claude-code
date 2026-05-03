@@ -1,0 +1,215 @@
+{
+  "name": "📅 Daily Content Auto",
+  "nodes": [
+    {
+      "id": "node-cron",
+      "name": "Cron 00:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-plan",
+      "name": "Daily Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst day = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat\n\n// 내레이션: 월(1) 수(3) 금(5) 일(0)\n// 다큐:     화(2) 목(4) 토(6)\nconst videoType = [0, 1, 3, 5].includes(day) ? 'narration' : 'docu';\n\n// 인포그래픽 데이터 파일 로테이션 (10개 순환, 연간 일수 기준)\nconst infoFiles = [\n  'data_burnout.json',\n  'data_resign.json',\n  'data_debt.json',\n  'data_money_lifespan.json',\n  'data_regret_20s.json',\n  'data_quit_moment.json',\n  'data_rich_fail.json',\n  'data_40s_fear.json',\n  'data_survive_10y.json',\n  'data_after_work.json'\n];\nconst startOfYear = new Date(now.getFullYear(), 0, 1);\nconst dayOfYear = Math.floor((now - startOfYear) / 86400000);\nconst infoDataFile = infoFiles[dayOfYear % infoFiles.length];\n\nconst dayNames = ['일', '월', '화', '수', '목', '금', '토'];\nconsole.log(`[Daily Plan] ${dayNames[day]}요일 — videoType=${videoType}, infoData=${infoDataFile}`);\n\nreturn [{ json: { videoType, infoDataFile, dayOfWeek: day } }];"
+      }
+    },
+    {
+      "id": "node-ssh-infographic-gen",
+      "name": "Infographic Generate",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [720, 300],
+      "parameters": {
+        "resource": "command",
+        "command": "={{ 'cd /root/auto_pipeline && python3 generate_infographic.py --data ' + $json.infoDataFile + ' --video --duration 7 --bgm bgm/bgm_dark_cinematic.mp3 2>&1' }}"
+      },
+      "credentials": {
+        "sshPassword": {
+          "id": "REPLACE_WITH_YOUR_SSH_CREDENTIAL_ID",
+          "name": "Server SSH"
+        }
+      }
+    },
+    {
+      "id": "node-ssh-infographic-upload",
+      "name": "Infographic Upload",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [960, 300],
+      "parameters": {
+        "resource": "command",
+        "command": "={{ 'cd /root/auto_pipeline && python3 infographic_upload.py --data ' + $('Daily Plan').item.json.infoDataFile + ' --privacy private 2>&1' }}"
+      },
+      "credentials": {
+        "sshPassword": {
+          "id": "REPLACE_WITH_YOUR_SSH_CREDENTIAL_ID",
+          "name": "Server SSH"
+        }
+      }
+    },
+    {
+      "id": "node-ssh-ep-gen",
+      "name": "Episode Generate (nohup)",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [1200, 300],
+      "parameters": {
+        "resource": "command",
+        "command": "={{ 'cd /root/auto_pipeline && nohup python3 -u ai_orchestrator.py --batch --count 1 --auto --video-type ' + $('Daily Plan').item.json.videoType + ' > /root/auto_pipeline/daily_gen.log 2>&1 & echo \"PID=$!\"' }}"
+      },
+      "credentials": {
+        "sshPassword": {
+          "id": "REPLACE_WITH_YOUR_SSH_CREDENTIAL_ID",
+          "name": "Server SSH"
+        }
+      }
+    },
+    {
+      "id": "node-wait",
+      "name": "Wait 2h30m",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1440, 300],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 150,
+        "unit": "minutes"
+      },
+      "webhookId": "daily-auto-wait"
+    },
+    {
+      "id": "node-ssh-ep-upload",
+      "name": "Episode Upload",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [1680, 300],
+      "parameters": {
+        "resource": "command",
+        "command": "TODAY=$(date +%Y%m%d) && EP_DIR=$(find /root/auto_pipeline/episodes -maxdepth 1 -name \"${TODAY}*\" -type d 2>/dev/null | sort | tail -1) && if [ -z \"$EP_DIR\" ]; then echo \"FAIL: 오늘 에피소드 디렉토리 없음\"; exit 0; fi && if [ ! -f \"${EP_DIR}/output_final.mp4\" ]; then echo \"FAIL: output_final.mp4 없음 — $(basename $EP_DIR)\"; exit 0; fi && EP_NAME=$(basename $EP_DIR) && cd /root/auto_pipeline && python3 auto_upload.py --ep episodes/${EP_NAME} --style docsul --privacy private 2>&1"
+      },
+      "credentials": {
+        "sshPassword": {
+          "id": "REPLACE_WITH_YOUR_SSH_CREDENTIAL_ID",
+          "name": "Server SSH"
+        }
+      }
+    },
+    {
+      "id": "node-if",
+      "name": "Upload Success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1920, 300],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.stdout }}",
+              "operation": "notContains",
+              "value2": "FAIL"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-slack-success",
+      "name": "Slack Success",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2160, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0951952WKS",
+          "mode": "id"
+        },
+        "text": "={{ '✅ *일일 자동화 완료* (' + $('Daily Plan').item.json.videoType + ')\\n📊 인포그래픽: ' + $('Daily Plan').item.json.infoDataFile.replace('data_','').replace('.json','') + '\\n🎬 에피소드: ' + $('Episode Upload').item.json.stdout.match(/✅ 완료.*/) }}",
+        "otherOptions": {}
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "dcPtOSkSv11jKp0Z",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "id": "node-slack-fail",
+      "name": "Slack Failure",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2160, 400],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0951952WKS",
+          "mode": "id"
+        },
+        "text": "={{ '❌ *일일 자동화 실패*\\n' + $('Episode Upload').item.json.stdout }}",
+        "otherOptions": {}
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "dcPtOSkSv11jKp0Z",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron 00:00": {
+      "main": [[{"node": "Daily Plan", "type": "main", "index": 0}]]
+    },
+    "Daily Plan": {
+      "main": [[{"node": "Infographic Generate", "type": "main", "index": 0}]]
+    },
+    "Infographic Generate": {
+      "main": [[{"node": "Infographic Upload", "type": "main", "index": 0}]]
+    },
+    "Infographic Upload": {
+      "main": [[{"node": "Episode Generate (nohup)", "type": "main", "index": 0}]]
+    },
+    "Episode Generate (nohup)": {
+      "main": [[{"node": "Wait 2h30m", "type": "main", "index": 0}]]
+    },
+    "Wait 2h30m": {
+      "main": [[{"node": "Episode Upload", "type": "main", "index": 0}]]
+    },
+    "Episode Upload": {
+      "main": [[{"node": "Upload Success?", "type": "main", "index": 0}]]
+    },
+    "Upload Success?": {
+      "main": [
+        [{"node": "Slack Success", "type": "main", "index": 0}],
+        [{"node": "Slack Failure", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Seoul"
+  }
+}

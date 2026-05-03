@@ -253,10 +253,12 @@ def run_episode(
     base_dir:     Path       = BASE_DIR,
     script_only:  bool       = False,
     auto:         bool       = False,
+    video_type:   str        = "narration",
 ) -> EpisodeResult:
     """
     단일 에피소드 파이프라인 실행.
     FAIL이면 영상 단계로 절대 넘기지 않는다.
+    video_type: "narration" (내레이션형, DALL-E) | "docu" (다큐형, Pexels 스톡)
     """
     ep_dir = base_dir / "episodes" / ep_id
     ep_dir.mkdir(parents=True, exist_ok=True)
@@ -335,12 +337,17 @@ def run_episode(
                     elapsed_s=(datetime.now() - t_start).total_seconds(),
                 )
 
-        # ④ 이미지 생성
-        log.info("[%s] 이미지 생성", ep_id)
-        from generate_image import generate_images
-        raw_scenes = script.get("scenes", [])
-        scenes = [s if isinstance(s, dict) else {"image_prompt": s} for s in raw_scenes]
-        generate_images(scenes, str(ep_dir))
+        # ④ 비주얼 소스 생성
+        if video_type == "docu":
+            log.info("[%s] 스톡 클립 다운로드 (다큐형)", ep_id)
+            from generate_stock_clips import generate_stock_clips
+            generate_stock_clips(str(ep_dir), clip_duration=5.0)
+        else:
+            log.info("[%s] 이미지 생성 (내레이션형)", ep_id)
+            from generate_image import generate_images
+            raw_scenes = script.get("scenes", [])
+            scenes = [s if isinstance(s, dict) else {"image_prompt": s} for s in raw_scenes]
+            generate_images(scenes, str(ep_dir))
 
         # ⑤ TTS + 자막
         log.info("[%s] TTS + 자막", ep_id)
@@ -349,8 +356,12 @@ def run_episode(
 
         # ⑥ 영상 합성
         log.info("[%s] 영상 합성", ep_id)
-        from make_video import make_video
-        make_video(str(ep_dir), script, style=resolved_style)
+        if video_type == "docu":
+            from make_video_stock import make_video_stock
+            make_video_stock(str(ep_dir), script, style=resolved_style)
+        else:
+            from make_video import make_video
+            make_video(str(ep_dir), script, style=resolved_style)
 
         output_mp4 = ep_dir / "output_final.mp4"
         elapsed    = (datetime.now() - t_start).total_seconds()
@@ -386,6 +397,7 @@ def run_batch(
     script_only:  bool = False,
     start_seq:    int  = 1,
     exclude_days: int  = 7,
+    video_type:   str  = "narration",
 ) -> list[EpisodeResult]:
     """
     count개 에피소드를 CONTENT_RATIO 비율대로 자동 생성한다.
@@ -422,6 +434,7 @@ def run_batch(
             base_dir=base_dir,
             script_only=script_only,
             auto=True,
+            video_type=video_type,
         )
         results.append(r)
 
@@ -510,6 +523,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--style",         default=None,
                    choices=["docsul", "janas", "list", "seulki"])
     p.add_argument("--auto",          action="store_true",  help="대본 확인 없이 자동 진행")
+    p.add_argument("--video-type",    default="narration",
+                   choices=["narration", "docu"],
+                   help="영상 타입: narration(내레이션형) | docu(다큐형, Pexels 스톡) (기본: narration)")
     p.add_argument("--base",          default=str(BASE_DIR))
     p.add_argument("--topics-file",   default=str(TOPICS_FILE))
     return p
@@ -535,6 +551,7 @@ def main() -> None:
             script_only=args.script_only,
             start_seq=args.start_seq,
             exclude_days=args.exclude_days,
+            video_type=args.video_type,
         )
 
     elif args.ep:
@@ -564,6 +581,7 @@ def main() -> None:
             base_dir=base,
             script_only=args.script_only,
             auto=args.auto,
+            video_type=args.video_type,
         )
 
         if result.success:

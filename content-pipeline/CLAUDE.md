@@ -97,7 +97,8 @@
 ├── make_video.py                # [내레이션형] Ken Burns + 자막 영상 합성
 ├── make_video_stock.py          # [다큐형] 실사 클립 + 자막 영상 합성
 ├── generate_infographic.py      # [인포그래픽형] PIL 이미지 + FFmpeg 영상 생성
-├── auto_upload.py               # n8n webhook으로 YouTube 자동 업로드 요청
+├── auto_upload.py               # n8n webhook으로 YouTube 자동 업로드 요청 (에피소드형)
+├── infographic_upload.py        # n8n webhook으로 YouTube 자동 업로드 요청 (인포그래픽형)
 ├── sync_to_backup.sh            # 백업 서버 동기화
 ├── bgm/
 │   ├── bgm_philosophy.mp3
@@ -288,23 +289,45 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 
 ---
 
-## n8n YouTube 자동 업로드
+## n8n 자동화 워크플로우
 
-### 워크플로우 파일
-`n8n_workflow_youtube_upload.json` — n8n에 import하여 사용 (자세한 설정은 `requirements.md` 참조)
+### 워크플로우 파일 목록
 
-### 업로드 명령어
-```bash
-# 반드시 /root/auto_pipeline 에서 실행
-cd /root/auto_pipeline
-python3 auto_upload.py --ep episodes/YYYYMMDD_NNN --style docsul --privacy private
+| 파일 | 용도 | 상태 |
+|------|------|------|
+| `n8n_workflow_youtube_upload.json` | YouTube 업로드 (webhook 수신 → 업로드 → Slack) | ✅ 완료 |
+| `n8n_workflow_daily_auto.json` | 매일 00:00 자동 생성+업로드 | ✅ 완료 |
+
+### 일일 자동화 스케줄
+
+| 요일 | 내레이션형 | 다큐형 | 인포그래픽형 |
+|------|-----------|-------|------------|
+| 월·수·금·일 | ✅ | — | ✅ (매일) |
+| 화·목·토 | — | ✅ | ✅ (매일) |
+
+→ 하루 2편 자동 업로드. 인포그래픽은 10개 data_*.json 파일 로테이션.
+
+### 일일 자동화 실행 흐름
+```
+00:00 Cron
+    ↓ Code — 요일 판단 + 인포그래픽 데이터 로테이션
+    ↓ SSH — 인포그래픽 생성 (~5분, 동기)
+    ↓ SSH — infographic_upload.py (즉시 업로드)
+    ↓ SSH — ai_orchestrator.py nohup 백그라운드 시작
+    ↓ Wait 2시간 30분
+    ↓ SSH — 오늘 ep 탐색 + auto_upload.py
+    ↓ Slack 성공/실패 알림
 ```
 
-### 주의사항
-- `--ep`는 `episodes/YYYYMMDD_NNN` 형식 (접두사 포함) — `ai_orchestrator.py --ep`와 다름
-- n8n Webhook이 body를 `item.json.body`에 래핑 → Code 노드에서 `item.json.body || item.json` 처리
-- YouTube Upload 노드: `description`, `privacyStatus`, `tags`, `madeForKids`는 반드시 `options` 하위에 위치해야 적용됨
-- YouTube Comment 노드 없음 — n8n 2.x 전 버전 미지원 확인됨. 업로드 후 YouTube Studio에서 수동 고정 댓글 필요
+### n8n import 후 설정 필요 항목
+- `REPLACE_WITH_YOUR_SSH_CREDENTIAL_ID` → n8n SSH Credential ID로 교체
+- Slack Credential ID (`dcPtOSkSv11jKp0Z`)는 기존 값 재사용
+
+### n8n YouTube 업로드 주의사항
+- `auto_upload.py --ep`는 `episodes/YYYYMMDD_NNN` 형식 (접두사 포함) — `ai_orchestrator.py --ep`와 다름
+- n8n Webhook body는 `item.json.body`에 래핑 → Code 노드에서 `item.json.body || item.json` 처리
+- YouTube Upload 노드: `description`, `privacyStatus`, `tags`, `madeForKids`는 반드시 `options` 하위
+- YouTube Comment 노드 없음 — n8n 2.x 전 버전 미지원. YouTube Studio에서 수동 고정 댓글 필요
 - n8n Docker: `--privileged` 필수 (DHI 보안 모델이 seccomp + AppArmor 동시 적용)
 
 ---
@@ -334,9 +357,17 @@ scp root@192.168.0.21:/root/auto_pipeline/data_burnout.mp4 ./
 # ── 배치 로그 확인 ───────────────────────────────────────
 tail -f /root/auto_pipeline/batch.log
 
-# ── YouTube 자동 업로드 (n8n 경유) ──────────────────────
+# ── YouTube 자동 업로드 (에피소드형, n8n 경유) ───────────
 cd /root/auto_pipeline
 python3 auto_upload.py --ep episodes/YYYYMMDD_NNN --style docsul --privacy private
+
+# ── YouTube 자동 업로드 (인포그래픽형, n8n 경유) ─────────
+cd /root/auto_pipeline
+python3 infographic_upload.py --data data_burnout.json --privacy private
+
+# ── 다큐형 배치 생성 (--video-type docu) ────────────────
+cd /root/auto_pipeline
+nohup python3 -u ai_orchestrator.py --batch --count 1 --auto --video-type docu > batch.log 2>&1 &
 
 # ── 백업 동기화 ──────────────────────────────────────────
 /root/auto_pipeline/sync_to_backup.sh
@@ -354,6 +385,7 @@ python3 auto_upload.py --ep episodes/YYYYMMDD_NNN --style docsul --privacy priva
 6. **Kevin MacLeod BGM**: CC BY 3.0 — 유튜브 설명란에 크레딧 필수
 7. **백업 동기화** 작업 후 sync_to_backup.sh 실행 확인
 8. **ai_orchestrator.py `--ep`**: `YYYYMMDD_NNN` (episodes/ 없이) / **auto_upload.py `--ep`**: `episodes/YYYYMMDD_NNN` (접두사 포함) — 혼용 주의
+9. **`--video-type`**: 배치/단일 모두 지원. `narration`(기본, DALL-E) | `docu`(Pexels 스톡)
 
 ---
 
@@ -366,6 +398,13 @@ python3 auto_upload.py --ep episodes/YYYYMMDD_NNN --style docsul --privacy priva
 ---
 
 ## 마지막 업데이트
+
+2026-05-03 — v3.4 일일 자동화 파이프라인 완성.
+- n8n_workflow_daily_auto.json 신규: 매일 00:00 인포그래픽+내레이션/다큐 자동 생성+업로드
+- ai_orchestrator.py에 --video-type narration|docu 플래그 추가
+- infographic_upload.py 신규: data_*.json 기반 인포그래픽 YouTube 업로드
+- n8n YouTube Upload Code 노드: video_path override + 인포그래픽 description 분기 지원
+- 일일 스케줄: 월/수/금/일=내레이션형, 화/목/토=다큐형, 매일=인포그래픽형
 
 2026-05-03 — v3.3 n8n YouTube 자동 업로드 완성.
 - n8n 워크플로우 1번(YouTube 자동 업로드) 실전 검증 완료
