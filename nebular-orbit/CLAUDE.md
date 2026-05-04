@@ -47,7 +47,7 @@
 | 역할 | IP | 접속 | 웹루트 |
 |------|-----|------|--------|
 | Active | 200.200.200.7 | ssh root@200.200.200.7 | /data/app/ |
-| Standby | 7.7.7.253 | ssh root@7.7.7.253 | /data/app/ |
+| Standby | 7.7.7.7 | ssh root@7.7.7.7 | /data/app/ |
 
 - 도메인: kdclab.kr (HTTPS)
 - 두 서버 모두 /data/app에서 git pull로 동기화
