@@ -133,29 +133,22 @@ android:launchMode="singleTop"
 
 | 구분 | 버전 | 비고 |
 |------|------|------|
-| 웹 (kdclab.kr) | 최신 배포 상태 | deploy.sh로 관리 |
-| Android APK | 1.0.30 (versionCode 32) | 2026-05-01 빌드 |
-| Play Store 알파 | 비공개 테스트 완료 | 테스터 12명, 피드백 6건 수집 |
-| Play Store 프로덕션 | **신청 완료 (2026-05-03)** | 결과 대기 중, 약 7일 이내 |
+| 웹 (kdclab.kr) | 최신 배포 상태 | deploy.sh로 관리 (이동 횟수 버전 배포됨) |
+| Android APK | 1.0.31 (versionCode 34) | 2026-05-04 빌드 — **단, 이 빌드는 타이머 기준** |
+| Play Store 프로덕션 | **출시 완료** | 직접 링크 접속 가능, 검색 색인 반영 중 |
 
 ---
 
-## Play Store 프로덕션 신청 현황
+## Play Store 프로덕션 현황
 
-- ✅ 비공개 테스트 버전 게시
-- ✅ 12명 이상 테스터 참여
-- ✅ 검토일(4/19)부터 14일 테스트 완료
-- ✅ **2026-05-03 프로덕션 신청 완료**
-- 결과 수신: dong8650@gmail.com (약 7일 이내)
-- **주의: 승인 전까지 게임 코드 수정 금지**
+- ✅ **2026-05-04 프로덕션 출시 완료** (100% 롤아웃)
+- ✅ 직접 링크 접속 확인: play.google.com/store/apps/details?id=com.kdclab.starweave
+- ✅ IARC Live Rating Notice 수신 (자동 알림, 별도 조치 불필요)
+- 검색 노출: 색인 반영까지 수일 소요 예상
 
 ### 이전 신청 리젝 사유 (참고)
 1. 테스터가 실제로 참여하지 않음
 2. 피드백을 반영한 업데이트가 없음
-
-### 이번 신청 대응 방향
-- 테스터 6명 피드백 수집 → tester_feedback.md에 기록
-- 피드백 반영 업데이트 계획 수립 → game_direction.md에 기록
 
 ---
 
@@ -179,15 +172,34 @@ android:launchMode="singleTop"
 
 ---
 
-## 게임 고도화 핵심 방향 (프로덕션 승인 후)
+## 게임 고도화 핵심 방향
 
 > 상세: `context/game_direction.md`
 
-### 타이머 → 이동 횟수 제한 전환
+### ✅ 타이머 → 이동 횟수 제한 전환 (웹 완료, APK 미반영)
 - **이유**: 타이머는 스트레스, 이동 횟수는 "아깝다" 감정 → IAP 전환율 높음
 - **동작**: 성공 연결(합=타겟)만 횟수 차감, 실패는 무료
-- **구현**: ~100~150줄 변경, 반나절~하루 예상
+- **웹 배포**: 2026-05-04 commit 9f2efc6 배포 완료
+- **APK**: 아직 미반영 — 다음 빌드 시 포함 필요
 - **신규 IAP**: moves_15 (₩1,200) 등록 필요
+
+#### 이동 횟수 전환 주요 변경 내용
+| 항목 | 변경 전 | 변경 후 |
+|------|---------|---------|
+| DESTINATIONS 필드 | `timeLimit:90` | `moveLimit:20` (행성별 차등) |
+| G 상태 | `timeLeft`, `timeExtendUsed` | `movesLeft`, `movesExtendUsed` |
+| UI 라벨 | `TIME` | `MOVE` |
+| `setInterval` 타이머 | 있음 | 완전 제거 |
+| `_onTimerEnd` | 시간 종료 처리 | `_onMovesEnd` alias |
+| 광고 보상 | `timeLeft += 30` | `movesLeft += 3` |
+| 이동팩 아이템 | `timeLeft += 15` | `movesLeft += 2` |
+
+#### 행성별 moveLimit
+지구/달:20 → 수성/금성/화성:18 → 목성/토성:16 → 천왕성/해왕성:15 → 은하계:14 → 우주:13
+
+### 남은 작업
+- **와일드카드 타이머 제거**: 와일드카드 UI에 남아있는 시간 표시 제거 필요
+- **APK 빌드**: 이동 횟수 전환 + 와일드카드 타이머 제거 후 bubblewrap build → Play Console 업로드
 
 ### 상점 2컬럼 레이아웃
 - 왼쪽: 이동 횟수 (이동+5회, 이동팩15회)
@@ -305,24 +317,35 @@ desktop      → QR 코드 표시
 
 | 작업 | 결과 |
 |------|------|
-| 프로덕션 신청 | Play Console 신청 완료, 결과 대기 중 |
+| 프로덕션 신청 | Play Console 신청 완료 |
 | 테스터 피드백 #6 수집 | 게임 중 팝업 흐름 방해 → tester_feedback.md 반영 |
 | IAP 4종 확인 | vip_pass, no_ads, hints_50, hints_10 Google Play 등록 확인 |
-| 타이머 → 이동 횟수 전환 설계 | 분석 완료, 구현은 프로덕션 승인 후 |
+| 타이머 → 이동 횟수 전환 설계 | 분석 완료 |
 | 상점 2컬럼 레이아웃 시안 | shop_mockup.html 제작 완료 |
 | 게임오버 팝업 3선택지 설계 | 힌트/IAP/광고 3중 수익 구조 확정 |
 | context 문서 작성 | tester_feedback.md, game_direction.md 생성 및 git push |
 | 성운 유니버스 로드맵 확정 | 5개 게임 라인업 + 신규 게임 TOP5 분석 |
 
+### 2026-05-04 완료 작업
+
+| 작업 | 결과 |
+|------|------|
+| Play Store 프로덕션 출시 | v1.0.31 (versionCode 34), 100% 롤아웃 완료 |
+| versionCode 충돌 해결 | 32 이미 사용됨 → 33으로 수정, bubblewrap이 34로 자동 증가 |
+| IARC 등급 알림 수신 | 자동 알림, 별도 조치 불필요 |
+| 타이머 → 이동 횟수 전환 코드 작업 | Starweave.html 전면 수정 완료 |
+| 웹 배포 | deploy.sh "feat: 타이머 → 이동 횟수 제한 전환 (v1.0.31)" — commit 9f2efc6 |
+
 ### 다음 할 일
 
-- **프로덕션 승인 대기**: 약 7일 이내 dong8650@gmail.com 수신
-- **승인 후 즉시**: 타이머 → 이동 횟수 전환 코드 작업 (반나절~하루)
-- **승인 후 즉시**: moves_15 IAP 상품 Google Play Console 등록
-- **AdSense**: 재검토 결과 대기 (1~4주)
+- **와일드카드 타이머 제거**: 와일드카드 UI에 남아있는 시간 표시 제거
+- **APK 재빌드**: bubblewrap build → v1.0.32 (versionCode 35) — 이동 횟수 전환 반영
+- **Play Console 업로드**: 새 AAB 업로드
+- **moves_15 IAP 등록**: Google Play Console에 ₩1,200 이동팩 15회 상품 추가
+- **AdSense**: 재검토 결과 대기 (1~4주, dong8650@gmail.com)
 
 ---
 
 ## 마지막 업데이트
 
-2026-05-03 — 프로덕션 신청 완료, 타이머→이동 횟수 전환 설계, IAP 구조 확인, 상점 시안, 성운 유니버스 로드맵 확정
+2026-05-04 — 프로덕션 출시 완료 (v1.0.31/코드34), 타이머→이동 횟수 전환 웹 배포 완료 (commit 9f2efc6), 와일드카드 타이머 제거 및 APK 재빌드 필요
