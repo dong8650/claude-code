@@ -215,9 +215,12 @@ scp root@192.168.0.21:/root/auto_pipeline/data_burnout.mp4 ./
 ## 콘텐츠 방향
 
 - **채널 미션**: 대신 말해주고, 관점을 바꿔주는 채널
-- **closing 원칙**: 단어 반전(역설) 금지. 진짜 관점 전환 한 문장
-  - PASS: "말할 때 비로소 산다" / "먼저 빼야 모인다" / "착함보다 경계가 먼저다"
-  - FAIL: "표현이 너를 살린다" / "침묵이 답이었다" (hook 단어 뒤집기)
+- **closing 원칙**: 최대 20자. 좋아요·저장·공유 유발 — 아래 4패턴 중 1개 적용
+  - ① 공감형  — "나만 이랬던 거 아니었어" 형태 (공감 폭발 → 좋아요)
+  - ② 저장형  — "이거 저장 안 하면 또 당한다" 형태 (손실 공포 → 저장)
+  - ③ 승리감형 — "이 영상 본 사람만 안다" 형태 (소수 선택감 → 공유)
+  - ④ 공유형  — "지금 주변에 퍼뜨려야 함" 형태 (긴박감 → 공유)
+  - FAIL: 단어 반전(역설) 금지. "표현이 너를 살린다" / "침묵이 답이었다" (hook 단어 뒤집기)
 - **주제 다양성**: 직장 얘기 30~40%, 나머지는 인간관계·나이·돈·사회·자기인식·건강으로 분산
 
 ---
@@ -283,7 +286,7 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 ### Claude 검수 항목 (R1~R10)
 - `R1` hook 공백 제외 12자 이내
 - `R2` script_ko 4~5문장, 총 60~120자, 문장별 18자 이하
-- `R3` closing_ko 15자 이내 — **관점 전환 보호** (단어 반전 교정 금지)
+- `R3` closing_ko 20자 이내 — **4패턴 보호** (공감형/저장형/승리감형/공유형, 단어 반전 교정 금지)
 - `R4` 설명형 문장 → 직격형 교정
 - `R5` 금지어·비속어·법적 위험
 - `R6` scenes 8개 보장
@@ -298,7 +301,7 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 | hook 길이 | ≤12자 |
 | script 길이 | ≤120자 |
 | 문장 수 | ≤5개 |
-| closing 길이 | ≤15자 |
+| closing 길이 | ≤20자 |
 | scroll_stop_power | ≥7 |
 | emotional_attack | ≥7 |
 | repeat_value | ≥6 |
@@ -552,6 +555,13 @@ scp ~/Downloads/youtube_client_secret.json root@192.168.0.21:/root/content/runti
 ---
 
 ## 마지막 업데이트
+
+2026-05-05 — v4.2 좋아요 설계 전략 적용
+- make_video.py, make_video_stock.py: CTA 오버레이 추가 — 마지막 1.2초 "공감됐으면 좋아요  저장해두세요" (`#FFD700`, 36px, drawtext `enable='between(t,{cta_start},{N_main})'`)
+- generate_script.py: Closing 4패턴 강제 (공감형/저장형/승리감형/공유형), 최대 15자→20자
+  - R3 검수: "관점 전환 보호" → "4패턴 보호 (공감형/저장형/승리감형/공유형)"
+  - Quality Gate: closing 길이 ≤15자 → ≤20자
+  - repeat_value 채점: 관점전환 중심 → 행동유발(좋아요·저장·공유) 중심
 
 2026-05-05 — v4.1 YouTube Analytics + 인포그래픽 개선 + 채널 공통 브랜딩
 - analyze_youtube.py 신규: YouTube Analytics API OAuth 인증 + 완시율 랭킹 + Claude S급 전략 분석

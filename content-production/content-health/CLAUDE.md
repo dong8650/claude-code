@@ -13,7 +13,7 @@
 | 슬로건 | 매일 하나씩, 건강 상식을 쌓자 (health 전용, 로컬 상수) |
 | 콘텐츠 | 잘못된 건강 상식 뒤집기 — 반복재생·저장 폭발 |
 | 길이 | 22~26초 (TTS 실제 길이 기준, 고정 아님) |
-| 이미지 | DALL-E 3 귀여운 장기/캐릭터 스타일 (실제 사람 금지) |
+| 이미지 | DALL-E 3 실사/시네마틱 스타일 (사람은 뒷모습·실루엣·부분만, 감정충격씬은 오브젝트 기반) |
 
 ---
 
@@ -25,7 +25,7 @@ scene2  ✅ 과학설명1  — 핵심 메커니즘 + 수치 (→ 기호 활용)
 scene3  ✅ 과학설명2  — 추가 효과 + 이모지 + 수치
 scene4  ⚠️ 잘못된상식 — 반전 포인트 "근데 대부분은..."
 scene5  😱 감정충격   — "매일 이렇게 했던 당신..." 짧고 강하게
-scene6  💾 저장유도   — 구체적 행동 촉구 + 💾
+scene6  💾👍 좋아요+저장유도 — 좋아요+저장 동시 촉구 ("공감됐으면 좋아요 누르고 저장해둬 💾👍")
 scene7  👀 루프트리거 — Hook 복선 구체적 언급 (추상적 "복선 있음" 금지)
 ```
 
@@ -47,6 +47,8 @@ content-health/
 ├── run_custom_v2.py            # 사전 정의 스크립트 즉시 실행
 ├── get_episode_info_v2.py      # n8n SSH 노드용
 ├── analyze_competitor.py       # 경쟁 채널 분석 (yt-dlp + Claude, 주 1회 권장)
+├── test_run_realistic.py       # [테스트] 실사 DALL-E 이미지 스타일 (192.168.0.21에서 실행)
+├── test_run_stock.py           # [테스트] Pexels 실사 영상 스타일 (7.7.7.254에서 실행)
 
 competitor_insights.json       # 서버 고유 — git 미포함 (analyze_competitor.py 생성)
 
@@ -71,6 +73,7 @@ episodes_v2/                   # 서버 고유 — git 미포함
 | 하단 검은 바 | 22% + 워터마크 | ✅ 18% + @health.lab.kr |
 | 자막 스타일 | ASS Karaoke (노래방 효과) | ✅ ASS 장면별 (Hook=오렌지, Main=흰색, Save=노랑, Loop=시안) |
 | BGM 믹싱 | voice 1.0 + bgm 0.18 | ✅ 동일 |
+| CTA 오버레이 | — | ✅ 마지막 1.2초 "공감됐으면 좋아요  저장해두세요" (`#FFD700`, 36px, borderw=2) |
 | TTS | 3분할 (hook/body/closing) | ✅ 장면별 실제 TTS 길이 기준 + 장면별 속도 차별화 |
 | 자막 싱크 | TTS 예상 길이 기준 | ✅ 실제 클립 길이(ffprobe) 기준 — 프레임 정렬 오차 제거 |
 | 이미지 방향 | 가로 이미지 오류 가능 | ✅ force_original_aspect_ratio=increase → crop 1080x1920 강제 |
@@ -176,12 +179,12 @@ cd /root/claude-code && git pull origin main
 
 | 파일 | 용도 | 상태 |
 |------|------|------|
-| `n8n/n8n_workflow_health_daily.json` | 매일 01:00 자동 생성+업로드 | ✅ 완료 |
+| `n8n/n8n_workflow_health_daily.json` | 매일 02:00 자동 생성+업로드 | ✅ 완료 |
 
 ### 일일 자동화 실행 흐름
 
 ```
-01:00 Cron (매일)
+02:00 Cron (매일)
     ↓ SSH — git pull (Git Sync)
     ↓ SSH — 경쟁 분석 (월요일만): analyze_competitor.py → competitor_insights.json
     ↓ SSH — setsid ai_orchestrator_v2.py --batch --count 1 --auto (백그라운드)
@@ -233,7 +236,9 @@ pip install yt-dlp google-api-python-client google-auth-oauthlib numpy moviepy
 
 ## 주의사항
 
-- DALL-E image_prompt: 실제 사람 얼굴 금지 (cute cartoon 스타일만)
+- DALL-E image_prompt: 실사/시네마틱 스타일. 사람은 뒷모습·실루엣·부분(손발)만 허용. 얼굴 금지.
+- 감정충격(scene5)·잘못된상식(scene4) 씬: 오브젝트 기반 프롬프트 필수 (content_policy_violation 방지)
+- content_policy_violation 발생 시 safe_fallback 자동 전환 (generate_image_v2.py 내장)
 - `health_used.json` — 서버 고유, git push 금지
 - BGM: `/root/content/runtime/health/bgm/bgm_dramatic_ambient.mp3`
 - config.py: `/root/content/runtime/health/config.py`
@@ -267,6 +272,27 @@ pip install yt-dlp google-api-python-client google-auth-oauthlib numpy moviepy
 ---
 
 ## 마지막 업데이트
+
+2026-05-05 — v2.9 이미지 스타일 실사/시네마틱 전환
+- generate_image_v2.py: 귀여운 장기 카툰 → 실사/시네마틱 스타일로 전환
+  - `_BASE_SUFFIX`: photorealistic cinematic style, dramatic professional lighting
+  - content_policy_violation 자동 감지 → safe_fallback (오브젝트 기반) 자동 전환
+- generate_script_v2.py: image_prompt 규칙 카툰→실사, 사람은 뒷모습·실루엣·부분만, scene4/5 오브젝트 기반 강제
+- JSON 템플릿 image_prompt 예시: cute cartoon → cinematic sports/health photography 예시로 교체
+
+2026-05-05 — v2.8 좋아요 설계 전략 + 테스트 스크립트 + n8n 02:00
+- make_video_v2.py: CTA 오버레이 추가 — 마지막 1.2초 "공감됐으면 좋아요  저장해두세요" (`#FFD700`, 36px, drawtext `enable='gte(t,{cta_start})'`)
+- generate_script_v2.py: scene5 → 좋아요+저장 동시 촉구 (💾👍), 좋아요+저장 동시 유도 문구 강제
+- likes_strategy.md (pipeline-core): CTA overlay 스펙, Closing 4패턴, Scene6 업그레이드 근거 문서화
+- test_run_realistic.py 신규: 실사/시네마틱 DALL-E 스타일 테스트 (달리기 후 뇌 변화)
+  - 실제 런닝하는 사람 이미지 (스포츠 사진 스타일), scene4/5는 오브젝트 기반 (content_policy 방지)
+  - content_policy_violation 자동 감지 → safe_fallback 프롬프트 자동 전환
+  - 192.168.0.21 서버에서 실행
+- test_run_stock.py 신규: Pexels 실사 영상 스타일 테스트 (달리기 후 뇌 변화)
+  - uhd≥2160 → hd≥1080 → hd≥720 우선순위 4K 소스 다운로드 (화질 개선)
+  - `size="large"`, `per_page=15` (Pexels API 4K 노출 최적화)
+  - 7.7.7.254 서버에서 실행
+- n8n 워크플로우: Cron 01:00 → 02:00 변경
 
 2026-05-05 — v2.7 싱크 완전 수정 + 세로형 강제
 - make_video_v2.py: make_ken_burns_clip() → bool 반환 → float(실제 클립 길이) 반환으로 변경

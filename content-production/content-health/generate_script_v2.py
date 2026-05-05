@@ -139,11 +139,22 @@ def _build_prompt(topic: dict, retry_feedback: str = "") -> str:
 - 반드시 Hook에서 언급한 내용의 구체적 복선을 명시
 - 예: Hook이 "의사들이 말 안 해준 진실"이면 → "첫 장면 의사 발언, 다시 보면 이미 힌트 있었음 👀"
 
-━━━ image_prompt 규칙 ━━━
-- DALL-E 3 영문 프롬프트
-- cute cartoon organ/cell character style, bright colorful
-- 9:16 portrait orientation (반드시 세로형)
-- NO real human faces, NO text in image
+━━━ image_prompt + image_style 규칙 ━━━
+각 씬에 "image_style" 필드를 반드시 포함. 3가지 값 중 1개:
+
+  "photo"   — 실사 스포츠/생활 사진 스타일
+              사람은 뒷모습·실루엣·부분(손발)만 허용. 얼굴 금지.
+              적용: Hook, 잘못된상식 반전, 루프트리거
+
+  "digital" — sci-fi 개념 시각화 스타일 (뇌·세포·신호·장기 등)
+              glowing neon particles, dark background, 3D render 느낌
+              적용: 과학설명1, 과학설명2
+
+  "object"  — 오브젝트 전용, 사람 완전 금지
+              운동화·가방·타월·물병 등 사물만으로 장면 표현
+              적용: 감정충격, 좋아요+저장유도 — content_policy 차단 방지
+
+공통: DALL-E 3 영문 프롬프트, 9:16 portrait orientation, NO text in image
 
 ━━━ Quality 자가 채점 (JSON에 포함) ━━━
 - scroll_stop_power (1~10): Hook이 피드에서 스크롤을 멈추게 하는 힘
@@ -157,13 +168,13 @@ JSON만 출력 (마크다운/설명 없이):
   "hook": "Hook 문장 (15자 이내)",
   "hook_type": "identity_attack | expert_reversal | myth_direct",
   "scenes": [
-    {{"duration": 3, "caption": "Hook 자막\\n두 줄 이내", "narration": "TTS 나레이션 (caption 내용을 빠짐없이 포함, 자연스럽게 말하듯)", "image_prompt": "cute cartoon health character, bright colorful, 9:16 vertical..."}},
-    {{"duration": 5, "caption": "과학설명1\\n→ 수치", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
-    {{"duration": 5, "caption": "과학설명2\\n이모지 + 수치", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
-    {{"duration": 5, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
-    {{"duration": 3, "caption": "감정충격 😱", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
-    {{"duration": 2, "caption": "좋아요+저장유도 💾👍", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
-    {{"duration": 1, "caption": "루프트리거 👀", "narration": "처음 장면 복선 언급 (10자 이내 짧게)", "image_prompt": "..."}}
+    {{"duration": 3, "caption": "Hook 자막\\n두 줄 이내", "narration": "TTS 나레이션 (caption 내용을 빠짐없이 포함, 자연스럽게 말하듯)", "image_style": "photo", "image_prompt": "cinematic sports photography, [주제 관련 동작/장면 — 뒷모습/실루엣], dramatic golden hour lighting, 9:16 vertical portrait, no text, no faces"}},
+    {{"duration": 5, "caption": "과학설명1\\n→ 수치", "narration": "caption 내용 포함 나레이션", "image_style": "digital", "image_prompt": "cinematic sci-fi visualization of [뇌/장기/세포/신호 등 주제 관련 신체 메커니즘], glowing neon particles, dark background, 9:16 vertical portrait, no text"}},
+    {{"duration": 5, "caption": "과학설명2\\n이모지 + 수치", "narration": "caption 내용 포함 나레이션", "image_style": "digital", "image_prompt": "cinematic sci-fi digital art of [추가 효과/연구 관련 신체 시각화], volumetric lighting, dark dramatic background, 9:16 vertical portrait, no text"}},
+    {{"duration": 5, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "caption 내용 포함 나레이션", "image_style": "photo", "image_prompt": "cinematic sports/lifestyle photo of [잘못된 상황 관련 실제 장면 — 뒷모습/실루엣], moody lighting, 9:16 vertical portrait, no faces, no text"}},
+    {{"duration": 3, "caption": "감정충격 😱", "narration": "caption 내용 포함 나레이션", "image_style": "object", "image_prompt": "cinematic still life of [운동화/가방/타월/물병 등 — 주제 관련 오브젝트], dark moody atmosphere, dramatic spotlight, no people, no text, 9:16 vertical portrait"}},
+    {{"duration": 2, "caption": "좋아요+저장유도 💾👍", "narration": "caption 내용 포함 나레이션", "image_style": "object", "image_prompt": "cinematic still life of [주제 관련 오브젝트], warm golden motivational light, inspiring atmosphere, no people, no text, 9:16 vertical portrait"}},
+    {{"duration": 1, "caption": "루프트리거 👀", "narration": "처음 장면 복선 언급 (10자 이내 짧게)", "image_style": "photo", "image_prompt": "cinematic [Hook 장면 재현 — 뒷모습/실루엣 허용], mysterious atmosphere, no text, 9:16 vertical portrait"}}
   ],
   "total_duration": 24,
   "save_trigger": "저장유도 문장",

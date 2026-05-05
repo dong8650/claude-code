@@ -25,6 +25,7 @@ claude-code/
 | API Key / 경로 설정 | `config.example.py` → 서버의 `config.py` |
 | 주제 풀 | `topics_*.json` (각 채널 폴더) |
 | **채널 공통 브랜딩** | **`channel_branding.py`** — WATERMARK / CHANNEL_NAME / CHANNEL_HANDLE |
+| **좋아요 설계 전략** | **`likes_strategy.md`** — CTA overlay 스펙, Closing 4패턴, Scene6 업그레이드 |
 | 영상 엔진 | `make_video_*.py` (각 채널 폴더) |
 | n8n 워크플로 | 각 채널 폴더의 `n8n/` |
 
@@ -78,6 +79,10 @@ bgm/                ← BGM 파일 (대용량, git 미포함)
 ---
 
 ## 마지막 업데이트
+
+2026-05-05 — likes_strategy.md 추가 + 좋아요 설계 전략 공통화
+- likes_strategy.md 신규: CTA overlay 스펙 (`#FFD700`, 36px, 마지막 1.2초), Closing 4패턴 규칙 (공감형/저장형/승리감형/공유형), Scene6 좋아요+저장 동시 유도 근거 문서화
+- 적용 채널: content-mindset (make_video.py, make_video_stock.py, generate_script.py), content-health (make_video_v2.py, generate_script_v2.py)
 
 2026-05-05 — channel_branding.py 추가 + 공통 모듈 구조 확정
 - channel_branding.py 신규: WATERMARK="© 2026 매일의 설계", CHANNEL_NAME, CHANNEL_HANDLE
