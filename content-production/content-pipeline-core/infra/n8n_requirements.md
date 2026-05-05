@@ -70,7 +70,8 @@ docker run -d \
   -e TZ=Asia/Seoul \
   -e N8N_RESTRICT_FILE_ACCESS_TO=/root \
   -v /root/.n8n:/root/.n8n \
-  -v /root/auto_pipeline:/root/auto_pipeline \
+  -v /root/content:/root/content \
+  -v /root/claude-code:/root/claude-code \
   --restart always \
   n8nio/n8n
 ```
@@ -92,7 +93,8 @@ docker run -d \
   -e TZ=Asia/Seoul \
   -e N8N_RESTRICT_FILE_ACCESS_TO=/root \
   -v /root/.n8n:/root/.n8n \
-  -v /root/auto_pipeline:/root/auto_pipeline \
+  -v /root/content:/root/content \
+  -v /root/claude-code:/root/claude-code \
   --restart always \
   n8nio/n8n
 ```
