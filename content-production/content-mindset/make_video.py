@@ -3,6 +3,7 @@ import json
 import os
 import glob
 import shutil
+import sys; sys.path.insert(0, "/root/content/runtime/mindset")
 from config import FONT_PATH, WATERMARK, BGM_PATH, ENDING_PATH, BGM_MAP
 
 INTRO_DURATION = 1.5  # generate_tts.py와 동일

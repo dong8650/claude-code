@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys; sys.path.insert(0, "/root/content/runtime/mindset")
 from config import FONT_PATH, WATERMARK, BGM_PATH, ENDING_PATH, BGM_MAP
 
 INTRO_DURATION = 1.5

@@ -23,6 +23,7 @@ from pathlib import Path
 import anthropic
 import openai
 
+import sys; sys.path.insert(0, "/root/content/runtime/mindset")
 from config import CLAUDE_API_KEY, OPENAI_API_KEY
 from quality_gate import run_gate
 

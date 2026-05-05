@@ -14,6 +14,7 @@ from pathlib import Path
 
 import requests
 
+sys.path.insert(0, "/root/content/runtime/mindset")
 from config import N8N_WEBHOOK_URL
 
 DEFAULT_TAGS = ["매일의설계", "직장인", "쇼츠", "인포그래픽", "데이터", "현실", "직장생활"]

@@ -7,6 +7,7 @@ import subprocess
 import requests
 
 # ElevenLabs 설정
+import sys; sys.path.insert(0, "/root/content/runtime/mindset")
 try:
     from config import ELEVENLABS_API_KEY, ELEVENLABS_SEULKI_VOICE_ID
     ELEVENLABS_AVAILABLE = True

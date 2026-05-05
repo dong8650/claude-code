@@ -92,7 +92,7 @@ JSON만 출력 (마크다운/설명 없이):
 
 def generate_script(topic: dict) -> dict:
     import anthropic
-    sys.path.insert(0, str(BASE_DIR))
+    sys.path.insert(0, str(RUNTIME_DIR))
     from config import CLAUDE_API_KEY
 
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)

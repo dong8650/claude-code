@@ -1,6 +1,8 @@
 import os
+import sys
 import requests
 from openai import OpenAI
+sys.path.insert(0, "/root/content/runtime/mindset")
 from config import OPENAI_API_KEY
 
 client = OpenAI(api_key=OPENAI_API_KEY)

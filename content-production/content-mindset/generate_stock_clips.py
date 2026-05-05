@@ -16,6 +16,7 @@ from pathlib import Path
 
 import requests
 
+import sys; sys.path.insert(0, "/root/content/runtime/mindset")
 from config import PEXELS_API_KEY
 
 HEADERS     = {"Authorization": PEXELS_API_KEY}

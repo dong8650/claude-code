@@ -35,6 +35,7 @@ from pathlib import Path
 
 import anthropic
 
+sys.path.insert(0, "/root/content/runtime/mindset")
 from config import CLAUDE_API_KEY
 from generate_script import generate_best_script
 from quality_gate import recheck_v3

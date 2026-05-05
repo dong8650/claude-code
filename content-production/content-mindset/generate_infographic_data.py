@@ -46,7 +46,7 @@ def pick_topic(pool: list, used_ids: set) -> tuple:
 
 def generate_data(topic: dict) -> dict:
     import anthropic
-    sys.path.insert(0, str(BASE_DIR))
+    sys.path.insert(0, str(RUNTIME_DIR))
     from config import CLAUDE_API_KEY
 
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)

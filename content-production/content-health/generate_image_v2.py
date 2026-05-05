@@ -12,7 +12,7 @@ from pathlib import Path
 
 def generate_health_image(image_prompt: str, out_path: Path, retry: int = 3) -> Path:
     from openai import OpenAI
-    sys.path.insert(0, str(Path(__file__).parent))
+    sys.path.insert(0, "/root/content/runtime/health")
     from config import OPENAI_API_KEY
 
     client = OpenAI(api_key=OPENAI_API_KEY)
