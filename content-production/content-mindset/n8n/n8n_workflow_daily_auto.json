@@ -33,7 +33,7 @@
       "position": [680, 300],
       "parameters": {
         "resource": "command",
-        "command": "cd /root/claude-code && git pull origin main && cp /root/claude-code/content-production/content-mindset/*.py /root/auto_pipeline/ && cp /root/claude-code/content-production/content-mindset/infographic_data/infographic_topic_pool.json /root/auto_pipeline/ && echo \"✅ git sync: $(git rev-parse --short HEAD)\""
+        "command": "cd /root/claude-code && git pull origin main && echo \"✅ git sync: $(git rev-parse --short HEAD)\""
       },
       "credentials": {
         "sshPassword": {
@@ -50,7 +50,7 @@
       "position": [900, 300],
       "parameters": {
         "resource": "command",
-        "command": "cd /root/auto_pipeline && python3 generate_infographic_data.py 2>&1"
+        "command": "cd /root/claude-code/content-production/content-mindset && python3 generate_infographic_data.py 2>&1"
       },
       "credentials": {
         "sshPassword": {
@@ -77,7 +77,7 @@
       "position": [1340, 300],
       "parameters": {
         "resource": "command",
-        "command": "={{ 'cd /root/auto_pipeline && python3 generate_infographic.py --data ' + $('Parse Infographic Topic').item.json.data_file + ' --video --duration 7 2>&1' }}"
+        "command": "={{ 'cd /root/claude-code/content-production/content-mindset && python3 generate_infographic.py --data ' + $('Parse Infographic Topic').item.json.data_file + ' --video --duration 7 2>&1' }}"
       },
       "credentials": {
         "sshPassword": {
@@ -94,7 +94,7 @@
       "position": [1560, 300],
       "parameters": {
         "resource": "command",
-        "command": "={{ 'cat /root/auto_pipeline/' + $('Parse Infographic Topic').item.json.data_file }}"
+        "command": "={{ 'cat ' + $('Parse Infographic Topic').item.json.data_file }}"
       },
       "credentials": {
         "sshPassword": {
@@ -110,7 +110,7 @@
       "typeVersion": 2,
       "position": [1780, 300],
       "parameters": {
-        "jsCode": "const data = JSON.parse($json.stdout.trim());\nconst title = data.title || $('Parse Infographic Topic').item.json.title || '';\nconst subtitle = data.subtitle || '';\nconst tags = data.tags_ko || ['매일의설계','직장인','쇼츠','인포그래픽','데이터'];\nconst dataFile = $('Parse Infographic Topic').item.json.data_file;\nconst video_path = '/root/auto_pipeline/' + dataFile.replace('.json', '.mp4');\nconst tagsLine = tags.map(t => '#' + t).join(' ');\nconst lines = [\n  subtitle, '',\n  '─────────────────────────',\n  '📌 매일의설계 | 어제보다 나은 오늘을 설계하자',\n  '구독 · 좋아요 · 알림 설정으로 매일 인사이트를 받아보세요.'\n];\nif (tagsLine) { lines.push('', tagsLine); }\nconst desc = lines.join('\\n');\nreturn [{ json: { title, description_full: desc, tags_ko: tags, video_path, privacy: 'private' } }];"
+        "jsCode": "const data = JSON.parse($json.stdout.trim());\nconst title = data.title || $('Parse Infographic Topic').item.json.title || '';\nconst subtitle = data.subtitle || '';\nconst tags = data.tags_ko || ['매일의설계','직장인','쇼츠','인포그래픽','데이터'];\nconst dataFile = $('Parse Infographic Topic').item.json.data_file;\nconst video_path = dataFile.replace('.json', '.mp4');\nconst tagsLine = tags.map(t => '#' + t).join(' ');\nconst lines = [\n  subtitle, '',\n  '─────────────────────────',\n  '📌 매일의설계 | 어제보다 나은 오늘을 설계하자',\n  '구독 · 좋아요 · 알림 설정으로 매일 인사이트를 받아보세요.'\n];\nif (tagsLine) { lines.push('', tagsLine); }\nconst desc = lines.join('\\n');\nreturn [{ json: { title, description_full: desc, tags_ko: tags, video_path, privacy: 'private' } }];"
       }
     },
     {
@@ -159,7 +159,7 @@
       "position": [2440, 300],
       "parameters": {
         "resource": "command",
-        "command": "={{ 'cd /root/auto_pipeline && setsid python3 -u ai_orchestrator.py --batch --count 1 --auto --video-type ' + $('Daily Plan').item.json.videoType + ' > /root/auto_pipeline/daily_gen.log 2>&1 </dev/null & echo \"PID=$!\"' }}"
+        "command": "={{ 'cd /root/claude-code/content-production/content-mindset && setsid python3 -u ai_orchestrator.py --batch --count 1 --auto --video-type ' + $('Daily Plan').item.json.videoType + ' > /root/content/runtime/mindset/daily_gen.log 2>&1 </dev/null & echo \"PID=$!\"' }}"
       },
       "credentials": {
         "sshPassword": {
@@ -189,7 +189,7 @@
       "position": [2880, 300],
       "parameters": {
         "resource": "command",
-        "command": "cd /root/auto_pipeline && python3 get_episode_info.py"
+        "command": "cd /root/claude-code/content-production/content-mindset && python3 get_episode_info.py"
       },
       "credentials": {
         "sshPassword": {
