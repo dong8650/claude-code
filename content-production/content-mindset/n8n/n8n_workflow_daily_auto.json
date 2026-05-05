@@ -37,7 +37,7 @@
       },
       "credentials": {
         "sshPassword": {
-          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "id": "HuTUp56Y7euS8rdS",
           "name": "Content Server SSH"
         }
       }
@@ -54,7 +54,7 @@
       },
       "credentials": {
         "sshPassword": {
-          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "id": "HuTUp56Y7euS8rdS",
           "name": "Content Server SSH"
         }
       }
@@ -81,7 +81,7 @@
       },
       "credentials": {
         "sshPassword": {
-          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "id": "HuTUp56Y7euS8rdS",
           "name": "Content Server SSH"
         }
       }
@@ -98,7 +98,7 @@
       },
       "credentials": {
         "sshPassword": {
-          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "id": "HuTUp56Y7euS8rdS",
           "name": "Content Server SSH"
         }
       }
@@ -163,7 +163,7 @@
       },
       "credentials": {
         "sshPassword": {
-          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "id": "HuTUp56Y7euS8rdS",
           "name": "Content Server SSH"
         }
       }
@@ -193,7 +193,7 @@
       },
       "credentials": {
         "sshPassword": {
-          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "id": "HuTUp56Y7euS8rdS",
           "name": "Content Server SSH"
         }
       }
