@@ -59,9 +59,9 @@ bgm/                ← BGM 파일 (대용량, git 미포함)
 | 파일 | 내용 |
 |------|------|
 | `infra/n8n_requirements.md` | 서버 환경, n8n Docker 명령어, API Keys, Google Console 설정 |
-| `infra/n8n_pipeline_guide.md` | n8n 워크플로우 흐름, 노드별 상세, 서버 최초 세팅 |
 
-> 양쪽 서버(192.168.0.21 / 7.7.7.254) Docker 명령어 모두 포함.
+> 채널별 n8n 워크플로우 가이드는 각 채널 폴더의 `n8n/` 에 위치.
+> 양쪽 서버(192.168.0.21 / 7.7.7.254) Docker 명령어는 n8n_requirements.md에 포함.
 
 ---
 
