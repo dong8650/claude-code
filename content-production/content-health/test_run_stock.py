@@ -111,25 +111,51 @@ SCRIPT = {
 
 # ── Pexels 다운로드 ──────────────────────────────────────────────────────────
 
-def _search_pexels(keyword: str, headers: dict) -> str | None:
+def _best_video_file(video_files: list) -> dict | None:
+    """4K(uhd) → FHD(hd/1080) → HD(720) 순으로 최고 화질 파일 선택."""
+    sorted_files = sorted(video_files, key=lambda x: -(x.get("height", 0)))
+    # 1순위: 4K
+    for f in sorted_files:
+        if f.get("quality") == "uhd" and f.get("height", 0) >= 2160:
+            return f
+    # 2순위: FHD (1080p 이상)
+    for f in sorted_files:
+        if f.get("quality") in ("uhd", "hd") and f.get("height", 0) >= 1080:
+            return f
+    # 3순위: HD (720p 이상) — 최후 수단
+    for f in sorted_files:
+        if f.get("height", 0) >= 720:
+            return f
+    return None
+
+
+def _search_pexels(keyword: str, headers: dict) -> tuple[str | None, str]:
+    """최고 화질 Pexels 영상 URL 반환. portrait 우선 → landscape fallback.
+    Returns: (url, resolution_info)
+    """
     import requests
     for orient in ("portrait", "landscape"):
         try:
             r = requests.get(
                 "https://api.pexels.com/videos/search",
                 headers=headers,
-                params={"query": keyword, "per_page": 10, "orientation": orient, "size": "medium"},
+                params={
+                    "query": keyword, "per_page": 15,
+                    "orientation": orient,
+                    "size": "large",   # width >= 1920 보장
+                },
                 timeout=15,
             )
             if r.status_code != 200:
                 continue
             for v in r.json().get("videos", []):
-                for f in sorted(v.get("video_files", []), key=lambda x: -(x.get("height", 0))):
-                    if f.get("quality") in ("hd", "sd") and f.get("height", 0) >= 720:
-                        return f["link"]
+                f = _best_video_file(v.get("video_files", []))
+                if f:
+                    info = f"{orient} {f.get('width')}×{f.get('height')} [{f.get('quality')}]"
+                    return f["link"], info
         except Exception:
             continue
-    return None
+    return None, ""
 
 
 def _download_raw(url: str, tmp_path: str) -> bool:
@@ -160,10 +186,10 @@ def download_scene_clips(scenes: list, ep_dir: Path) -> None:
             continue
 
         print(f"  [{i}/{len(scenes)}] '{keyword}'")
-        url = _search_pexels(keyword, headers)
+        url, info = _search_pexels(keyword, headers)
         if not url:
             for fb in FALLBACK_KEYWORDS:
-                url = _search_pexels(fb, headers)
+                url, info = _search_pexels(fb, headers)
                 if url:
                     print(f"    → fallback: {fb}")
                     break
@@ -171,6 +197,7 @@ def download_scene_clips(scenes: list, ep_dir: Path) -> None:
         if not url:
             print(f"    ❌ 클립 없음")
             continue
+        print(f"    📐 {info}")
 
         tmp = str(out_path).replace(".mp4", "_raw.mp4")
         if not _download_raw(url, tmp):
