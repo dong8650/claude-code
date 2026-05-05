@@ -33,7 +33,7 @@
       "position": [680, 300],
       "parameters": {
         "resource": "command",
-        "command": "cd /root/claude-code && git pull origin main && cp /root/claude-code/content-pipeline/*.py /root/auto_pipeline/ && cp /root/claude-code/content-pipeline/infographic_data/infographic_topic_pool.json /root/auto_pipeline/ && echo \"✅ git sync: $(git rev-parse --short HEAD)\""
+        "command": "cd /root/claude-code && git pull origin main && cp /root/claude-code/content-mindset/*.py /root/auto_pipeline/ && cp /root/claude-code/content-mindset/infographic_data/infographic_topic_pool.json /root/auto_pipeline/ && echo \"✅ git sync: $(git rev-parse --short HEAD)\""
       },
       "credentials": {
         "sshPassword": {

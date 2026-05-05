@@ -1,6 +1,6 @@
-# content-pipeline-v2 — 건강 상식 연구소
+# content-health — 매일의 설계 건강편
 
-> v1(매일의 설계 자기계발)과 독립 운영. Claude API 전용 (OpenAI = DALL-E만 사용).
+> content-mindset(감정·철학·인간관계)과 독립 운영. Claude API 전용 (OpenAI = DALL-E만 사용).
 
 ---
 
@@ -34,7 +34,7 @@
 ## 파일 구조
 
 ```
-content-pipeline-v2/
+content-health/
 ├── CLAUDE.md
 ├── topics_health.json          # 건강 주제 풀 30개
 ├── health_used.json            # 서버 고유 — git 미포함
@@ -104,8 +104,8 @@ scp root@192.168.0.21:/root/auto_pipeline_v2/episodes_v2/YYYYMMDD_NNN/output_fin
 ```bash
 cd /root/claude-code && git pull origin main
 mkdir -p /root/auto_pipeline_v2
-cp /root/claude-code/content-pipeline-v2/*.py /root/auto_pipeline_v2/
-cp /root/claude-code/content-pipeline-v2/topics_health.json /root/auto_pipeline_v2/
+cp /root/claude-code/content-health/*.py /root/auto_pipeline_v2/
+cp /root/claude-code/content-health/topics_health.json /root/auto_pipeline_v2/
 cp /root/auto_pipeline/config.py /root/auto_pipeline_v2/
 ```
 
@@ -115,8 +115,8 @@ cp /root/auto_pipeline/config.py /root/auto_pipeline_v2/
 
 ```bash
 cd /root/claude-code && git pull origin main && \
-cp /root/claude-code/content-pipeline-v2/*.py /root/auto_pipeline_v2/ && \
-cp /root/claude-code/content-pipeline-v2/topics_health.json /root/auto_pipeline_v2/
+cp /root/claude-code/content-health/*.py /root/auto_pipeline_v2/ && \
+cp /root/claude-code/content-health/topics_health.json /root/auto_pipeline_v2/
 ```
 
 ---
