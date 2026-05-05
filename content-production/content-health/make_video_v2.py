@@ -51,11 +51,24 @@ async def _tts_async(text: str, voice: str, out_path: str, rate: str = "+0%"):
     await communicate.save(out_path)
 
 
+import re as _re
+
+def _strip_emoji(text: str) -> str:
+    """이모지 제거 — 한글/영문/숫자/기본 기호/화살표 유지."""
+    return _re.sub(
+        r'[^가-힣ᄀ-ᇿ㄰-㆏'
+        r'a-zA-Z0-9'
+        r'\s\n'
+        r'←-⇿'
+        r'!?.,\'\"·/():~%\+\-\*\^]',
+        '', text
+    )
+
+
 def _caption_to_tts(caption: str) -> str:
     """캡션 → TTS용 텍스트 (이모지·특수문자 제거)."""
-    import re
     text = caption.replace("\\N", " ").replace("\n", " ")
-    return re.sub(r'[^\w\s가-힣,.!?]', '', text).strip()
+    return _re.sub(r'[^\w\s가-힣,.!?]', '', text).strip()
 
 
 def generate_scene_tts(scenes: list, ep_dir: Path, voice: str = "ko-KR-SunHiNeural") -> tuple:
@@ -141,7 +154,7 @@ def build_ass(scenes: list, ep_dir: Path, font_path: str, durations: list) -> Pa
     for i, (scene, dur) in enumerate(zip(scenes, durations)):
         start   = _ts(current)
         end     = _ts(current + dur - 0.05)
-        caption = scene.get("caption", "").replace("\n", "\\N")
+        caption = _strip_emoji(scene.get("caption", "")).replace("\n", "\\N")
 
         if i == 0:
             style = "Hook"
@@ -163,7 +176,7 @@ def build_ass(scenes: list, ep_dir: Path, font_path: str, durations: list) -> Pa
 def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: bool = True) -> Path:
     scenes    = script["scenes"]
     font_path = get_font()
-    hook      = script.get("hook", script.get("title", ""))
+    hook      = _strip_emoji(script.get("hook", script.get("title", "")))
 
     # 제목 2줄 분리 (중간 공백 기준)
     mid = len(hook) // 2
