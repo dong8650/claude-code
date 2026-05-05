@@ -77,6 +77,13 @@ async def _tts_async(text: str, voice: str, out_path: str, rate: str = "+0%"):
     await communicate.save(out_path)
 
 
+def _caption_to_tts(caption: str) -> str:
+    """캡션 → TTS용 텍스트 (이모지·특수문자 제거)."""
+    import re
+    text = caption.replace("\\N", " ").replace("\n", " ")
+    return re.sub(r'[^\w\s가-힣,.!?]', '', text).strip()
+
+
 def generate_scene_tts(scenes: list, ep_dir: Path, voice: str = "ko-KR-SunHiNeural") -> tuple:
     """장면별 TTS 생성. 실제 TTS 길이를 그대로 사용 (padding/trim 없음).
     Returns: (voice_file, actual_durations)
@@ -87,17 +94,21 @@ def generate_scene_tts(scenes: list, ep_dir: Path, voice: str = "ko-KR-SunHiNeur
 
     for i, scene in enumerate(scenes):
         narration = scene.get("narration", "").strip()
+        caption   = scene.get("caption", "").strip()
         scene_audio = ep_dir / f"tts_scene{i+1}.mp3"
 
-        if narration:
-            rate = SCENE_TTS_RATES[i] if i < len(SCENE_TTS_RATES) else "+0%"
-            asyncio.run(_tts_async(narration, voice, str(scene_audio), rate))
+        # 나레이션 없으면 캡션 텍스트로 대체 (이모지 제거 후 TTS)
+        tts_text = narration or _caption_to_tts(caption)
+        rate = SCENE_TTS_RATES[i] if i < len(SCENE_TTS_RATES) else "+0%"
+
+        if tts_text:
+            asyncio.run(_tts_async(tts_text, voice, str(scene_audio), rate))
             tts_dur = get_duration(str(scene_audio))
             scene_audio_files.append(str(scene_audio))
             actual_durations.append(tts_dur)
-            print(f"    scene{i+1}: {tts_dur:.2f}초 (나레이션, rate={rate})")
+            src = "나레이션" if narration else "캡션TTS"
+            print(f"    scene{i+1}: {tts_dur:.2f}초 ({src}, rate={rate})")
         else:
-            # 나레이션 없는 장면 → 원본 duration 유지
             dur = float(scene["duration"])
             make_silence(str(scene_audio), dur)
             scene_audio_files.append(str(scene_audio))

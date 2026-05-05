@@ -163,7 +163,7 @@ JSON만 출력 (마크다운/설명 없이):
     {{"duration": 5, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "나레이션", "image_prompt": "..."}},
     {{"duration": 3, "caption": "감정충격 😱", "narration": "나레이션", "image_prompt": "..."}},
     {{"duration": 2, "caption": "저장유도 💾", "narration": "나레이션", "image_prompt": "..."}},
-    {{"duration": 1, "caption": "루프트리거 👀", "narration": "", "image_prompt": "..."}}
+    {{"duration": 1, "caption": "루프트리거 👀", "narration": "처음 장면 복선 언급 (10자 이내 짧게)", "image_prompt": "..."}}
   ],
   "total_duration": 24,
   "save_trigger": "저장유도 문장",
