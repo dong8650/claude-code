@@ -149,6 +149,14 @@ cd /root/claude-code && git pull origin main
 
 ## 마지막 업데이트
 
+2026-05-05 — v2.3 런타임 경로 분리 + 영상 품질 수정
+- auto_pipeline_v2/ 의존성 완전 제거 — 코드를 /root/claude-code/content-production/content-health/ 에서 직접 실행
+- 런타임 데이터: /root/content/runtime/health/ (config.py, health_used.json, episodes/, bgm/)
+- generate_image_v2.py, generate_script_v2.py sys.path 수정 (config import 경로)
+- make_video_v2.py FONT_PATH 수정: truetype → opentype (한글 제목/워터마크 □□□ 깨짐 수정)
+- TTS 나레이션 길이 scene duration에 맞게 단축 (TTS/자막 싱크 불일치 수정)
+- run_custom_v2.py: sys.path /root/auto_pipeline 참조 제거
+
 2026-05-05 — v2.2 코드 관리=git, 서버=기술스택만 실행하는 구조로 완성
 - 채널 브랜딩: 워터마크 "© 2026 매일의 설계" (v1 동일), CHANNEL_NAME "매일의 설계"
 - topics_drama.json 제거, 드라마 관련 코드 전면 건강 상식으로 전환

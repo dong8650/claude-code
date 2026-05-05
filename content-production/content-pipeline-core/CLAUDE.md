@@ -72,5 +72,17 @@ bgm/                ← BGM 파일 (대용량, git 미포함)
 - [ ] `topics_{name}.json` — 주제 풀
 - [ ] `generate_script.py` — 채널 포맷에 맞는 Claude 프롬프트
 - [ ] `CLAUDE.md` — 채널 문서
-- [ ] 서버 디렉토리 `/root/auto_pipeline_{name}/` 생성
-- [ ] n8n Git Sync 명령어 업데이트
+- [ ] 서버 런타임 디렉토리 `/root/content/runtime/{name}/` 생성
+- [ ] n8n Docker 볼륨 `/root/content:/root/content` 마운트 확인
+
+---
+
+## 마지막 업데이트
+
+2026-05-05 — 런타임 경로 분리 아키텍처 확정
+- auto_pipeline, auto_pipeline_v2 의존성 완전 제거
+- 코드: git repo에서 직접 실행 (`/root/claude-code/content-production/{채널}/`)
+- 런타임 데이터: `/root/content/runtime/{채널}/` (config.py, used.json, episodes/, bgm/)
+- n8n Docker 볼륨: `/root/auto_pipeline` 제거 → `/root/content`, `/root/claude-code` 추가
+- infra 문서: content-mindset/n8n/ → content-pipeline-core/infra/ 로 이동
+- n8n_workflow_daily_auto.json: Git Sync cp 제거, 전체 SSH 노드 경로 업데이트

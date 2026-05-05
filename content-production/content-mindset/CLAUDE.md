@@ -498,6 +498,16 @@ tail -f $RUNTIME/batch.log
 
 ## 마지막 업데이트
 
+2026-05-05 — v4.0 런타임 경로 분리 + 코드 git 직접 실행 구조 완성
+- auto_pipeline/ 의존성 완전 제거 — 코드를 /root/claude-code/content-production/content-mindset/ 에서 직접 실행
+- 런타임 데이터: /root/content/runtime/mindset/ (config.py, topics.json, infographic_used.json, episodes/, bgm/)
+- 전체 Python 파일 sys.path에 /root/content/runtime/mindset 추가 (config import 경로 수정)
+- n8n Git Sync: cp 제거, git pull 단일 명령으로 단순화
+- n8n_workflow_daily_auto.json: 모든 SSH 노드 경로 업데이트, infographic data_file full path 처리
+- n8n Docker 볼륨: /root/auto_pipeline 제거, /root/content + /root/claude-code 추가
+- infra 문서 content-pipeline-core/infra/ 로 이동 (n8n_requirements.md, n8n_pipeline_guide.md)
+- 서버 config.py BGM 경로 수정: /root/auto_pipeline/bgm/ → /root/content/runtime/mindset/bgm/
+
 2026-05-04 — v3.9 자동화 첫 실행 성공 + 이중화 서버 세팅 완료.
 - 192.168.0.21 n8n 자동화 첫 실행 성공: 인포그래픽 + 에피소드 2편 YouTube 업로드
 - 인포그래픽 BGM 제거 (--bgm 옵션 및 설명란 크레딧 삭제)
