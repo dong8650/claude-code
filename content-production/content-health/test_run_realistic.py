@@ -20,7 +20,7 @@ BASE_DIR    = Path(__file__).parent
 RUNTIME_DIR = Path("/root/content/runtime/health")
 sys.path.insert(0, str(BASE_DIR))
 
-# ── 실사 스타일 이미지 프롬프트로 교체된 스크립트 ──────────────────────
+# ── 실제 런닝하는 사람 이미지 프롬프트 ───────────────────────────────────
 SCRIPT = {
     "title": "달리기 후 뇌 변화",
     "content_type": "건강상식",
@@ -31,9 +31,9 @@ SCRIPT = {
             "caption": "달리기 20분 후\n뇌에서 일어나는 일",
             "narration": "달리기 20분 후 뇌에서 일어나는 일",
             "image_prompt": (
-                "cinematic surreal artwork of a glowing human brain sprouting tiny running legs, "
-                "dark dramatic atmosphere, neon blue-purple bioluminescent glow, "
-                "no text, no human faces, 9:16 vertical portrait"
+                "professional sports photography, lone runner sprinting on an empty road at golden hour sunrise, "
+                "shot from behind, dynamic motion, warm orange light, cinematic depth of field, "
+                "no text, 9:16 vertical portrait"
             ),
         },
         {
@@ -41,10 +41,9 @@ SCRIPT = {
             "caption": "도파민 + 세로토닌 동시 분비\n→ 항우울제와 동일한 효과\n→ 지속 시간 최대 2~3시간 🧠",
             "narration": "도파민, 세로토닌 동시 분비. 항우울제와 동일한 효과, 2~3시간 지속",
             "image_prompt": (
-                "photorealistic macro of luminous dopamine and serotonin molecule structures, "
-                "glowing neon orbs connected by electric synaptic pathways, "
-                "deep black background with purple-gold highlights, "
-                "no text, no human faces, 9:16 vertical"
+                "professional sports photography, runner mid-stride with arms raised in joy and triumph, "
+                "euphoric energy, bright sunlight, park trail, motion blur on background, "
+                "shot from low angle, no text, 9:16 vertical portrait"
             ),
         },
         {
@@ -52,9 +51,9 @@ SCRIPT = {
             "caption": "BDNF(뇌유래신경영양인자) 분비\n→ 뇌세포 새로 생성\n→ 기억력·집중력 즉시 향상 💡",
             "narration": "BDNF 분비로 뇌세포가 새로 생성됩니다. 기억력, 집중력 즉시 향상",
             "image_prompt": (
-                "cinematic macro photography of bioluminescent neural connections branching and growing, "
-                "neurons forming new synapses, dark blue-black background, "
-                "bright electric-green and cyan glow, no text, no human faces, 9:16 vertical portrait"
+                "cinematic close-up of a runner's focused expression and determined eyes, "
+                "sweat on skin, intense concentration, dramatic side lighting, "
+                "shallow depth of field, blurred green trail background, no text, 9:16 vertical portrait"
             ),
         },
         {
@@ -62,9 +61,9 @@ SCRIPT = {
             "caption": "근데 대부분이\n'운동 후에 머리 아프다'\n그냥 쉬어버림 ⚠️",
             "narration": "근데 대부분은 운동 후 머리 아프다며 그냥 쉬어버림",
             "image_prompt": (
-                "cinematic photo style of a person's legs slumped on a couch, "
-                "tired exhausted atmosphere, dark moody room, soft side lighting, "
-                "no human face visible, 9:16 vertical portrait"
+                "cinematic photo of a person in workout clothes sitting slumped on a couch, "
+                "holding their head, tired and exhausted after exercise, dark moody interior, "
+                "no face clearly visible, soft side lighting, no text, 9:16 vertical portrait"
             ),
         },
         {
@@ -72,9 +71,9 @@ SCRIPT = {
             "caption": "매일 쉬기만 했던 당신\n뇌가 굶고 있었음 😱",
             "narration": "매일 쉬기만 했던 당신, 뇌가 굶고 있었음",
             "image_prompt": (
-                "dramatic concept art of a withered dimly glowing human brain in a dark void, "
-                "contrasted with a bright healthy version nearby, surreal cinematic atmosphere, "
-                "no text, no human faces, 9:16 vertical portrait"
+                "cinematic photo of a person lying on a couch in athletic wear, staring at the ceiling, "
+                "phone on chest, unmotivated and still, dark moody living room, "
+                "no face clearly visible, dramatic low-key lighting, no text, 9:16 vertical portrait"
             ),
         },
         {
@@ -82,9 +81,8 @@ SCRIPT = {
             "caption": "저장해두고 운동 하기 싫을 때\n꺼내봐 💾",
             "narration": "저장해두고 꺼내봐",
             "image_prompt": (
-                "cinematic shot of worn running shoes on dark wooden floor, "
-                "single golden spotlight from above, bookmark save icon glowing softly in background, "
-                "motivational dramatic lighting, no text, 9:16 vertical portrait"
+                "cinematic close-up of worn running shoes being tied on a starting line, "
+                "golden morning light, motivational atmosphere, no text, 9:16 vertical portrait"
             ),
         },
         {
@@ -92,8 +90,8 @@ SCRIPT = {
             "caption": "처음부터 보면 복선 있음 👀",
             "narration": "",
             "image_prompt": (
-                "surreal cinematic image of a neon loop arrow circling a glowing brain silhouette, "
-                "dark dramatic atmosphere, electric blue-purple, no text, 9:16 vertical portrait"
+                "professional sports photography, runner looking back over their shoulder mid-run on a trail, "
+                "motion blur, golden backlight, mysterious atmosphere, no text, 9:16 vertical portrait"
             ),
         },
     ],
