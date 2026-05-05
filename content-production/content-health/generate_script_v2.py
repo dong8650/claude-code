@@ -140,19 +140,25 @@ def _build_prompt(topic: dict, retry_feedback: str = "") -> str:
 - 예: Hook이 "의사들이 말 안 해준 진실"이면 → "첫 장면 의사 발언, 다시 보면 이미 힌트 있었음 👀"
 
 ━━━ image_prompt + image_style 규칙 ━━━
-각 씬에 "image_style" 필드를 반드시 포함. 3가지 값 중 1개:
+각 씬에 "image_style" 필드를 반드시 포함. 씬 위치가 아닌 씬 내용 기준으로 최적 스타일 선택.
 
   "photo"   — 실사 스포츠/생활 사진 스타일
+              선택 기준: 현실에서 실제로 찍을 수 있는 장면 (운동하는 사람, 음식, 생활 행동 등)
               사람은 뒷모습·실루엣·부분(손발)만 허용. 얼굴 금지.
-              적용: Hook, 잘못된상식 반전, 루프트리거
 
-  "digital" — sci-fi 개념 시각화 스타일 (뇌·세포·신호·장기 등)
+  "digital" — sci-fi 개념 시각화 스타일
+              선택 기준: 눈에 보이지 않는 내부 메커니즘 (뇌·세포·신호전달·장기·화학물질 등)
               glowing neon particles, dark background, 3D render 느낌
-              적용: 과학설명1, 과학설명2
 
-  "object"  — 오브젝트 전용, 사람 완전 금지
-              운동화·가방·타월·물병 등 사물만으로 장면 표현
-              적용: 감정충격, 좋아요+저장유도 — content_policy 차단 방지
+  "object"  — 오브젝트 전용, 사람 완전 금지 ← 감정충격·저장유도 씬 필수 (content_policy 방지)
+              선택 기준: 사람 없이 사물로 상황을 암시해야 하는 씬
+              운동화·가방·타월·음식·약 등 주제 관련 오브젝트만
+
+판단 예시:
+  "달리기 후 도파민 분비" → digital (뇌 내부 신경물질, 눈에 안 보임)
+  "커피 마시는 아침 장면" → photo (실제 생활 장면)
+  "목 디스크 구조 압박" → digital (신체 내부 구조)
+  "운동 포기하고 쉬는 상황" → object (사람 없이 운동화·짐가방으로 표현)
 
 공통: DALL-E 3 영문 프롬프트, 9:16 portrait orientation, NO text in image
 
@@ -168,13 +174,13 @@ JSON만 출력 (마크다운/설명 없이):
   "hook": "Hook 문장 (15자 이내)",
   "hook_type": "identity_attack | expert_reversal | myth_direct",
   "scenes": [
-    {{"duration": 3, "caption": "Hook 자막\\n두 줄 이내", "narration": "TTS 나레이션 (caption 내용을 빠짐없이 포함, 자연스럽게 말하듯)", "image_style": "photo", "image_prompt": "cinematic sports photography, [주제 관련 동작/장면 — 뒷모습/실루엣], dramatic golden hour lighting, 9:16 vertical portrait, no text, no faces"}},
-    {{"duration": 5, "caption": "과학설명1\\n→ 수치", "narration": "caption 내용 포함 나레이션", "image_style": "digital", "image_prompt": "cinematic sci-fi visualization of [뇌/장기/세포/신호 등 주제 관련 신체 메커니즘], glowing neon particles, dark background, 9:16 vertical portrait, no text"}},
-    {{"duration": 5, "caption": "과학설명2\\n이모지 + 수치", "narration": "caption 내용 포함 나레이션", "image_style": "digital", "image_prompt": "cinematic sci-fi digital art of [추가 효과/연구 관련 신체 시각화], volumetric lighting, dark dramatic background, 9:16 vertical portrait, no text"}},
-    {{"duration": 5, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "caption 내용 포함 나레이션", "image_style": "photo", "image_prompt": "cinematic sports/lifestyle photo of [잘못된 상황 관련 실제 장면 — 뒷모습/실루엣], moody lighting, 9:16 vertical portrait, no faces, no text"}},
-    {{"duration": 3, "caption": "감정충격 😱", "narration": "caption 내용 포함 나레이션", "image_style": "object", "image_prompt": "cinematic still life of [운동화/가방/타월/물병 등 — 주제 관련 오브젝트], dark moody atmosphere, dramatic spotlight, no people, no text, 9:16 vertical portrait"}},
-    {{"duration": 2, "caption": "좋아요+저장유도 💾👍", "narration": "caption 내용 포함 나레이션", "image_style": "object", "image_prompt": "cinematic still life of [주제 관련 오브젝트], warm golden motivational light, inspiring atmosphere, no people, no text, 9:16 vertical portrait"}},
-    {{"duration": 1, "caption": "루프트리거 👀", "narration": "처음 장면 복선 언급 (10자 이내 짧게)", "image_style": "photo", "image_prompt": "cinematic [Hook 장면 재현 — 뒷모습/실루엣 허용], mysterious atmosphere, no text, 9:16 vertical portrait"}}
+    {{"duration": 3, "caption": "Hook 자막\\n두 줄 이내", "narration": "TTS 나레이션 (caption 내용을 빠짐없이 포함, 자연스럽게 말하듯)", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 DALL-E 프롬프트"}},
+    {{"duration": 5, "caption": "과학설명1\\n→ 수치", "narration": "caption 내용 포함 나레이션", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 DALL-E 프롬프트"}},
+    {{"duration": 5, "caption": "과학설명2\\n이모지 + 수치", "narration": "caption 내용 포함 나레이션", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 DALL-E 프롬프트"}},
+    {{"duration": 5, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "caption 내용 포함 나레이션", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 DALL-E 프롬프트"}},
+    {{"duration": 3, "caption": "감정충격 😱", "narration": "caption 내용 포함 나레이션", "image_style": "object", "image_prompt": "cinematic still life of [주제 관련 오브젝트], dark moody atmosphere, dramatic spotlight, no people, no text, 9:16 vertical portrait"}},
+    {{"duration": 2, "caption": "좋아요+저장유도 💾👍", "narration": "caption 내용 포함 나레이션", "image_style": "object", "image_prompt": "cinematic still life of [주제 관련 오브젝트], warm golden light, inspiring atmosphere, no people, no text, 9:16 vertical portrait"}},
+    {{"duration": 1, "caption": "루프트리거 👀", "narration": "처음 장면 복선 언급 (10자 이내 짧게)", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 DALL-E 프롬프트"}}
   ],
   "total_duration": 24,
   "save_trigger": "저장유도 문장",
