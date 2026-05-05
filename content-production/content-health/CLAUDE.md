@@ -75,26 +75,28 @@ episodes_v2/                   # 서버 고유 — git 미포함
 ## 실행 명령어
 
 ```bash
+HEALTH=/root/claude-code/content-production/content-health
+RUNTIME=/root/content/runtime/health
+
 # 자동 (주제 풀에서 순서대로)
-cd /root/auto_pipeline_v2
-python3 ai_orchestrator_v2.py --batch --count 1 --auto
+cd $HEALTH && python3 ai_orchestrator_v2.py --batch --count 1 --auto
 
 # 특정 주제 지정
-python3 ai_orchestrator_v2.py --topic morning_water
+cd $HEALTH && python3 ai_orchestrator_v2.py --topic morning_water
 
 # 사전 정의 스크립트 즉시 실행
-python3 run_custom_v2.py
+cd $HEALTH && python3 run_custom_v2.py
 
 # 백그라운드 (n8n용)
-setsid python3 -u ai_orchestrator_v2.py --batch --count 1 --auto \
-  > /root/auto_pipeline_v2/daily_gen_v2.log 2>&1 </dev/null &
+cd $HEALTH && setsid python3 -u ai_orchestrator_v2.py --batch --count 1 --auto \
+  > $RUNTIME/daily_gen_v2.log 2>&1 </dev/null &
 echo "PID=$!"
 
 # 로그 확인
-tail -f /root/auto_pipeline_v2/daily_gen_v2.log
+tail -f $RUNTIME/daily_gen_v2.log
 
 # 영상 다운로드
-scp root@192.168.0.21:/root/auto_pipeline_v2/episodes_v2/YYYYMMDD_NNN/output_final.mp4 ~/Downloads/
+scp root@192.168.0.21:$RUNTIME/episodes/YYYYMMDD_NNN/output_final.mp4 ~/Downloads/
 ```
 
 ---
@@ -102,11 +104,15 @@ scp root@192.168.0.21:/root/auto_pipeline_v2/episodes_v2/YYYYMMDD_NNN/output_fin
 ## 서버 최초 세팅
 
 ```bash
-cd /root/claude-code && git pull origin main
-mkdir -p /root/auto_pipeline_v2
-cp /root/claude-code/content-production/content-health/*.py /root/auto_pipeline_v2/
-cp /root/claude-code/content-production/content-health/topics_health.json /root/auto_pipeline_v2/
-cp /root/auto_pipeline/config.py /root/auto_pipeline_v2/
+# 1. git 클론
+git clone https://github.com/dong8650/claude-code.git /root/claude-code
+
+# 2. 런타임 디렉토리 생성
+mkdir -p /root/content/runtime/health/{episodes,bgm}
+
+# 3. 서버 고유 파일 배치
+# config.py → /root/content/runtime/health/
+# bgm/*.mp3 → /root/content/runtime/health/bgm/
 ```
 
 ---
@@ -114,10 +120,9 @@ cp /root/auto_pipeline/config.py /root/auto_pipeline_v2/
 ## Git Sync (n8n 자동화용)
 
 ```bash
-cd /root/claude-code && git pull origin main && \
-cp /root/claude-code/content-production/content-health/*.py /root/auto_pipeline_v2/ && \
-cp /root/claude-code/content-production/content-health/topics_health.json /root/auto_pipeline_v2/
+cd /root/claude-code && git pull origin main
 ```
+- cp 불필요 — 코드는 git repo에서 직접 실행
 
 ---
 

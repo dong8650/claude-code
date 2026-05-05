@@ -32,10 +32,19 @@ claude-code/
 
 ## 서버 디렉토리 구조
 
-| 채널 | Git 폴더 | 서버 실행 디렉토리 |
-|------|---------|----------------|
-| content-mindset | `content-mindset/` | `/root/auto_pipeline/` |
-| content-health | `content-health/` | `/root/auto_pipeline_v2/` |
+| 채널 | 코드 (git) | 런타임 데이터 |
+|------|-----------|-------------|
+| content-mindset | `/root/claude-code/content-production/content-mindset/` | `/root/content/runtime/mindset/` |
+| content-health | `/root/claude-code/content-production/content-health/` | `/root/content/runtime/health/` |
+
+**런타임 데이터 구조 (`/root/content/runtime/{채널}/`)**
+```
+config.py           ← API Keys (git 미포함)
+topics.json         ← 주제 풀 (mindset 전용, 서버 고유)
+*_used.json         ← 사용 이력
+episodes/           ← 생성된 영상
+bgm/                ← BGM 파일 (대용량, git 미포함)
+```
 
 ---
 

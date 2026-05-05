@@ -394,13 +394,15 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 # 1. git 클론
 git clone https://github.com/dong8650/claude-code.git /root/claude-code
 
-# 2. 최신 파일 복사
-cp /root/claude-code/content-production/content-mindset/*.py /root/auto_pipeline/
-cp /root/claude-code/content-production/content-mindset/infographic_data/infographic_topic_pool.json /root/auto_pipeline/
-cp /root/claude-code/content-production/content-mindset/topics.json /root/auto_pipeline/
+# 2. 런타임 디렉토리 생성
+mkdir -p /root/content/runtime/mindset/{episodes,bgm}
 
-# 이후 n8n이 매일 자동으로 git pull + cp 처리
-# topics.json / infographic_used.json은 서버 고유 — git에서 복사하지 않음
+# 3. 서버 고유 파일 배치
+# config.py, topics.json → /root/content/runtime/mindset/
+# bgm/*.mp3 → /root/content/runtime/mindset/bgm/
+
+# 이후 n8n이 매일 git pull 만 실행 (cp 불필요)
+# 코드는 /root/claude-code/content-production/content-mindset/ 에서 직접 실행
 ```
 
 ### n8n Docker 배포
@@ -429,8 +431,8 @@ docker run -d --name n8n --privileged --user root \
 
 ### Git Sync 아키텍처
 - **코드 관리**: `/root/claude-code/` (git repo) — n8n이 매일 00:00에 `git pull`
-- **실행 디렉토리**: `/root/auto_pipeline/` — git pull 후 `*.py` + `infographic_topic_pool.json` 자동 복사
-- **topics.json / infographic_used.json**: 서버 고유 보존 — git에서 복사하지 않음
+- **실행 디렉토리**: `/root/claude-code/content-production/content-mindset/` — git repo에서 직접 실행 (cp 불필요)
+- **런타임 데이터**: `/root/content/runtime/mindset/` — config.py, topics.json, infographic_used.json, episodes/, bgm/
 - **서버 이중화**: 192.168.0.21 (메인 Active) / 7.7.7.254 (백업 — 메인 장애 시 Active ON)
 
 ### n8n import 후 설정 필요 항목
@@ -447,42 +449,27 @@ docker run -d --name n8n --privileged --user root \
 ## 주요 명령어
 
 ```bash
+MINDSET=/root/claude-code/content-production/content-mindset
+RUNTIME=/root/content/runtime/mindset
+
 # ── 내레이션형 배치 (대본만) ──────────────────────────────
-cd /root/auto_pipeline
+cd $MINDSET
 python3 ai_orchestrator.py --batch --count 10 --script-only
 
 # ── 내레이션형 전체 파이프라인 ───────────────────────────
-nohup python3 -u ai_orchestrator.py --batch --count 10 --auto > batch.log 2>&1 &
+nohup python3 -u ai_orchestrator.py --batch --count 10 --auto > $RUNTIME/batch.log 2>&1 &
 
-# ── 다큐형 단일 영상 (ep 디렉토리 직접 지정) ─────────────
-python3 generate_stock_clips.py --ep episodes/YYYYMMDD_NNN --duration 5
-cd episodes/YYYYMMDD_NNN && python3 /root/auto_pipeline/generate_tts.py
-cd /root/auto_pipeline && python3 make_video_stock.py --ep episodes/YYYYMMDD_NNN --style docsul
+# ── 다큐형 배치 생성 ────────────────────────────────────
+nohup python3 -u ai_orchestrator.py --batch --count 1 --auto --video-type docu > $RUNTIME/batch.log 2>&1 &
 
 # ── 인포그래픽형 (랭킹/표) ───────────────────────────────
-python3 generate_infographic.py --data data_burnout.json --video --duration 7
+python3 generate_infographic.py --data $RUNTIME/data_burnout.json --video --duration 7
 
 # ── 영상 로컬 다운로드 ───────────────────────────────────
-scp root@192.168.0.21:/root/auto_pipeline/episodes/YYYYMMDD_NNN/output_final.mp4 ./
-scp root@192.168.0.21:/root/auto_pipeline/data_burnout.mp4 ./
+scp root@192.168.0.21:$RUNTIME/episodes/YYYYMMDD_NNN/output_final.mp4 ./
 
 # ── 배치 로그 확인 ───────────────────────────────────────
-tail -f /root/auto_pipeline/batch.log
-
-# ── YouTube 자동 업로드 (에피소드형, n8n 경유) ───────────
-cd /root/auto_pipeline
-python3 auto_upload.py --ep episodes/YYYYMMDD_NNN --style docsul --privacy private
-
-# ── YouTube 자동 업로드 (인포그래픽형, n8n 경유) ─────────
-cd /root/auto_pipeline
-python3 infographic_upload.py --data data_burnout.json --privacy private
-
-# ── 다큐형 배치 생성 (--video-type docu) ────────────────
-cd /root/auto_pipeline
-nohup python3 -u ai_orchestrator.py --batch --count 1 --auto --video-type docu > batch.log 2>&1 &
-
-# ── 백업 동기화 ──────────────────────────────────────────
-/root/auto_pipeline/sync_to_backup.sh
+tail -f $RUNTIME/batch.log
 ```
 
 ---

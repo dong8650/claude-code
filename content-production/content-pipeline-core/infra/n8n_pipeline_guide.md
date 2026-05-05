@@ -88,11 +88,10 @@
 
 ### [2] Git Sync
 ```bash
-cd /root/claude-code && git pull origin main \
-&& cp /root/claude-code/content-production/content-mindset/*.py /root/auto_pipeline/ \
-&& cp /root/claude-code/content-production/content-mindset/infographic_data/infographic_topic_pool.json /root/auto_pipeline/
+cd /root/claude-code && git pull origin main
 ```
-- `topics.json` / `infographic_used.json` 은 서버 고유 — **복사하지 않음**
+- cp 불필요 — 코드는 git repo에서 직접 실행
+- `topics.json` / `infographic_used.json` 은 `/root/content/runtime/mindset/` 에 서버 고유로 존재
 
 ### [3] Generate Infographic Data
 - `infographic_topic_pool.json` (50개 주제) 에서 미사용 주제 선택
@@ -102,9 +101,10 @@ cd /root/claude-code && git pull origin main \
 
 ### [10] Episode Generate
 ```bash
+cd /root/claude-code/content-production/content-mindset && \
 setsid python3 -u ai_orchestrator.py \
   --batch --count 1 --auto --video-type narration \
-  > /root/auto_pipeline/daily_gen.log 2>&1 </dev/null &
+  > /root/content/runtime/mindset/daily_gen.log 2>&1 </dev/null &
 echo "PID=$!"
 ```
 - `setsid` + `</dev/null` : SSH 세션 즉시 반환 (없으면 SSH가 프로세스 종료까지 대기)
@@ -126,10 +126,13 @@ echo "PID=$!"
 # 1. git 클론
 git clone https://github.com/dong8650/claude-code.git /root/claude-code
 
-# 2. 최신 파일 복사 (최초 1회)
-cp /root/claude-code/content-production/content-mindset/*.py /root/auto_pipeline/
-cp /root/claude-code/content-production/content-mindset/infographic_data/infographic_topic_pool.json /root/auto_pipeline/
-cp /root/claude-code/content-production/content-mindset/topics.json /root/auto_pipeline/
+# 2. 런타임 디렉토리 생성 (최초 1회)
+mkdir -p /root/content/runtime/mindset/{episodes,bgm}
+mkdir -p /root/content/runtime/health/{episodes,bgm}
+
+# 3. 서버 고유 파일 배치 (최초 1회)
+# config.py, topics.json, *_used.json → /root/content/runtime/{mindset,health}/
+# bgm/*.mp3 → /root/content/runtime/{mindset,health}/bgm/
 ```
 
 ### n8n Docker 배포
