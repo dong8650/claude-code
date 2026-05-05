@@ -1,0 +1,263 @@
+{
+  "name": "📅 Health Daily Both 02:00 (롱폼+숏폼)",
+  "nodes": [
+    {
+      "id": "node-cron",
+      "name": "Cron 02:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 2 * * *" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-ssh-git-sync",
+      "name": "Git Sync",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "parameters": {
+        "resource": "command",
+        "command": "cd /root/claude-code && git pull origin main && echo \"✅ git sync: $(git rev-parse --short HEAD)\""
+      },
+      "credentials": {
+        "sshPassword": {
+          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "name": "Content Server SSH"
+        }
+      }
+    },
+    {
+      "id": "node-ssh-competitor",
+      "name": "Competitor Analysis (월요일만)",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "parameters": {
+        "resource": "command",
+        "command": "DOW=$(date +%u); if [ \"$DOW\" = \"1\" ]; then cd /root/claude-code/content-production/content-health && python3 analyze_competitor.py > /root/content/runtime/health/competitor_analysis.log 2>&1 && echo \"✅ 경쟁분석 완료 (월요일)\"; else echo \"⏭️ 경쟁분석 스킵 ($(date +%A))\"; fi"
+      },
+      "credentials": {
+        "sshPassword": {
+          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "name": "Content Server SSH"
+        }
+      }
+    },
+    {
+      "id": "node-ssh-ep-gen",
+      "name": "Episode Generate (both)",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "parameters": {
+        "resource": "command",
+        "command": "cd /root/claude-code/content-production/content-health && setsid python3 -u ai_orchestrator_v2.py --batch --count 1 --auto --mode both > /root/content/runtime/health/daily_gen_v2.log 2>&1 </dev/null & echo \"PID=$!\""
+      },
+      "credentials": {
+        "sshPassword": {
+          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "name": "Content Server SSH"
+        }
+      }
+    },
+    {
+      "id": "node-wait",
+      "name": "Wait 90m",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 90,
+        "unit": "minutes"
+      },
+      "webhookId": "health-daily-wait-both"
+    },
+    {
+      "id": "node-ssh-ep-info",
+      "name": "Get Episode Info",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "parameters": {
+        "resource": "command",
+        "command": "cd /root/claude-code/content-production/content-health && python3 get_episode_info_v2.py"
+      },
+      "credentials": {
+        "sshPassword": {
+          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "name": "Content Server SSH"
+        }
+      }
+    },
+    {
+      "id": "node-code-ep-meta",
+      "name": "Episode Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300],
+      "parameters": {
+        "jsCode": "const raw = JSON.parse($json.stdout.trim());\nif (raw.error) {\n  return [{ json: { error: raw.error, ep_dir: raw.ep_dir || '' } }];\n}\nconst lf = raw.longform;\nconst sf = raw.shortform;\nif (!lf || !sf) {\n  return [{ json: { error: 'missing_longform_or_shortform' } }];\n}\nreturn [{\n  json: {\n    error: null,\n    lf_title:       lf.title,\n    lf_description: lf.description_full,\n    lf_tags:        (lf.tags_ko || []).join(','),\n    lf_video_path:  lf.video_path,\n    sf_title:       sf.title,\n    sf_description: sf.description_full,\n    sf_tags:        (sf.tags_ko || []).join(','),\n    sf_video_path:  sf.video_path,\n    privacy:        'private',\n  }\n}];"
+      }
+    },
+    {
+      "id": "node-if-ep",
+      "name": "Episode OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1780, 300],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.error || '' }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-read-lf-video",
+      "name": "Read Longform Video",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [2000, 200],
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $('Episode Metadata').item.json.lf_video_path }}"
+      }
+    },
+    {
+      "id": "node-yt-lf",
+      "name": "YouTube Longform",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [2220, 200],
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $('Episode Metadata').item.json.lf_title }}",
+        "regionCode": "KR",
+        "categoryId": "22",
+        "binaryPropertyName": "data",
+        "options": {
+          "description": "={{ $('Episode Metadata').item.json.lf_description }}",
+          "privacyStatus": "private",
+          "tags": "={{ $('Episode Metadata').item.json.lf_tags }}",
+          "madeForKids": false
+        }
+      },
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_WITH_YOUTUBE_CREDENTIAL_ID",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "id": "node-read-sf-video",
+      "name": "Read Shortform Video",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [2440, 200],
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $('Episode Metadata').item.json.sf_video_path }}"
+      }
+    },
+    {
+      "id": "node-yt-sf",
+      "name": "YouTube Shortform",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [2660, 200],
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $('Episode Metadata').item.json.sf_title }}",
+        "regionCode": "KR",
+        "categoryId": "22",
+        "binaryPropertyName": "data",
+        "options": {
+          "description": "={{ $('Episode Metadata').item.json.sf_description }}",
+          "privacyStatus": "private",
+          "tags": "={{ $('Episode Metadata').item.json.sf_tags }}",
+          "madeForKids": false
+        }
+      },
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_WITH_YOUTUBE_CREDENTIAL_ID",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "id": "node-slack-ok",
+      "name": "Slack Success",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2880, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": { "__rl": true, "value": "C0951952WKS", "mode": "id" },
+        "text": "={{ '✅ *건강편 자동화 완료 (롱폼+숏폼)*\\n🎬 롱폼: ' + $('Episode Metadata').item.json.lf_title + '\\n   https://youtube.com/watch?v=' + $('YouTube Longform').item.json.id + '\\n📱 숏폼: ' + $('Episode Metadata').item.json.sf_title + '\\n   https://youtube.com/watch?v=' + $json.id }}",
+        "otherOptions": {}
+      },
+      "credentials": {
+        "slackApi": { "id": "dcPtOSkSv11jKp0Z", "name": "Slack account" }
+      }
+    },
+    {
+      "id": "node-slack-fail",
+      "name": "Slack Failure",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2000, 400],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": { "__rl": true, "value": "C0951952WKS", "mode": "id" },
+        "text": "={{ '❌ *건강편 생성 실패 (롱폼+숏폼)*\\n에러: ' + $json.error + '\\n경로: ' + ($json.ep_dir || '-') }}",
+        "otherOptions": {}
+      },
+      "credentials": {
+        "slackApi": { "id": "dcPtOSkSv11jKp0Z", "name": "Slack account" }
+      }
+    }
+  ],
+  "connections": {
+    "Cron 02:00":                    { "main": [[{ "node": "Git Sync",                    "type": "main", "index": 0 }]] },
+    "Git Sync":                      { "main": [[{ "node": "Competitor Analysis (월요일만)", "type": "main", "index": 0 }]] },
+    "Competitor Analysis (월요일만)": { "main": [[{ "node": "Episode Generate (both)",      "type": "main", "index": 0 }]] },
+    "Episode Generate (both)":       { "main": [[{ "node": "Wait 90m",                     "type": "main", "index": 0 }]] },
+    "Wait 90m":                      { "main": [[{ "node": "Get Episode Info",              "type": "main", "index": 0 }]] },
+    "Get Episode Info":              { "main": [[{ "node": "Episode Metadata",              "type": "main", "index": 0 }]] },
+    "Episode Metadata":              { "main": [[{ "node": "Episode OK?",                  "type": "main", "index": 0 }]] },
+    "Episode OK?": {
+      "main": [
+        [{ "node": "Read Longform Video", "type": "main", "index": 0 }],
+        [{ "node": "Slack Failure",       "type": "main", "index": 0 }]
+      ]
+    },
+    "Read Longform Video":  { "main": [[{ "node": "YouTube Longform",  "type": "main", "index": 0 }]] },
+    "YouTube Longform":     { "main": [[{ "node": "Read Shortform Video", "type": "main", "index": 0 }]] },
+    "Read Shortform Video": { "main": [[{ "node": "YouTube Shortform", "type": "main", "index": 0 }]] },
+    "YouTube Shortform":    { "main": [[{ "node": "Slack Success",     "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Seoul"
+  }
+}
