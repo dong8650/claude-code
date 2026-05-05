@@ -289,10 +289,17 @@ _SUFFIX = {
 | emotional_attack | 7+ | 감정충격 장면 재작성 |
 | loop_value | 6+ | 루프트리거 재작성 (복선 구체화) |
 
-**Hook 3대 공식** (반드시 1개 적용):
-1. 정체성 공격형 — "매일 {행동}했던 당신, 사실 {충격 사실}"
-2. 전문가 반전형 — "의사들이 절대 말 안 해주는 {주제} 진실"
-3. 잘못된상식 직격형 — "{대중 상식}, 사실 반대임"
+**Hook 3대 공식 + 엄격 순환 (v3.4~)**:
+- 순환 주기: `myth_direct → identity_attack → expert_reversal → myth_direct → ...`
+- 타입은 Python `get_next_hook_type()`이 강제 결정 (Claude에게 선택 위임 안 함)
+- 표현은 타입별 11개 후보 중 Python `random.choice()`로 매회 랜덤 선택
+- 선택된 `{expression_template}`을 프롬프트에 주입 → Claude는 placeholder만 채움
+
+| 타입 | 예시 표현 (총 11개 중 랜덤) |
+|------|--------------------------|
+| myth_direct | "{상식}, 틀렸습니다" / "평생 믿었던 {상식}, 오늘 뒤집힙니다" / ... |
+| identity_attack | "매일 {행동}했던 당신, 사실 {충격 사실}" / "당신의 {행동}, 몸이 비명 지르고 있어" / ... |
+| expert_reversal | "의사들이 절대 말 안 해주는 {주제} 진실" / "최신 연구가 뒤집은 {주제} 상식" / ... |
 
 **TTS 장면별 속도** (알고리즘 완시율 최적화):
 | 장면 | 속도 | 이유 |
@@ -308,6 +315,13 @@ _SUFFIX = {
 ---
 
 ## 마지막 업데이트
+
+2026-05-06 — v3.4 Hook 3타입 엄격 순환 + 표현 11종 random.choice()
+- HOOK_TYPE_CYCLE: myth_direct → identity_attack → expert_reversal (3편 주기 강제 순환)
+- HOOK_VARIANTS: 타입별 11개 표현 후보, Python random.choice()로 매회 선택
+- generate_script_v2.py: get_next_hook_type() + get_hook_expression() 추가
+- 프롬프트에 forced_hook_type + expression_template 주입 → Claude는 placeholder만 채움
+- 기존 avoid_hook_type 방식(권고) → 강제 지정 방식으로 교체
 
 2026-05-06 — v3.3 롱폼 16:9 가로 영상 + --mode long 추가
 - 롱폼 해상도: ~~1080×1920 (9:16)~~ → **1920×1080 (16:9)**

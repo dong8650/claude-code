@@ -11,6 +11,7 @@ v2.5 변경사항:
 - 루프트리거: 첫 장면 구체적 복선 언급 강제
 """
 import json
+import random
 import re
 import sys
 from pathlib import Path
@@ -24,7 +25,53 @@ SCORE_PASS        = 7   # scroll_stop_power / emotional_attack 최소 기준
 LOOP_PASS         = 6   # loop_value 최소 기준
 MAX_RETRY         = 2
 HOOK_HISTORY_FILE = RUNTIME_DIR / "hook_history.json"
-HOOK_HISTORY_MAX  = 3   # 최근 N개 hook_type 기록
+HOOK_HISTORY_MAX  = 6   # 최근 N개 hook_type 기록
+
+# 3타입 엄격 순환 주기
+HOOK_TYPE_CYCLE = ["myth_direct", "identity_attack", "expert_reversal"]
+
+# 타입별 표현 후보 (10개 이상) — {placeholder}는 Claude가 주제에 맞게 채움
+HOOK_VARIANTS: dict[str, list[str]] = {
+    "myth_direct": [
+        "{상식}, 틀렸습니다",
+        "당신이 알던 {상식}, 사실이 아님",
+        "모두가 믿는 {상식}, 의사들은 반대로 말해",
+        "{상식}? 99%가 모르는 진실",
+        "{상식}, 사실 완전 반대",
+        "{상식} — 이게 왜 거짓말인지 알아?",
+        "평생 믿었던 {상식}, 오늘 뒤집힙니다",
+        "{상식}? 그거 틀린 거 알았어?",
+        "{상식} 믿는 사람, 지금도 손해 보는 중",
+        "{상식}, 이제 그만 믿어",
+        "30년 된 {상식}, 사실 오해였음",
+    ],
+    "identity_attack": [
+        "매일 {행동}했던 당신, 사실 {충격 사실}",
+        "지금도 {행동}하고 있다면, 이거 몰랐을 걸",
+        "{행동}하는 사람, 몸에 무슨 일 벌어지는지 알아?",
+        "당신이 {행동}할 때마다 몸은 이걸 하고 있었어",
+        "{행동} 중이라면, 지금 당장 봐야 해",
+        "이거 보는 사람 다 해당됨 — {행동}하고 있잖아",
+        "매일 {행동}하면서 왜 안 좋아지는지 이제 알았어",
+        "{행동}? 그게 문제였음",
+        "{행동}하는 당신, 오늘부터 달라져야 해",
+        "당신의 {행동}, 몸이 비명 지르고 있어",
+        "{행동}이 당신 몸을 망가뜨리는 방식",
+    ],
+    "expert_reversal": [
+        "의사들이 절대 말 안 해주는 {주제} 진실",
+        "병원에서 알려주지 않는 {주제}의 진짜 이유",
+        "전문가들이 모르는 척하는 {주제} 비밀",
+        "{주제}, 의사한테 물어보면 안 가르쳐줘",
+        "의학계가 숨기고 싶었던 {주제} 사실",
+        "교수들도 틀렸던 {주제} 진실",
+        "논문에는 있는데 아무도 말 안 해주는 {주제}",
+        "최신 연구가 뒤집은 {주제} 상식",
+        "의사들끼리만 아는 {주제} 진짜 메커니즘",
+        "{주제}, 전문가들은 이미 알고 있었어",
+        "의대에서 배우는데 환자한테 안 알려주는 {주제}",
+    ],
+}
 
 
 def load_used() -> set:
@@ -46,6 +93,24 @@ def save_hook_history(hook_type: str):
     HOOK_HISTORY_FILE.write_text(
         json.dumps({"history": history}, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+
+
+def get_next_hook_type() -> str:
+    """3타입 엄격 순환: 마지막 사용 타입 다음 순서로 강제 지정."""
+    history = load_hook_history()
+    if not history:
+        return HOOK_TYPE_CYCLE[0]
+    last = history[-1]
+    if last not in HOOK_TYPE_CYCLE:
+        return HOOK_TYPE_CYCLE[0]
+    next_idx = (HOOK_TYPE_CYCLE.index(last) + 1) % len(HOOK_TYPE_CYCLE)
+    return HOOK_TYPE_CYCLE[next_idx]
+
+
+def get_hook_expression(hook_type: str) -> str:
+    """타입별 후보 중 Python random.choice()로 표현 선택 (Claude에게 선택 위임 안 함)."""
+    variants = HOOK_VARIANTS.get(hook_type, HOOK_VARIANTS["myth_direct"])
+    return random.choice(variants)
 
 
 def save_used(used_ids: set):
@@ -110,7 +175,12 @@ def pick_topic(pool: list, used_ids: set) -> tuple:
     return unused[0], used_ids
 
 
-def _build_prompt(topic: dict, retry_feedback: str = "", avoid_hook_type: str = "") -> str:
+def _build_prompt(
+    topic: dict,
+    retry_feedback: str = "",
+    forced_hook_type: str = "",
+    expression_template: str = "",
+) -> str:
     title  = topic["title"]
     theme  = topic.get("theme", "")
     myth   = topic.get("myth", "")
@@ -122,37 +192,36 @@ def _build_prompt(topic: dict, retry_feedback: str = "", avoid_hook_type: str = 
 {retry_feedback}
 """
 
-    avoid_block = ""
-    if avoid_hook_type:
-        avoid_block = f"\n⚠️ Hook 타입 순환 규칙: 최근 '{avoid_hook_type}' 연속 사용됨 → 이번엔 다른 타입 선택 필수.\n"
+    hook_directive = ""
+    if forced_hook_type and expression_template:
+        hook_directive = f"""
+🔒 Hook 타입 강제 지정 (변경 금지): **{forced_hook_type}**
+🔒 Hook 표현 강제 (이 틀 그대로 사용, {{placeholder}} 부분만 주제에 맞게 채울 것):
+   → "{expression_template}"
+   예: "{expression_template.split('{')[0]}..." 형태로 주제 단어를 대입해 완성
+"""
 
     competitor_block = load_competitor_insights()
     if competitor_block:
         competitor_block = "\n" + competitor_block + "\n"
 
     return f"""너는 유튜브 쇼츠 알고리즘 전문가. 조회수 2.5k 천장을 돌파하는 S급 건강 쇼츠 대본만 작성.
-{retry_block}{avoid_block}{competitor_block}
+{retry_block}{hook_directive}{competitor_block}
 주제: {title}
 테마: {theme}
 잘못된 상식 (반전 포인트): {myth}
 
-━━━ Hook 3대 공식 (반드시 1개 선택, 설명형/정보형 절대 금지) ━━━
+━━━ Hook 규칙 (설명형/정보형 절대 금지) ━━━
+위 🔒 강제 지정이 있으면 반드시 그 타입·표현 사용. 없으면 아래 3대 공식 중 1개 선택.
+
 ① 정체성 공격형 (identity_attack)
-   "매일 {'{'}행동{'}'}했던 당신, 사실 {'{'}충격 사실{'}'}"
-   → 시청자의 현재 행동이 틀렸다는 공포. "이거 보는 사람 다 해당됨"
-
+   예: "매일 {'{'}행동{'}'}했던 당신, 사실 {'{'}충격 사실{'}'}"
 ② 전문가 반전형 (expert_reversal)
-   "의사들이 절대 말 안 해주는 {'{'}주제{'}'} 진실"
-   → 전문가와 일반인 사이의 정보 격차 공포
+   예: "의사들이 절대 말 안 해주는 {'{'}주제{'}'} 진실"
+③ 잘못된상식 직격형 (myth_direct)
+   예: "{'{'}상식{'}'}, 틀렸습니다"
 
-③ 잘못된상식 직격형 (myth_direct) — 표현 반드시 아래 5가지 중 랜덤 선택, "사실 반대임" 반복 금지
-   A. "{'{'}상식{'}'}, 틀렸습니다"
-   B. "당신이 알던 {'{'}상식{'}'}, 사실이 아님"
-   C. "모두가 믿는 {'{'}상식{'}'}, 의사들은 반대로 말해"
-   D. "{'{'}상식{'}'}? 99%가 모르는 진실"
-   E. "{'{'}상식{'}'}, 사실 반대임" ← 최근에 사용했으면 A~D 중 선택
-
-금지 Hook: "~하면 일어나는 일" / "~의 효과" / "~알고 계셨나요?" / 동일 표현 2회 연속
+금지 Hook: "~하면 일어나는 일" / "~의 효과" / "~알고 계셨나요?"
 
 ━━━ 장면 구조 (총 7장면, duration은 TTS 예상 기준) ━━━
 0. Hook (duration ~5): 위 3대 공식 중 하나. 2줄 이내.
@@ -273,12 +342,10 @@ def generate_script(topic: dict) -> dict:
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
     retry_feedback = ""
 
-    # hook_type 순환: 최근 연속 사용된 타입 감지
-    hook_history  = load_hook_history()
-    avoid_hook    = ""
-    if len(hook_history) >= 2 and len(set(hook_history[-2:])) == 1:
-        avoid_hook = hook_history[-1]
-        print(f"  🔄 Hook 순환 적용: '{avoid_hook}' 연속 사용 → 다른 타입 유도")
+    # 3타입 엄격 순환 — Python이 타입·표현 모두 결정, Claude에게 선택 위임 안 함
+    forced_hook_type   = get_next_hook_type()
+    expression_template = get_hook_expression(forced_hook_type)
+    print(f"  🔄 Hook 순환: {forced_hook_type} → 표현: \"{expression_template}\"")
 
     if INSIGHTS_FILE.exists():
         print(f"  📈 경쟁 분석 인사이트 로드: {INSIGHTS_FILE.name}")
@@ -286,7 +353,11 @@ def generate_script(topic: dict) -> dict:
         print(f"  ℹ️  경쟁 분석 없음 (python3 analyze_competitor.py 실행 시 활성화)")
 
     for attempt in range(MAX_RETRY + 1):
-        prompt = _build_prompt(topic, retry_feedback, avoid_hook_type=avoid_hook)
+        prompt = _build_prompt(
+            topic, retry_feedback,
+            forced_hook_type=forced_hook_type,
+            expression_template=expression_template,
+        )
         msg = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=2048,
