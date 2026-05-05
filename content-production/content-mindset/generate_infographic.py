@@ -44,6 +44,10 @@ from typing import Optional
 
 from PIL import Image, ImageDraw, ImageFont
 
+_CORE = Path(__file__).parent.parent / "content-pipeline-core"
+sys.path.insert(0, str(_CORE))
+from channel_branding import WATERMARK
+
 # ─────────────────────────────────────────────
 # 캔버스
 # ─────────────────────────────────────────────
@@ -126,6 +130,17 @@ def _rounded_rect(draw: ImageDraw.Draw, xy, fill, radius: int = 16, outline=None
                            outline=outline, width=outline_width)
 
 
+def _text_outlined(draw: ImageDraw.Draw, xy, text: str, font,
+                   fill, outline_color=(0, 0, 0), width: int = 3):
+    """텍스트에 두꺼운 아웃라인 효과 — 다크 배경에서 글자 가독성 극대화."""
+    x, y = xy
+    for dx in range(-width, width + 1):
+        for dy in range(-width, width + 1):
+            if dx != 0 or dy != 0:
+                draw.text((x + dx, y + dy), text, font=font, fill=outline_color)
+    draw.text((x, y), text, font=font, fill=fill)
+
+
 # ─────────────────────────────────────────────
 # RANKING — 다크 오렌지 스타일
 # ─────────────────────────────────────────────
@@ -138,10 +153,8 @@ def _draw_ranking(data: dict) -> Image.Image:
     subtitle = data.get("subtitle", "")
     items    = data.get("items", [])
     hi_top   = data.get("highlight_top", 3)
-    channel  = data.get("channel", "@life-architecture")
-
-    f_title   = _font(58)
-    f_sub     = _font(34)
+    f_title   = _font(66)
+    f_sub     = _font(36)
     f_rank    = _font(38)
     f_rank_hi = _font(44)
     f_label   = _font(38)
@@ -149,21 +162,30 @@ def _draw_ranking(data: dict) -> Image.Image:
     f_desc    = _font(28)
     f_mark    = _font(26)
 
-    y = 80
+    y  = 72
+    tx = PAD + 26
 
-    # 상단 오렌지 액센트 바
-    draw.rectangle([(PAD, y), (PAD + 6, y + 80)], fill=D_ORANGE)
+    # 제목 줄 수 사전 계산 → 헤더 배경 높이 결정
+    title_lines = _wrap(draw, title, f_title, W - tx - PAD)
+    header_h = len(title_lines) * 76 + 80  # 제목 + 부제목 + 여백
 
-    # 제목
-    tx = PAD + 22
-    for line in _wrap(draw, title, f_title, W - tx - PAD):
-        draw.text((tx, y), line, font=f_title, fill=D_TITLE)
-        y += 72
-    y += 6
+    # 헤더 배경 (아주 어두운 앰버 톤 — 다크 배경과 구분)
+    draw.rectangle([(0, 0), (W, y + header_h)], fill=(18, 7, 0))
 
-    # 부제목
-    draw.text((tx, y), subtitle, font=f_sub, fill=D_SUBTITLE)
-    y += 50
+    # 상단 오렌지 액센트 바 (두꺼워짐: 12px)
+    draw.rectangle([(PAD, y), (PAD + 12, y + header_h - 24)], fill=D_ORANGE)
+
+    # 제목 (아웃라인 효과로 가독성 강화)
+    for line in title_lines:
+        _text_outlined(draw, (tx, y), line, f_title,
+                       fill=D_WHITE, outline_color=(60, 24, 0), width=3)
+        y += 76
+    y += 8
+
+    # 부제목 (오렌지, 아웃라인)
+    _text_outlined(draw, (tx, y), subtitle, f_sub,
+                   fill=D_ORANGE, outline_color=(0, 0, 0), width=2)
+    y += 54
 
     # 구분선
     draw.line([(PAD, y), (W - PAD, y)], fill=D_DIVIDER, width=2)
@@ -219,8 +241,8 @@ def _draw_ranking(data: dict) -> Image.Image:
 
         y += row_h
 
-    # 채널명
-    _center(draw, H - 58, channel, f_mark, D_CHANNEL)
+    # 워터마크
+    _center(draw, H - 58, WATERMARK, f_mark, D_CHANNEL)
 
     return img
 
@@ -239,9 +261,7 @@ def _draw_table(data: dict) -> Image.Image:
     columns = data.get("columns", [])
     rows    = data.get("rows", [])
     footer  = data.get("footer", "")
-    channel = data.get("channel", "@life-architecture")
-
-    f_title = _font(54)
+    f_title = _font(64)
     f_sub   = _font(38)
     f_note  = _font(26)
     f_hdr   = _font(34)
@@ -249,20 +269,29 @@ def _draw_table(data: dict) -> Image.Image:
     f_foot  = _font(27)
     f_mark  = _font(25)
 
-    y = 72
+    y  = 72
+    tx = PAD + 26
 
-    # 상단 오렌지 액센트 바
-    draw.rectangle([(PAD, y), (PAD + 6, y + 72)], fill=D_ORANGE)
-    tx = PAD + 22
+    # 제목 줄 수 사전 계산 → 헤더 배경 높이 결정
+    title_lines = _wrap(draw, title, f_title, W - tx - PAD)
+    header_h = len(title_lines) * 70 + 80
 
-    # 제목
-    for line in _wrap(draw, title, f_title, W - tx - PAD):
-        draw.text((tx, y), line, font=f_title, fill=D_TITLE)
-        y += 66
+    # 헤더 배경 (아주 어두운 앰버 톤)
+    draw.rectangle([(0, 0), (W, y + header_h)], fill=(18, 7, 0))
+
+    # 상단 오렌지 액센트 바 (12px)
+    draw.rectangle([(PAD, y), (PAD + 12, y + header_h - 24)], fill=D_ORANGE)
+
+    # 제목 (아웃라인 효과)
+    for line in title_lines:
+        _text_outlined(draw, (tx, y), line, f_title,
+                       fill=D_WHITE, outline_color=(60, 24, 0), width=3)
+        y += 70
     y += 4
 
-    # 부제목
-    draw.text((tx, y), subtitle, font=f_sub, fill=D_SUBTITLE)
+    # 부제목 (오렌지, 아웃라인)
+    _text_outlined(draw, (tx, y), subtitle, f_sub,
+                   fill=D_ORANGE, outline_color=(0, 0, 0), width=2)
     y += 54
 
     # 노트 박스
@@ -315,7 +344,7 @@ def _draw_table(data: dict) -> Image.Image:
             _center(draw, y, line, f_foot, D_DESC)
             y += 36
 
-    _center(draw, H - 52, channel, f_mark, D_CHANNEL)
+    _center(draw, H - 52, WATERMARK, f_mark, D_CHANNEL)
 
     return img
 
