@@ -61,9 +61,9 @@ SCRIPT = {
             "caption": "근데 대부분이\n'운동 후에 머리 아프다'\n그냥 쉬어버림 ⚠️",
             "narration": "근데 대부분은 운동 후 머리 아프다며 그냥 쉬어버림",
             "image_prompt": (
-                "cinematic photo of a person in workout clothes sitting slumped on a couch, "
-                "holding their head, tired and exhausted after exercise, dark moody interior, "
-                "no face clearly visible, soft side lighting, no text, 9:16 vertical portrait"
+                "cinematic photo of running shoes left on the floor next to a couch, "
+                "workout towel and water bottle untouched, soft warm indoor lighting, "
+                "post-exercise rest atmosphere, no people, no text, 9:16 vertical portrait"
             ),
         },
         {
@@ -71,9 +71,9 @@ SCRIPT = {
             "caption": "매일 쉬기만 했던 당신\n뇌가 굶고 있었음 😱",
             "narration": "매일 쉬기만 했던 당신, 뇌가 굶고 있었음",
             "image_prompt": (
-                "cinematic photo of a person lying on a couch in athletic wear, staring at the ceiling, "
-                "phone on chest, unmotivated and still, dark moody living room, "
-                "no face clearly visible, dramatic low-key lighting, no text, 9:16 vertical portrait"
+                "cinematic photo of a gym bag left closed and unused by the front door, "
+                "running shoes beside it, dark moody hallway, dramatic side lighting, "
+                "procrastination and inactivity concept, no people, no text, 9:16 vertical portrait"
             ),
         },
         {
@@ -103,7 +103,9 @@ SCRIPT = {
 
 
 def generate_realistic_image(image_prompt: str, out_path: Path, retry: int = 3) -> Path:
-    """실사/시네마틱 DALL-E 이미지 (카툰 스타일 없음)."""
+    """실사/시네마틱 DALL-E 이미지 (카툰 스타일 없음).
+    content_policy_violation 발생 시 오브젝트 기반 안전 프롬프트로 자동 재시도.
+    """
     import base64
     from openai import OpenAI
     sys.path.insert(0, "/root/content/runtime/health")
@@ -111,33 +113,46 @@ def generate_realistic_image(image_prompt: str, out_path: Path, retry: int = 3) 
 
     client = OpenAI(api_key=OPENAI_API_KEY)
 
-    safe_prompt = (
-        f"{image_prompt}, "
-        "TALL VERTICAL 9:16 PORTRAIT composition, single main subject centered vertically, "
-        "NO horizontal side-by-side layout, NO text overlay in image, NO real human faces, "
-        "photorealistic or cinematic digital art style, dramatic professional lighting"
+    base_suffix = (
+        ", TALL VERTICAL 9:16 PORTRAIT composition, single main subject centered vertically, "
+        "NO horizontal layout, NO text in image, NO real human faces, "
+        "photorealistic cinematic style, dramatic professional lighting"
     )
 
-    for attempt in range(retry):
-        try:
-            resp = client.images.generate(
-                model="dall-e-3",
-                prompt=safe_prompt,
-                size="1024x1792",
-                quality="standard",
-                n=1,
-                response_format="b64_json",
-            )
-            img_data = base64.b64decode(resp.data[0].b64_json)
-            out_path.write_bytes(img_data)
-            print(f"    ✅ {out_path.name}")
-            return out_path
-        except Exception as e:
-            if attempt < retry - 1:
-                time.sleep(2 ** attempt)
-            else:
-                print(f"    ❌ {out_path.name}: {e}")
-                raise e
+    # content_policy 차단 시 사람 없는 오브젝트 기반 대체 프롬프트
+    safe_fallback = (
+        f"cinematic photo of running shoes and workout gear on a wooden floor, "
+        f"dramatic spotlight, motivational sports atmosphere, no people, no text, "
+        f"9:16 vertical portrait"
+    )
+
+    prompts_to_try = [image_prompt + base_suffix, safe_fallback + base_suffix]
+
+    for prompt in prompts_to_try:
+        for attempt in range(retry):
+            try:
+                resp = client.images.generate(
+                    model="dall-e-3",
+                    prompt=prompt,
+                    size="1024x1792",
+                    quality="standard",
+                    n=1,
+                    response_format="b64_json",
+                )
+                img_data = base64.b64decode(resp.data[0].b64_json)
+                out_path.write_bytes(img_data)
+                print(f"    ✅ {out_path.name}")
+                return out_path
+            except Exception as e:
+                err_str = str(e)
+                if "content_policy_violation" in err_str:
+                    print(f"    ⚠️  콘텐츠 필터 차단 → 안전 프롬프트로 재시도")
+                    break  # 즉시 safe_fallback으로 전환
+                if attempt < retry - 1:
+                    time.sleep(2 ** attempt)
+                else:
+                    print(f"    ❌ {out_path.name}: {e}")
+                    raise e
 
 
 def main():
