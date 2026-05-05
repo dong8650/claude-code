@@ -135,6 +135,77 @@ def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health
     }
 
 
+def run_episode_long(topic_id: str = None, auto: bool = False) -> dict:
+    """롱폼만 단독 생성."""
+    from generate_script_v2 import load_used, save_used, pick_topic
+    from generate_script_longform import generate_longform_script
+    from generate_image_longform import generate_all_images_pexels
+    from make_video_v2 import make_video
+
+    pool_file = BASE_DIR / "topics_health.json"
+    pool = json.loads(pool_file.read_text(encoding="utf-8"))
+
+    if topic_id:
+        topic = next((t for t in pool if t["id"] == topic_id), None)
+        if not topic:
+            return {"error": f"topic_id not found: {topic_id}"}
+        used_ids = load_used()
+    else:
+        used_ids = load_used()
+        topic, used_ids = pick_topic(pool, used_ids)
+
+    ep_dir  = get_next_ep_dir()
+    ep_name = ep_dir.name
+    bgm     = str(RUNTIME_DIR / "bgm/bgm_dramatic_ambient.mp3")
+    bgm     = bgm if Path(bgm).exists() else None
+    start   = time.time()
+
+    logger.info(f"[{ep_name}] 롱폼 대본 생성 중...")
+    try:
+        script = generate_longform_script(topic)
+    except Exception as e:
+        logger.error(f"[{ep_name}] 롱폼 대본 실패: {e}")
+        return {"error": str(e), "ep_dir": str(ep_dir)}
+
+    (ep_dir / "script_longform.json").write_text(
+        json.dumps(script, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    logger.info(f"[{ep_name}] 롱폼 대본 완성 — {len(script['scenes'])}씬")
+
+    logger.info(f"[{ep_name}] Pexels 이미지 다운로드 중... ({len(script['scenes'])}장)")
+    try:
+        generate_all_images_pexels(script["scenes"], ep_dir)
+    except Exception as e:
+        logger.error(f"[{ep_name}] 롱폼 이미지 실패: {e}")
+        return {"error": str(e), "ep_dir": str(ep_dir)}
+
+    logger.info(f"[{ep_name}] 롱폼 영상 합성 중...")
+    try:
+        output = make_video(ep_dir, script, bgm, generate_tts=True, landscape=True)
+    except Exception as e:
+        logger.error(f"[{ep_name}] 롱폼 영상 합성 실패: {e}")
+        return {"error": str(e), "ep_dir": str(ep_dir)}
+
+    elapsed = time.time() - start
+    if not topic_id:
+        used_ids.add(topic["id"])
+        save_used(used_ids)
+
+    logger.info(f"[{ep_name}] 롱폼 완료 ({elapsed:.1f}s) — {output}")
+    return {
+        "ep_dir":         str(ep_dir),
+        "ep_name":        ep_name,
+        "title":          topic.get("title", ""),
+        "hook":           script.get("hook", ""),
+        "video_path":     str(output),
+        "video_type":     "longform",
+        "n_scenes":       len(script["scenes"]),
+        "total_duration": script.get("total_duration", 0),
+        "tags_ko":        script.get("tags_ko", []),
+        "elapsed":        elapsed,
+    }
+
+
 def run_episode_both(topic_id: str = None, auto: bool = False) -> dict:
     """롱폼 생성 → 숏폼 이미지 재활용 순차 실행."""
     from generate_script_v2 import generate_script, load_used, save_used, pick_topic
@@ -282,8 +353,8 @@ def main():
     parser.add_argument("--auto",    action="store_true")
     parser.add_argument("--topic",   type=str, default=None, help="특정 topic_id 지정")
     parser.add_argument("--channel", type=str, default="health")
-    parser.add_argument("--mode",    type=str, default="shorts", choices=["shorts", "both"],
-                        help="shorts=숏폼만(기본값) / both=롱폼+숏폼 순차 생성")
+    parser.add_argument("--mode",    type=str, default="shorts", choices=["shorts", "long", "both"],
+                        help="shorts=숏폼만(기본값) / long=롱폼만 / both=롱폼+숏폼 순차 생성")
     args = parser.parse_args()
 
     count = args.count if args.batch else 1
@@ -306,6 +377,12 @@ def main():
                 logger.warning(f"  FAIL(SF) — {sf['error']}")
             else:
                 logger.info(f"  PASS(SF) {sf['ep_name']} | {sf['title']} | {sf['elapsed']:.1f}s")
+        elif args.mode == "long":
+            result = run_episode_long(topic_id=topic_id, auto=args.auto)
+            if result.get("error"):
+                logger.warning(f"  FAIL(LF) — {result['error']}")
+            else:
+                logger.info(f"  PASS(LF) {result['ep_name']} | {result['title']} | {result['elapsed']:.1f}s")
         else:
             result = run_episode(topic_id=topic_id, auto=args.auto, channel=args.channel)
             if result.get("error"):
