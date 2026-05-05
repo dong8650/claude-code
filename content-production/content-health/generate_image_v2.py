@@ -1,14 +1,13 @@
 """
 generate_image_v2.py
 ====================
-건강 상식 DALL-E 3 이미지 생성 — 씬별 3가지 스타일 자동 선택
-  photo   : 스포츠/실사 사진 (Hook, 잘못된상식, 루프트리거)
-  digital : sci-fi 개념 시각화 (과학설명1/2)
-  object  : 오브젝트 전용, 사람 없음 (감정충격, 저장유도) — content_policy 방지
-9:16 세로형, 1024x1792
-content_policy_violation 발생 시 object safe_fallback으로 자동 전환.
+건강 상식 연구소 — 숏폼 이미지 생성
+fal.ai Flux.1 Dev (DALL-E 3 대비 69% 비용 절감: $0.08 → $0.025/장)
+씬별 3가지 스타일: photo / digital / object
+9:16 세로형 portrait_16_9 (576×1024 → ffmpeg에서 1080×1920 upscale)
+content_policy 차단 시 object safe_fallback 자동 전환
 """
-import base64
+import os
 import sys
 import time
 from pathlib import Path
@@ -39,14 +38,36 @@ _SAFE_FALLBACK = (
 )
 
 
+def _call_flux(prompt: str, api_key: str) -> bytes:
+    """fal.ai Flux.1 Dev 호출 → 이미지 bytes 반환."""
+    import fal_client
+    import requests
+
+    os.environ["FAL_KEY"] = api_key
+
+    result = fal_client.subscribe(
+        "fal-ai/flux/dev",
+        arguments={
+            "prompt":                prompt,
+            "image_size":            "portrait_16_9",
+            "num_inference_steps":   28,
+            "guidance_scale":        3.5,
+            "num_images":            1,
+            "enable_safety_checker": True,
+            "output_format":         "jpeg",
+        },
+    )
+    image_url = result["images"][0]["url"]
+    resp = requests.get(image_url, timeout=30)
+    resp.raise_for_status()
+    return resp.content
+
+
 def generate_health_image(
     image_prompt: str, out_path: Path, image_style: str = "photo", retry: int = 3
 ) -> Path:
-    from openai import OpenAI
     sys.path.insert(0, "/root/content/runtime/health")
-    from config import OPENAI_API_KEY
-
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    from config import FAL_API_KEY
 
     suffix = _SUFFIX.get(image_style, _SUFFIX["photo"])
     prompts_to_try = [
@@ -57,26 +78,19 @@ def generate_health_image(
     for prompt in prompts_to_try:
         for attempt in range(retry):
             try:
-                resp = client.images.generate(
-                    model="dall-e-3",
-                    prompt=prompt,
-                    size="1024x1792",
-                    quality="standard",
-                    n=1,
-                    response_format="b64_json",
-                )
-                img_data = base64.b64decode(resp.data[0].b64_json)
-                out_path.write_bytes(img_data)
+                img_bytes = _call_flux(prompt, FAL_API_KEY)
+                out_path.write_bytes(img_bytes)
                 return out_path
             except Exception as e:
-                if "content_policy_violation" in str(e):
+                err = str(e).lower()
+                if any(k in err for k in ("safety", "content", "blocked", "policy")):
                     break  # 즉시 safe_fallback으로 전환
                 if attempt < retry - 1:
                     time.sleep(2 ** attempt)
                 else:
-                    raise e
+                    raise
 
-    raise RuntimeError(f"이미지 생성 실패 (content_policy + fallback 모두 차단): {out_path.name}")
+    raise RuntimeError(f"이미지 생성 실패 (safety + fallback 모두 차단): {out_path.name}")
 
 
 def generate_all_images(scenes: list, ep_dir: Path) -> list:
@@ -86,7 +100,7 @@ def generate_all_images(scenes: list, ep_dir: Path) -> list:
             "image_prompt",
             "cinematic health concept, dramatic lighting, 9:16 vertical portrait",
         )
-        style = scene.get("image_style", "photo")
+        style   = scene.get("image_style", "photo")
         out_path = ep_dir / f"bg{i+1}.jpg"
         if out_path.exists():
             image_paths.append(str(out_path))
@@ -94,5 +108,5 @@ def generate_all_images(scenes: list, ep_dir: Path) -> list:
         print(f"    🎨 bg{i+1}.jpg [{style}]")
         generate_health_image(prompt, out_path, image_style=style)
         image_paths.append(str(out_path))
-        time.sleep(1)
+        time.sleep(0.5)
     return image_paths
