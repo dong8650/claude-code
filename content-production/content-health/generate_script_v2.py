@@ -20,15 +20,32 @@ RUNTIME_DIR   = Path("/root/content/runtime/health")
 USED_FILE     = RUNTIME_DIR / "health_used.json"
 INSIGHTS_FILE = RUNTIME_DIR / "competitor_insights.json"
 
-SCORE_PASS   = 7   # scroll_stop_power / emotional_attack 최소 기준
-LOOP_PASS    = 6   # loop_value 최소 기준
-MAX_RETRY    = 2
+SCORE_PASS        = 7   # scroll_stop_power / emotional_attack 최소 기준
+LOOP_PASS         = 6   # loop_value 최소 기준
+MAX_RETRY         = 2
+HOOK_HISTORY_FILE = RUNTIME_DIR / "hook_history.json"
+HOOK_HISTORY_MAX  = 3   # 최근 N개 hook_type 기록
 
 
 def load_used() -> set:
     if not USED_FILE.exists():
         return set()
     return set(json.loads(USED_FILE.read_text(encoding="utf-8")).get("used_ids", []))
+
+
+def load_hook_history() -> list:
+    if not HOOK_HISTORY_FILE.exists():
+        return []
+    return json.loads(HOOK_HISTORY_FILE.read_text(encoding="utf-8")).get("history", [])
+
+
+def save_hook_history(hook_type: str):
+    history = load_hook_history()
+    history.append(hook_type)
+    history = history[-HOOK_HISTORY_MAX:]
+    HOOK_HISTORY_FILE.write_text(
+        json.dumps({"history": history}, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
 
 def save_used(used_ids: set):
@@ -93,7 +110,7 @@ def pick_topic(pool: list, used_ids: set) -> tuple:
     return unused[0], used_ids
 
 
-def _build_prompt(topic: dict, retry_feedback: str = "") -> str:
+def _build_prompt(topic: dict, retry_feedback: str = "", avoid_hook_type: str = "") -> str:
     title  = topic["title"]
     theme  = topic.get("theme", "")
     myth   = topic.get("myth", "")
@@ -105,25 +122,37 @@ def _build_prompt(topic: dict, retry_feedback: str = "") -> str:
 {retry_feedback}
 """
 
+    avoid_block = ""
+    if avoid_hook_type:
+        avoid_block = f"\n⚠️ Hook 타입 순환 규칙: 최근 '{avoid_hook_type}' 연속 사용됨 → 이번엔 다른 타입 선택 필수.\n"
+
     competitor_block = load_competitor_insights()
     if competitor_block:
         competitor_block = "\n" + competitor_block + "\n"
 
     return f"""너는 유튜브 쇼츠 알고리즘 전문가. 조회수 2.5k 천장을 돌파하는 S급 건강 쇼츠 대본만 작성.
-{retry_block}{competitor_block}
+{retry_block}{avoid_block}{competitor_block}
 주제: {title}
 테마: {theme}
 잘못된 상식 (반전 포인트): {myth}
 
 ━━━ Hook 3대 공식 (반드시 1개 선택, 설명형/정보형 절대 금지) ━━━
-① 정체성 공격형 — "매일 {'{'}행동{'}'}했던 당신, 사실 {'{'}충격 사실{'}'}"
+① 정체성 공격형 (identity_attack)
+   "매일 {'{'}행동{'}'}했던 당신, 사실 {'{'}충격 사실{'}'}"
    → 시청자의 현재 행동이 틀렸다는 공포. "이거 보는 사람 다 해당됨"
-② 전문가 반전형 — "의사들이 절대 말 안 해주는 {'{'}주제{'}'} 진실"
-   → 전문가와 일반인 사이의 정보 격차 공포
-③ 잘못된상식 직격형 — "{'{'}대중이 믿는 상식{'}'}, 사실 반대임"
-   → 잘못된 상식을 직격. 공유 욕구 폭발
 
-금지 Hook: "~하면 일어나는 일" / "~의 효과" / "~알고 계셨나요?"
+② 전문가 반전형 (expert_reversal)
+   "의사들이 절대 말 안 해주는 {'{'}주제{'}'} 진실"
+   → 전문가와 일반인 사이의 정보 격차 공포
+
+③ 잘못된상식 직격형 (myth_direct) — 표현 반드시 아래 5가지 중 랜덤 선택, "사실 반대임" 반복 금지
+   A. "{'{'}상식{'}'}, 틀렸습니다"
+   B. "당신이 알던 {'{'}상식{'}'}, 사실이 아님"
+   C. "모두가 믿는 {'{'}상식{'}'}, 의사들은 반대로 말해"
+   D. "{'{'}상식{'}'}? 99%가 모르는 진실"
+   E. "{'{'}상식{'}'}, 사실 반대임" ← 최근에 사용했으면 A~D 중 선택
+
+금지 Hook: "~하면 일어나는 일" / "~의 효과" / "~알고 계셨나요?" / 동일 표현 2회 연속
 
 ━━━ 장면 구조 (총 7장면, duration은 TTS 예상 기준) ━━━
 0. Hook (duration ~5): 위 3대 공식 중 하나. 2줄 이내.
@@ -244,13 +273,20 @@ def generate_script(topic: dict) -> dict:
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
     retry_feedback = ""
 
+    # hook_type 순환: 최근 연속 사용된 타입 감지
+    hook_history  = load_hook_history()
+    avoid_hook    = ""
+    if len(hook_history) >= 2 and len(set(hook_history[-2:])) == 1:
+        avoid_hook = hook_history[-1]
+        print(f"  🔄 Hook 순환 적용: '{avoid_hook}' 연속 사용 → 다른 타입 유도")
+
     if INSIGHTS_FILE.exists():
         print(f"  📈 경쟁 분석 인사이트 로드: {INSIGHTS_FILE.name}")
     else:
         print(f"  ℹ️  경쟁 분석 없음 (python3 analyze_competitor.py 실행 시 활성화)")
 
     for attempt in range(MAX_RETRY + 1):
-        prompt = _build_prompt(topic, retry_feedback)
+        prompt = _build_prompt(topic, retry_feedback, avoid_hook_type=avoid_hook)
         msg = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=2048,
@@ -268,6 +304,7 @@ def generate_script(topic: dict) -> dict:
 
         if passed:
             print(f"  ✅ Quality Gate 통과")
+            save_hook_history(hook_type)
             return script
 
         if attempt < MAX_RETRY:
@@ -276,6 +313,7 @@ def generate_script(topic: dict) -> dict:
             retry_feedback = feedback
         else:
             print(f"  ⚠️ Quality Gate 미달이나 최대 재시도 도달 — 현재 버전 사용")
+            save_hook_history(hook_type)
 
     return script
 
