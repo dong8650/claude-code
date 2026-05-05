@@ -24,7 +24,7 @@ claude-code/
 |------|------|
 | API Key / 경로 설정 | `config.example.py` → 서버의 `config.py` |
 | 주제 풀 | `topics_*.json` (각 채널 폴더) |
-| 채널 브랜딩 | `make_video_*.py` 상단 상수 또는 `channel_config.py` |
+| **채널 공통 브랜딩** | **`channel_branding.py`** — WATERMARK / CHANNEL_NAME / CHANNEL_HANDLE |
 | 영상 엔진 | `make_video_*.py` (각 채널 폴더) |
 | n8n 워크플로 | 각 채널 폴더의 `n8n/` |
 
@@ -68,7 +68,7 @@ bgm/                ← BGM 파일 (대용량, git 미포함)
 ## 신규 채널 추가 체크리스트
 
 - [ ] `content-{name}/` 폴더 생성
-- [ ] `channel_config.py` — 브랜딩 상수 (CHANNEL_NAME, WATERMARK, SLOGAN)
+- [ ] `channel_branding.py` (pipeline-core) — WATERMARK/CHANNEL_NAME 이미 정의됨, 채널 고유 SLOGAN만 로컬에 정의
 - [ ] `topics_{name}.json` — 주제 풀
 - [ ] `generate_script.py` — 채널 포맷에 맞는 Claude 프롬프트
 - [ ] `CLAUDE.md` — 채널 문서
@@ -78,6 +78,11 @@ bgm/                ← BGM 파일 (대용량, git 미포함)
 ---
 
 ## 마지막 업데이트
+
+2026-05-05 — channel_branding.py 추가 + 공통 모듈 구조 확정
+- channel_branding.py 신규: WATERMARK="© 2026 매일의 설계", CHANNEL_NAME, CHANNEL_HANDLE
+- 모든 채널이 from channel_branding import WATERMARK 로 단일 출처 사용
+- ffmpeg_utils.py / audio_core.py / video_core.py: content-health 검증 완료
 
 2026-05-05 — 런타임 경로 분리 아키텍처 확정
 - auto_pipeline, auto_pipeline_v2 의존성 완전 제거

@@ -8,9 +8,9 @@
 
 | 항목 | 내용 |
 |------|------|
-| 채널명 | 매일의 설계 |
-| 워터마크 | © 2026 매일의 설계 |
-| 슬로건 | 매일 하나씩, 건강 상식을 쌓자 |
+| 채널명 | 매일의 설계 (`channel_branding.CHANNEL_NAME`) |
+| 워터마크 | © 2026 매일의 설계 (`channel_branding.WATERMARK`) |
+| 슬로건 | 매일 하나씩, 건강 상식을 쌓자 (health 전용, 로컬 상수) |
 | 콘텐츠 | 잘못된 건강 상식 뒤집기 — 반복재생·저장 폭발 |
 | 길이 | 22~26초 (TTS 실제 길이 기준, 고정 아님) |
 | 이미지 | DALL-E 3 귀여운 장기/캐릭터 스타일 (실제 사람 금지) |
@@ -214,8 +214,8 @@ pip install yt-dlp google-api-python-client google-auth-oauthlib numpy moviepy
 | 패키지 | 용도 | 구현 상태 |
 |--------|------|---------|
 | `yt-dlp` | 경쟁 채널 쇼츠 Hook 패턴 분석 | ✅ analyze_competitor.py |
-| `google-api-python-client` | YouTube Analytics API (완시율·반복재생 측정) | ⏳ 미구현 |
-| `google-auth-oauthlib` | YouTube Analytics OAuth 인증 | ⏳ 미구현 |
+| `google-api-python-client` | YouTube Analytics API (완시율·반복재생 측정) | ✅ content-mindset/analyze_youtube.py (채널 공통 사용) |
+| `google-auth-oauthlib` | YouTube Analytics OAuth 인증 | ✅ 동일 |
 | `numpy` | 오디오 파형 분석 (BGM 볼륨 자동 최적화) | ⏳ 미구현 |
 | `moviepy` | 빠른 컷 편집 (장면 전환 효과) | ⏳ 미구현 |
 

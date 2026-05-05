@@ -98,6 +98,7 @@
 ├── make_video_stock.py          # [다큐형] 실사 클립 + 자막 영상 합성
 ├── generate_infographic.py      # [인포그래픽형] PIL 이미지 + FFmpeg 영상 생성
 ├── get_episode_info.py          # n8n SSH 노드 전용 — 오늘 에피소드 메타데이터 JSON 출력
+├── analyze_youtube.py           # YouTube Analytics 분석 — 완시율·좋아요율·Claude 패턴 분석
 ├── auto_upload.py               # 수동 업로드용 (n8n webhook 경유, 자동화에는 불필요)
 ├── infographic_upload.py        # 수동 업로드용 (n8n webhook 경유, 자동화에는 불필요)
 ├── sync_to_backup.sh            # 백업 서버 동기화
@@ -201,8 +202,13 @@ scp root@192.168.0.21:/root/auto_pipeline/data_burnout.mp4 ./
 - **배경**: `#111111` 다크
 - **강조색**: `#FF8C00` 오렌지 (채널 썸네일 톤 통일)
 - **TOP1~3**: 오렌지 → 중간 오렌지 → 어두운 오렌지
-- **BGM 저작권**: Kevin MacLeod CC BY 3.0 — 설명란에 크레딧 필요
-  - `Music: "[곡명]" by Kevin MacLeod (incompetech.com) Licensed under CC BY 3.0`
+- **헤더 구조**: 상단 30% (576px) 전체를 타이틀 전용 구역으로 고정
+  - 제목 폰트 76px, 헤더 안에 세로 가운데 정렬
+  - 오렌지 구분선(3px)으로 헤더 ↔ 아이템 분리
+  - 아이템은 헤더 아래부터 나머지 70% 사용
+- **워터마크**: `© 2026 매일의 설계` — channel_branding.py에서 임포트 (전 채널 공통)
+- **BGM**: HitsLab — Pixabay 무료 (상업·수익화 채널 모두 허용, 크레딧 불필요)
+  - 파일: `/root/content/runtime/mindset/bgm/bgm_infographic.mp3`
 
 ---
 
@@ -488,6 +494,55 @@ tail -f $RUNTIME/batch.log
 
 ---
 
+## YouTube Analytics 분석
+
+```bash
+MINDSET=/root/claude-code/content-production/content-mindset
+
+# 분석 실행 (첫 실행: OAuth 인증 필요)
+cd $MINDSET && python3 analyze_youtube.py
+
+# 저장된 결과만 재출력 (API 호출 없음)
+cd $MINDSET && python3 analyze_youtube.py --report
+
+# 기간 지정 (기본 90일)
+cd $MINDSET && python3 analyze_youtube.py --days 30
+```
+
+### 첫 실행 OAuth 인증 절차
+1. `python3 analyze_youtube.py` 실행
+2. 출력된 URL을 브라우저에서 열기 (YouTube 채널 계정으로 로그인)
+3. 인증 코드 복사 → 터미널에 붙여넣기
+4. `youtube_analytics_token.json` 자동 저장 — 이후 자동 갱신
+
+### 서버 사전 준비
+```bash
+# 패키지 설치
+pip install google-api-python-client google-auth-oauthlib
+
+# client_secret 업로드 (로컬에서)
+scp ~/Downloads/youtube_client_secret.json root@192.168.0.21:/root/content/runtime/mindset/
+```
+
+### 출력 지표
+| 지표 | 설명 |
+|------|------|
+| 완시율 (averageViewPercentage) | 핵심 — 85%+ 목표 |
+| 평균 시청 시간 | 초단위 |
+| 좋아요율 | 5%+ 목표 |
+| 구독자 전환율 | 영상별 구독 유입 |
+| 트래픽 소스 | Shorts피드/검색/구독 분류 |
+
+> API 미제공: 반복재생 수, 저장 수, 초단위 시청 유지율 곡선 (YouTube Studio에서만 확인)
+
+### 실측 채널 현황 (2026-05-05 기준)
+- 채널 평균 완시율: **49.1%** (목표 85% 대비 -35.9%p)
+- 완시율 100%+ 영상 4개 (반복재생 발생 확인)
+  - 번아웃 TOP10: 180% / 영어 영상: 121% / 완벽주의자: 108% / 혼자인 게: 106%
+- 좋아요율 최대 0.2% → **고정댓글 달기로 즉시 개선 필요**
+
+---
+
 ## 노션 페이지
 
 - 개발일지: https://www.notion.so/340cdf28986281359e2ceb38293db4fa
@@ -497,6 +552,14 @@ tail -f $RUNTIME/batch.log
 ---
 
 ## 마지막 업데이트
+
+2026-05-05 — v4.1 YouTube Analytics + 인포그래픽 개선 + 채널 공통 브랜딩
+- analyze_youtube.py 신규: YouTube Analytics API OAuth 인증 + 완시율 랭킹 + Claude S급 전략 분석
+- generate_infographic.py: 상단 30% 타이틀 전용 구역 고정 (피드 썸네일 가시성 개선)
+  - 헤더 576px 고정, 제목 76px 세로 가운데 정렬, 오렌지 구분선
+- channel_branding.py (pipeline-core): WATERMARK/CHANNEL_NAME/CHANNEL_HANDLE 단일 출처
+  - generate_infographic.py, content-health/make_video_v2.py 모두 임포트
+- 채널 실측: 평균 완시율 49.1%, 반복재생 영상 4개 확인
 
 2026-05-05 — v4.0 런타임 경로 분리 + 코드 git 직접 실행 구조 완성
 - auto_pipeline/ 의존성 완전 제거 — 코드를 /root/claude-code/content-production/content-mindset/ 에서 직접 실행
