@@ -79,8 +79,9 @@ episodes_v2/                   # 서버 고유 — git 미포함
 | CTA 오버레이 | — | ✅ 마지막 1.2초 "공감됐으면 좋아요  저장해두세요" (`#FFD700`, 36px, borderw=2) |
 | TTS | 3분할 (hook/body/closing) | ✅ 장면별 실제 TTS 길이 기준 + 장면별 속도 차별화 |
 | 자막 싱크 | TTS 예상 길이 기준 | ✅ 실제 클립 길이(ffprobe) 기준 — 프레임 정렬 오차 제거 |
-| 이미지 방향 | 가로 이미지 오류 가능 | ✅ force_original_aspect_ratio=increase → crop 1080x1920 강제 |
-| 해상도 | 1080×1920 25fps | ✅ 동일 |
+| 이미지 방향 | 가로 이미지 오류 가능 | ✅ force_original_aspect_ratio=increase → crop 강제 (portrait/landscape 모두 지원) |
+| 해상도 (숏폼) | 1080×1920 25fps | ✅ 동일 |
+| 해상도 (롱폼) | — | ✅ 1920×1080 25fps (landscape=True) |
 | CRF | 18 | ✅ 동일 |
 
 ---
@@ -97,8 +98,14 @@ cd $HEALTH && python3 analyze_competitor.py
 # 분석 결과만 출력 (재실행 없이)
 cd $HEALTH && python3 analyze_competitor.py --report
 
-# 자동 (주제 풀에서 순서대로)
+# 숏폼만 자동 (기본값)
 cd $HEALTH && python3 ai_orchestrator_v2.py --batch --count 1 --auto
+
+# 롱폼만 (16:9 가로)
+cd $HEALTH && python3 ai_orchestrator_v2.py --batch --count 1 --auto --mode long
+
+# 롱폼 + 숏폼 순차 생성
+cd $HEALTH && python3 ai_orchestrator_v2.py --batch --count 1 --auto --mode both
 
 # 특정 주제 지정
 cd $HEALTH && python3 ai_orchestrator_v2.py --topic morning_water
@@ -107,7 +114,7 @@ cd $HEALTH && python3 ai_orchestrator_v2.py --topic morning_water
 cd $HEALTH && python3 run_custom_v2.py
 
 # 백그라운드 (n8n용)
-cd $HEALTH && setsid python3 -u ai_orchestrator_v2.py --batch --count 1 --auto \
+cd $HEALTH && setsid python3 -u ai_orchestrator_v2.py --batch --count 1 --auto --mode both \
   > $RUNTIME/daily_gen_v2.log 2>&1 </dev/null &
 echo "PID=$!"
 
@@ -301,6 +308,17 @@ _SUFFIX = {
 ---
 
 ## 마지막 업데이트
+
+2026-05-06 — v3.3 롱폼 16:9 가로 영상 + --mode long 추가
+- 롱폼 해상도: ~~1080×1920 (9:16)~~ → **1920×1080 (16:9)**
+- video_core.py: make_ken_burns_clip에 size 파라미터 추가 (기본값 1080x1920 유지, landscape 시 1920x1080)
+- make_video_v2.py: landscape=True 모드 — 바 높이(14%/10%), 자막 폰트 크기, 타이틀 위치 landscape 비율 적용
+- generate_image_longform.py: Pexels orientation portrait → **landscape**
+- generate_script_longform.py: 프롬프트 9:16 → 16:9, pexels_query landscape 기준으로 변경
+- ai_orchestrator_v2.py: --mode 옵션 3종 확정
+  - `shorts` (기본값): 숏폼만
+  - `long`: 롱폼만 (16:9)
+  - `both`: 롱폼+숏폼 순차
 
 2026-05-06 — v3.2 숏폼 길이 35~50초 + fal.ai Flux 전환
 - 숏폼 목표 길이: ~~22~26초~~ → **35~50초** (정보량 확보, 완시율 유지 균형)
