@@ -59,6 +59,18 @@ def run_cmd(cmd: list, label: str = "") -> bool:
     return True
 
 
+# 장면 인덱스별 TTS 속도: Hook 느리게(강조), 과학설명 빠르게(압축감), 감정충격 느리게(여운)
+SCENE_TTS_RATES = [
+    "-5%",   # 0: Hook        — 느리고 강하게
+    "+8%",   # 1: 과학설명1   — 빠르게, 정보 압축감
+    "+5%",   # 2: 과학설명2   — 약간 빠르게
+    "+0%",   # 3: 잘못된상식  — 보통 속도, 공감 유발
+    "-8%",   # 4: 감정충격    — 매우 느리게, 여운
+    "+5%",   # 5: 저장유도    — 약간 빠르게
+    "+12%",  # 6: 루프트리거  — 매우 빠르게, 긴박감
+]
+
+
 async def _tts_async(text: str, voice: str, out_path: str, rate: str = "+0%"):
     import edge_tts
     communicate = edge_tts.Communicate(text, voice, rate=rate)
@@ -78,12 +90,12 @@ def generate_scene_tts(scenes: list, ep_dir: Path, voice: str = "ko-KR-SunHiNeur
         scene_audio = ep_dir / f"tts_scene{i+1}.mp3"
 
         if narration:
-            rate = "+3%" if i == 0 else "+0%"
+            rate = SCENE_TTS_RATES[i] if i < len(SCENE_TTS_RATES) else "+0%"
             asyncio.run(_tts_async(narration, voice, str(scene_audio), rate))
             tts_dur = get_duration(str(scene_audio))
             scene_audio_files.append(str(scene_audio))
             actual_durations.append(tts_dur)
-            print(f"    scene{i+1}: {tts_dur:.2f}초 (나레이션)")
+            print(f"    scene{i+1}: {tts_dur:.2f}초 (나레이션, rate={rate})")
         else:
             # 나레이션 없는 장면 → 원본 duration 유지
             dur = float(scene["duration"])
@@ -217,6 +229,10 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
 
     total_dur = sum(actual_durations)
     print(f"  총 길이: {total_dur:.2f}초")
+    if total_dur > 30:
+        print(f"  ⚠️ 영상 {total_dur:.1f}초 — 30초 초과, 완시율 하락 위험. 나레이션 단축 권장")
+    elif total_dur < 18:
+        print(f"  ⚠️ 영상 {total_dur:.1f}초 — 18초 미만, 정보량 부족 위험")
 
     print(f"\n[2/6] 🎨 Ken Burns 이미지 클립 생성...")
     clip_files = []
