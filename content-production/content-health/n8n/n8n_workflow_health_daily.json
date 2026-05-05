@@ -1,16 +1,16 @@
 {
-  "name": "📅 Health Daily Auto",
+  "name": "📅 Health Daily Auto 02:00",
   "nodes": [
     {
       "id": "node-cron",
-      "name": "Cron 01:00",
+      "name": "Cron 02:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [240, 300],
       "parameters": {
         "rule": {
           "interval": [
-            { "field": "cronExpression", "expression": "0 1 * * *" }
+            { "field": "cronExpression", "expression": "0 2 * * *" }
           ]
         }
       }
@@ -199,7 +199,7 @@
     }
   ],
   "connections": {
-    "Cron 01:00":                    { "main": [[{ "node": "Git Sync",                    "type": "main", "index": 0 }]] },
+    "Cron 02:00":                    { "main": [[{ "node": "Git Sync",                    "type": "main", "index": 0 }]] },
     "Git Sync":                      { "main": [[{ "node": "Competitor Analysis (월요일만)", "type": "main", "index": 0 }]] },
     "Competitor Analysis (월요일만)": { "main": [[{ "node": "Episode Generate",             "type": "main", "index": 0 }]] },
     "Episode Generate":              { "main": [[{ "node": "Wait 30m",                     "type": "main", "index": 0 }]] },
