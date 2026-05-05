@@ -336,16 +336,42 @@ desktop      → QR 코드 표시
 | 타이머 → 이동 횟수 전환 코드 작업 | Starweave.html 전면 수정 완료 |
 | 웹 배포 | deploy.sh "feat: 타이머 → 이동 횟수 제한 전환 (v1.0.31)" — commit 9f2efc6 |
 
+### 2026-05-05 완료 작업
+
+| 작업 | 결과 |
+|------|------|
+| 피드백 #5 — 크로스매스 연산자 가시성 | `.cm-op` 폰트 130%→140%, 배경+테두리+글로우 추가 |
+| 피드백 #6 — Plan B 이벤트 큐 결과화면 통합 | 인터미션에 `#interEventSection` 추가, `_renderPendingEvents()` 구현 |
+| 피드백 #6 — 연속출석/미션 달성 팝업 제거 | `showStreakPopup()`, 미션 달성 → `_pendingGameEvents` 큐로 변경 |
+| 우주인 캐릭터 제거 | `#charWrap` `display:none` |
+| 와일드카드 3초 타이머 제거 | `_startWildLink()` 카운트다운 완전 제거 |
+| 상점 2컬럼 레이아웃 완료 | 이동횟수/별힌트 2컬럼, 광고충전, VIP카드 |
+| 게임 중 팝업 전면 제거 1차 | bonusPop, boostPop, showComboPop, showResultPop, wildcardToast 제거 |
+| 게임 중 팝업 전면 제거 2차 | itemToast(applyItem), scoreBonusBanner, conquestBanner, dualBonusToast 제거 |
+| 게임 중 팝업 전면 제거 3차 | 힌트없음/결과, 로켓/블랙홀/미니폭발, 와일드관련, 미션진행 toast 11종 제거 |
+| Standby 서버 IP 변경 | 7.7.7.253 → 7.7.7.7, deploy.sh 반영 완료 |
+| Play Store ko-KR 주소 노출 제거 | 개인 주소 포함 구버전 한국어 설명 → 새 내용으로 교체 제출 완료 |
+
 ### 다음 할 일
 
-- **와일드카드 타이머 제거**: 와일드카드 UI에 남아있는 시간 표시 제거
-- **APK 재빌드**: bubblewrap build → v1.0.32 (versionCode 35) — 이동 횟수 전환 반영
+- **APK 재빌드**: bubblewrap build → v1.0.32 (versionCode 35) — 이동 횟수 전환 + 팝업 제거 반영
 - **Play Console 업로드**: 새 AAB 업로드
 - **moves_15 IAP 등록**: Google Play Console에 ₩1,200 이동팩 15회 상품 추가
 - **AdSense**: 재검토 결과 대기 (1~4주, dong8650@gmail.com)
 
 ---
 
+## 게임 중 팝업 정책
+
+**모든 게임 중 팝업은 완전 제거됨.** 아래만 유지:
+- 진동, 파티클, 화면흔들림 (시각/촉각 피드백)
+- `showScorePop` (셀 위치에 점수 표시, 0.9초)
+- 와일드카드 선택 팝업 (`#wildcardChoicePopup`) — 탭 시 선택지 제공 (필수 인터랙션)
+- 이동 횟수 소진 시 팝업 (`_onMovesEnd`) — 필수 게임오버 흐름
+- 상점/힌트 버튼 오류는 무음 처리
+
+---
+
 ## 마지막 업데이트
 
-2026-05-04 — 프로덕션 출시 완료 (v1.0.31/코드34), 타이머→이동 횟수 전환 웹 배포 완료 (commit 9f2efc6), 와일드카드 타이머 제거 및 APK 재빌드 필요
+2026-05-05 — 게임 중 팝업 전면 제거 완료, 피드백 #5/#6 반영, Play Store ko-KR 주소 노출 수정 제출
