@@ -278,6 +278,8 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
     run_cmd(["ffmpeg", "-y", "-f", "concat", "-safe", "0",
              "-i", str(concat_list), "-c", "copy", str(concat_out)], "concat")
 
+    voice_dur = get_duration(str(voice_file))  # 실제 음성 길이 — 영상 길이 기준
+
     print(f"\n[4/6] 🎵 BGM 믹싱...")
     base_mp4 = ep_dir / "base.mp4"
     if bgm_path and Path(bgm_path).exists():
@@ -288,6 +290,7 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
             "[1:a]volume=1.0[v];[2:a]volume=0.18[b];[v][b]amix=inputs=2:duration=first[aout]",
             "-map", "0:v", "-map", "[aout]",
             "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2",
+            "-t", str(voice_dur),  # BGM이 voice보다 길어도 잘라냄
             str(base_mp4)
         ], "bgm_mix")
         print("  ✅ BGM 믹싱 완료")
@@ -297,6 +300,7 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
             "-i", str(concat_out), "-i", str(voice_file),
             "-map", "0:v", "-map", "1:a",
             "-c:v", "copy", "-c:a", "aac",
+            "-t", str(voice_dur),
             str(base_mp4)
         ], "audio_mix")
 
@@ -332,14 +336,16 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
         "ffmpeg", "-y", "-i", str(base_mp4),
         "-vf", vf,
         "-c:v", "libx264", "-preset", "medium", "-crf", "18",
-        "-pix_fmt", "yuv420p", "-c:a", "copy",
-        "-shortest",   # 영상/음성 중 짧은 쪽에 맞춰 트림 (미세 길이 차이 제거)
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k",  # copy 대신 재인코딩 → -t로 정확히 자름
+        "-t", str(voice_dur),            # 음성 길이 기준 하드컷 (BGM 여분 제거)
         str(output)
     ], "final")
 
     if ok:
+        actual_out_dur = get_duration(str(output))
         print(f"\n✅ 완성: {output}")
-        print(f"   총 길이: {total_dur:.1f}초")
+        print(f"   실제 길이: {actual_out_dur:.1f}초 (음성 기준: {voice_dur:.1f}초)")
     else:
         print("❌ 최종 출력 실패")
     return output

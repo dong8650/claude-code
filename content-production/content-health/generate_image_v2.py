@@ -19,9 +19,10 @@ def generate_health_image(image_prompt: str, out_path: Path, retry: int = 3) -> 
 
     safe_prompt = (
         f"{image_prompt}, "
-        "vertical 9:16 composition, cute cartoon style, kawaii health infographic, "
-        "adorable organ characters, no real people faces, educational illustration, "
-        "bright cheerful colors, clean background, 4K quality"
+        "TALL VERTICAL 9:16 PORTRAIT composition, single main subject centered vertically, "
+        "NO horizontal side-by-side layout, NO wide landscape arrangement, "
+        "cute cartoon kawaii style, adorable organ characters, "
+        "no real people faces, bright cheerful colors, clean background"
     )
 
     for attempt in range(retry):

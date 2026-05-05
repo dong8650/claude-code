@@ -157,12 +157,12 @@ JSON만 출력 (마크다운/설명 없이):
   "hook": "Hook 문장 (15자 이내)",
   "hook_type": "identity_attack | expert_reversal | myth_direct",
   "scenes": [
-    {{"duration": 3, "caption": "Hook 자막\\n두 줄 이내", "narration": "TTS 나레이션 (자막보다 자연스럽게)", "image_prompt": "cute cartoon health character, bright colorful, 9:16 vertical..."}},
-    {{"duration": 5, "caption": "과학설명1\\n→ 수치", "narration": "나레이션", "image_prompt": "..."}},
-    {{"duration": 5, "caption": "과학설명2\\n이모지 + 수치", "narration": "나레이션", "image_prompt": "..."}},
-    {{"duration": 5, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "나레이션", "image_prompt": "..."}},
-    {{"duration": 3, "caption": "감정충격 😱", "narration": "나레이션", "image_prompt": "..."}},
-    {{"duration": 2, "caption": "저장유도 💾", "narration": "나레이션", "image_prompt": "..."}},
+    {{"duration": 3, "caption": "Hook 자막\\n두 줄 이내", "narration": "TTS 나레이션 (caption 내용을 빠짐없이 포함, 자연스럽게 말하듯)", "image_prompt": "cute cartoon health character, bright colorful, 9:16 vertical..."}},
+    {{"duration": 5, "caption": "과학설명1\\n→ 수치", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
+    {{"duration": 5, "caption": "과학설명2\\n이모지 + 수치", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
+    {{"duration": 5, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
+    {{"duration": 3, "caption": "감정충격 😱", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
+    {{"duration": 2, "caption": "저장유도 💾", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
     {{"duration": 1, "caption": "루프트리거 👀", "narration": "처음 장면 복선 언급 (10자 이내 짧게)", "image_prompt": "..."}}
   ],
   "total_duration": 24,
