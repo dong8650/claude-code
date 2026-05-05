@@ -15,6 +15,7 @@
 | 길이 | **35~50초 목표** (30초 미만 정보량 부족 경고, 55초 초과 완시율 경고) |
 | 숏폼 이미지 | fal.ai Flux.1 Dev ($0.025/장) — photo/digital/object 3종 스타일 |
 | 롱폼 이미지 | Pexels 무료 API (pexels_query 키워드 검색) |
+| 이미지 대안 | Together AI FLUX.1 Schnell ($0.003/장, 8배 저렴) — 채널 궤도 오른 후 품질 비교 테스트 예정. SDXL은 9:16 portrait 품질 불안정으로 제외. |
 
 ---
 
