@@ -104,8 +104,8 @@ scp root@192.168.0.21:/root/auto_pipeline_v2/episodes_v2/YYYYMMDD_NNN/output_fin
 ```bash
 cd /root/claude-code && git pull origin main
 mkdir -p /root/auto_pipeline_v2
-cp /root/claude-code/content-health/*.py /root/auto_pipeline_v2/
-cp /root/claude-code/content-health/topics_health.json /root/auto_pipeline_v2/
+cp /root/claude-code/content-production/content-health/*.py /root/auto_pipeline_v2/
+cp /root/claude-code/content-production/content-health/topics_health.json /root/auto_pipeline_v2/
 cp /root/auto_pipeline/config.py /root/auto_pipeline_v2/
 ```
 
@@ -115,8 +115,8 @@ cp /root/auto_pipeline/config.py /root/auto_pipeline_v2/
 
 ```bash
 cd /root/claude-code && git pull origin main && \
-cp /root/claude-code/content-health/*.py /root/auto_pipeline_v2/ && \
-cp /root/claude-code/content-health/topics_health.json /root/auto_pipeline_v2/
+cp /root/claude-code/content-production/content-health/*.py /root/auto_pipeline_v2/ && \
+cp /root/claude-code/content-production/content-health/topics_health.json /root/auto_pipeline_v2/
 ```
 
 ---

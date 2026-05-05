@@ -387,9 +387,9 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 git clone https://github.com/dong8650/claude-code.git /root/claude-code
 
 # 2. 최신 파일 복사
-cp /root/claude-code/content-mindset/*.py /root/auto_pipeline/
-cp /root/claude-code/content-mindset/infographic_data/infographic_topic_pool.json /root/auto_pipeline/
-cp /root/claude-code/content-mindset/topics.json /root/auto_pipeline/
+cp /root/claude-code/content-production/content-mindset/*.py /root/auto_pipeline/
+cp /root/claude-code/content-production/content-mindset/infographic_data/infographic_topic_pool.json /root/auto_pipeline/
+cp /root/claude-code/content-production/content-mindset/topics.json /root/auto_pipeline/
 
 # 이후 n8n이 매일 자동으로 git pull + cp 처리
 # topics.json / infographic_used.json은 서버 고유 — git에서 복사하지 않음
