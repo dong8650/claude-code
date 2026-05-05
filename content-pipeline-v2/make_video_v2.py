@@ -18,7 +18,7 @@ FONT_PATH = "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc"
 FONT_FALLBACK = "/root/auto_pipeline/NotoSansCJK-Bold.ttc"
 CHANNEL_NAME = "매일의 설계"
 SLOGAN = "매일 하나씩, 건강 상식을 쌓자"
-WATERMARK = "매일의 설계"
+WATERMARK = "© 2026 매일의 설계"
 TOP_BAR_RATIO = 0.20
 BOT_BAR_RATIO = 0.18
 
@@ -278,8 +278,8 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
     bot_bar_h = int(1920 * BOT_BAR_RATIO)
     title_y1 = int(1920 * 0.07)
     title_y2 = title_y1 + 85
-    watermark_y = int(1920 - bot_bar_h + bot_bar_h * 0.25)
-    slogan_y = watermark_y + 42
+    watermark_y = int(1920 - bot_bar_h + bot_bar_h * 0.20)
+    slogan_y = watermark_y + 45
 
     vf = (
         f"drawbox=x=0:y=0:w=iw:h={top_bar_h}:color=black@1.0:t=fill,"
@@ -289,9 +289,9 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
         f"x=(w-text_w)/2:y={title_y1}:borderw=3:bordercolor=black@0.8,"
         f"drawtext=fontfile={font_path}:text='{t2}':fontsize=68:fontcolor=#FF8C00:"
         f"x=(w-text_w)/2:y={title_y2}:borderw=3:bordercolor=black@0.8,"
-        f"drawtext=fontfile={font_path}:text='{WATERMARK}':fontsize=28:fontcolor=white@0.5:"
+        f"drawtext=fontfile={font_path}:text='{WATERMARK}':fontsize=26:fontcolor=white@0.45:"
         f"x=(w-text_w)/2:y={watermark_y}:borderw=1:bordercolor=black@0.3,"
-        f"drawtext=fontfile={font_path}:text='{SLOGAN}':fontsize=26:fontcolor=white@0.65:"
+        f"drawtext=fontfile={font_path}:text='{SLOGAN}':fontsize=24:fontcolor=white@0.7:"
         f"x=(w-text_w)/2:y={slogan_y}:borderw=1:bordercolor=black@0.3"
     )
 
