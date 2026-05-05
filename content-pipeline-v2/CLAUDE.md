@@ -144,6 +144,13 @@ cp /root/claude-code/content-pipeline-v2/topics_health.json /root/auto_pipeline_
 
 ## 마지막 업데이트
 
+2026-05-05 — v2.2 코드 관리=git, 서버=기술스택만 실행하는 구조로 완성
+- 채널 브랜딩: 워터마크 "© 2026 매일의 설계" (v1 동일), CHANNEL_NAME "매일의 설계"
+- topics_drama.json 제거, 드라마 관련 코드 전면 건강 상식으로 전환
+- generate_image_v2.py: generate_health_image() kawaii 건강 일러스트 스타일
+- get_episode_info_v2.py: drama 필드 → title, 건강 상식 연구소 채널 메타데이터
+- run_custom_v2.py: 달리기 뇌변화 6씬 → S급 7씬 (잘못된상식 반전 씬 추가), 25초 고정
+
 2026-05-04 — v2.1 건강 상식 연구소 채널 전환 완료
 - 드라마 콘텐츠 제거 → 건강 상식 단일 채널
 - topics_health.json: 30개 주제 (잘못된 상식 반전 포맷)
