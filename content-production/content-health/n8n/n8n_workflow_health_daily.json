@@ -1,0 +1,205 @@
+{
+  "name": "📅 Health Daily Auto",
+  "nodes": [
+    {
+      "id": "node-cron",
+      "name": "Cron 01:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 1 * * *" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-ssh-git-sync",
+      "name": "Git Sync",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "parameters": {
+        "resource": "command",
+        "command": "cd /root/claude-code && git pull origin main && echo \"✅ git sync: $(git rev-parse --short HEAD)\""
+      },
+      "credentials": {
+        "sshPassword": {
+          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "name": "Content Server SSH"
+        }
+      }
+    },
+    {
+      "id": "node-ssh-ep-gen",
+      "name": "Episode Generate",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "parameters": {
+        "resource": "command",
+        "command": "cd /root/claude-code/content-production/content-health && setsid python3 -u ai_orchestrator_v2.py --batch --count 1 --auto > /root/content/runtime/health/daily_gen_v2.log 2>&1 </dev/null & echo \"PID=$!\""
+      },
+      "credentials": {
+        "sshPassword": {
+          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "name": "Content Server SSH"
+        }
+      }
+    },
+    {
+      "id": "node-wait",
+      "name": "Wait 30m",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 30,
+        "unit": "minutes"
+      },
+      "webhookId": "health-daily-wait-v2"
+    },
+    {
+      "id": "node-ssh-ep-info",
+      "name": "Get Episode Info",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "parameters": {
+        "resource": "command",
+        "command": "cd /root/claude-code/content-production/content-health && python3 get_episode_info_v2.py"
+      },
+      "credentials": {
+        "sshPassword": {
+          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "name": "Content Server SSH"
+        }
+      }
+    },
+    {
+      "id": "node-code-ep-meta",
+      "name": "Episode Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300],
+      "parameters": {
+        "jsCode": "const raw = JSON.parse($json.stdout.trim());\nif (raw.error) {\n  return [{ json: { error: raw.error, ep_dir: raw.ep_dir || '', video_path: null, title: null } }];\n}\nconst { title, description_full, tags_ko, video_path, privacy } = raw;\nreturn [{ json: { title, description_full, tags_ko: tags_ko || ['건강상식', '매일의설계', '쇼츠'], video_path, privacy: privacy || 'private', error: null } }];"
+      }
+    },
+    {
+      "id": "node-if-ep",
+      "name": "Episode OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.error || '' }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-read-ep-video",
+      "name": "Read Episode Video",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [1780, 200],
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $('Episode Metadata').item.json.video_path }}"
+      }
+    },
+    {
+      "id": "node-yt-ep",
+      "name": "YouTube Episode",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [2000, 200],
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $('Episode Metadata').item.json.title }}",
+        "regionCode": "KR",
+        "categoryId": "22",
+        "binaryPropertyName": "data",
+        "options": {
+          "description": "={{ $('Episode Metadata').item.json.description_full }}",
+          "privacyStatus": "={{ $('Episode Metadata').item.json.privacy || 'private' }}",
+          "tags": "={{ ($('Episode Metadata').item.json.tags_ko || []).join(',') }}",
+          "madeForKids": false
+        }
+      },
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "REPLACE_WITH_YOUTUBE_CREDENTIAL_ID",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "id": "node-slack-ok",
+      "name": "Slack Success",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2220, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": { "__rl": true, "value": "C0951952WKS", "mode": "id" },
+        "text": "={{ '✅ *건강편 자동화 완료*\\n🎬 ' + $('Episode Metadata').item.json.title + '\\n🔗 https://youtube.com/watch?v=' + $json.id }}",
+        "otherOptions": {}
+      },
+      "credentials": {
+        "slackApi": { "id": "dcPtOSkSv11jKp0Z", "name": "Slack account" }
+      }
+    },
+    {
+      "id": "node-slack-fail",
+      "name": "Slack Failure",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1780, 400],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": { "__rl": true, "value": "C0951952WKS", "mode": "id" },
+        "text": "={{ '❌ *건강편 생성 실패*\\n에러: ' + $json.error + '\\n경로: ' + ($json.ep_dir || '-') }}",
+        "otherOptions": {}
+      },
+      "credentials": {
+        "slackApi": { "id": "dcPtOSkSv11jKp0Z", "name": "Slack account" }
+      }
+    }
+  ],
+  "connections": {
+    "Cron 01:00":       { "main": [[{ "node": "Git Sync",         "type": "main", "index": 0 }]] },
+    "Git Sync":         { "main": [[{ "node": "Episode Generate", "type": "main", "index": 0 }]] },
+    "Episode Generate": { "main": [[{ "node": "Wait 30m",         "type": "main", "index": 0 }]] },
+    "Wait 30m":         { "main": [[{ "node": "Get Episode Info", "type": "main", "index": 0 }]] },
+    "Get Episode Info": { "main": [[{ "node": "Episode Metadata", "type": "main", "index": 0 }]] },
+    "Episode Metadata": { "main": [[{ "node": "Episode OK?",      "type": "main", "index": 0 }]] },
+    "Episode OK?": {
+      "main": [
+        [{ "node": "Read Episode Video", "type": "main", "index": 0 }],
+        [{ "node": "Slack Failure",      "type": "main", "index": 0 }]
+      ]
+    },
+    "Read Episode Video": { "main": [[{ "node": "YouTube Episode", "type": "main", "index": 0 }]] },
+    "YouTube Episode":    { "main": [[{ "node": "Slack Success",   "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Seoul"
+  }
+}

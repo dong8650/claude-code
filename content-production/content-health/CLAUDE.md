@@ -66,7 +66,7 @@ episodes_v2/                   # 서버 고유 — git 미포함
 | 하단 검은 바 | 22% + 워터마크 | ✅ 18% + @health.lab.kr |
 | 자막 스타일 | ASS Karaoke (노래방 효과) | ✅ ASS 장면별 (Hook=오렌지, Main=흰색, Save=노랑, Loop=시안) |
 | BGM 믹싱 | voice 1.0 + bgm 0.18 | ✅ 동일 |
-| TTS | 3분할 (hook/body/closing) | ✅ 장면별 TTS + duration 패딩 |
+| TTS | 3분할 (hook/body/closing) | ✅ 장면별 실제 TTS 길이 기준 (싱크 보장) |
 | 해상도 | 1080×1920 25fps | ✅ 동일 |
 | CRF | 18 | ✅ 동일 |
 
@@ -138,16 +138,53 @@ cd /root/claude-code && git pull origin main
 
 ---
 
+## n8n 자동화 워크플로우
+
+### 워크플로우 파일 목록
+
+| 파일 | 용도 | 상태 |
+|------|------|------|
+| `n8n/n8n_workflow_health_daily.json` | 매일 01:00 자동 생성+업로드 | ✅ 완료 |
+
+### 일일 자동화 실행 흐름
+
+```
+01:00 Cron
+    ↓ SSH — git pull (Git Sync)
+    ↓ SSH — setsid ai_orchestrator_v2.py --batch --count 1 --auto (백그라운드)
+    ↓ Wait 30분
+    ↓ SSH — get_episode_info_v2.py (에피소드 메타데이터 JSON)
+    ↓ Code — YouTube 설명/태그 파싱
+    ↓ IF — 에피소드 생성 성공?
+        ↓ 성공: Read File → YouTube Upload → Slack ✅
+        ↓ 실패: Slack ❌
+```
+
+### n8n import 후 설정 필요 항목
+- SSH 노드 3곳: `REPLACE_WITH_SSH_CREDENTIAL_ID` → 해당 서버 SSH Credential 지정
+- YouTube 노드: `REPLACE_WITH_YOUTUBE_CREDENTIAL_ID` → YouTube OAuth2 Credential 지정
+- Slack Credential ID는 각 서버에서 등록
+
+---
+
 ## 주의사항
 
 - DALL-E image_prompt: 실제 사람 얼굴 금지 (cute cartoon 스타일만)
 - `health_used.json` — 서버 고유, git push 금지
-- BGM 재사용: `/root/auto_pipeline/bgm/bgm_dramatic_ambient.mp3`
-- config.py 재사용: `/root/auto_pipeline/config.py` 복사
+- BGM: `/root/content/runtime/health/bgm/bgm_dramatic_ambient.mp3`
+- config.py: `/root/content/runtime/health/config.py`
 
 ---
 
 ## 마지막 업데이트
+
+2026-05-05 — v2.4 TTS 싱크 완전 수정 + n8n 워크플로우 추가
+- make_video_v2.py 전면 재작성: scene["duration"] 고정값 폐기 → 실제 TTS 파일 길이 기준
+  - generate_scene_tts() → (voice_file, actual_durations) 반환 (패딩/트림 없음)
+  - build_ass() durations 파라미터 추가 (실제 TTS 길이 기반 자막 타이밍)
+  - Ken Burns 클립 길이도 actual_durations 사용 → 자막·음성·영상 완전 동기화
+- n8n/n8n_workflow_health_daily.json 신규: 매일 01:00 자동 생성+업로드
+  - Cron(01:00) → Git Sync → Episode Generate(백그라운드) → Wait 30분 → Get Episode Info → YouTube → Slack
 
 2026-05-05 — v2.3 런타임 경로 분리 + 영상 품질 수정
 - auto_pipeline_v2/ 의존성 완전 제거 — 코드를 /root/claude-code/content-production/content-health/ 에서 직접 실행

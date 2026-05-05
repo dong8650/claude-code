@@ -6,7 +6,7 @@ S급 쇼츠 영상 합성 — v1 효과 완전 이식
 - 상단/하단 검은 바 + 채널 브랜딩
 - 장면별 자막 (ASS, 크고 임팩트 있는 스타일)
 - BGM 믹싱 (voice 1.0 + bgm 0.18)
-- 장면별 TTS 싱크
+- TTS 실제 길이 기준으로 클립·자막 타이밍 결정 (싱크 보장)
 """
 import asyncio
 import json
@@ -65,47 +65,32 @@ async def _tts_async(text: str, voice: str, out_path: str, rate: str = "+0%"):
     await communicate.save(out_path)
 
 
-def generate_scene_tts(scenes: list, ep_dir: Path, voice: str = "ko-KR-SunHiNeural") -> Path:
-    """장면별 TTS 생성 후 장면 duration에 맞춰 패딩 → 전체 concat"""
+def generate_scene_tts(scenes: list, ep_dir: Path, voice: str = "ko-KR-SunHiNeural") -> tuple:
+    """장면별 TTS 생성. 실제 TTS 길이를 그대로 사용 (padding/trim 없음).
+    Returns: (voice_file, actual_durations)
+    """
     print("  🎙️ 장면별 TTS 생성 중...")
     scene_audio_files = []
+    actual_durations = []
 
     for i, scene in enumerate(scenes):
         narration = scene.get("narration", "").strip()
-        dur = scene["duration"]
         scene_audio = ep_dir / f"tts_scene{i+1}.mp3"
-        padded = ep_dir / f"tts_pad{i+1}.mp3"
 
         if narration:
             rate = "+3%" if i == 0 else "+0%"
             asyncio.run(_tts_async(narration, voice, str(scene_audio), rate))
             tts_dur = get_duration(str(scene_audio))
-
-            if tts_dur < dur:
-                silence_dur = dur - tts_dur
-                sil = ep_dir / f"sil_scene{i+1}.mp3"
-                make_silence(str(sil), silence_dur)
-                concat_txt = ep_dir / f"pad_concat{i+1}.txt"
-                concat_txt.write_text(
-                    f"file '{scene_audio}'\nfile '{sil}'\n", encoding="utf-8"
-                )
-                subprocess.run([
-                    "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-                    "-i", str(concat_txt), "-c", "copy", str(padded)
-                ], capture_output=True)
-                scene_audio_files.append(str(padded))
-            else:
-                # TTS가 너무 길면 trim
-                trimmed = ep_dir / f"tts_trim{i+1}.mp3"
-                subprocess.run([
-                    "ffmpeg", "-y", "-i", str(scene_audio),
-                    "-t", str(dur), "-c", "copy", str(trimmed)
-                ], capture_output=True)
-                scene_audio_files.append(str(trimmed))
+            scene_audio_files.append(str(scene_audio))
+            actual_durations.append(tts_dur)
+            print(f"    scene{i+1}: {tts_dur:.2f}초 (나레이션)")
         else:
-            # 나레이션 없는 장면 → silence
-            make_silence(str(padded), dur)
-            scene_audio_files.append(str(padded))
+            # 나레이션 없는 장면 → 원본 duration 유지
+            dur = float(scene["duration"])
+            make_silence(str(scene_audio), dur)
+            scene_audio_files.append(str(scene_audio))
+            actual_durations.append(dur)
+            print(f"    scene{i+1}: {dur:.2f}초 (silence)")
 
     # 전체 concat
     voice_file = ep_dir / "voice_ko.mp3"
@@ -119,12 +104,12 @@ def generate_scene_tts(scenes: list, ep_dir: Path, voice: str = "ko-KR-SunHiNeur
     ], capture_output=True)
 
     total = get_duration(str(voice_file))
-    print(f"  ✅ TTS 완료: {voice_file} ({total:.2f}초)")
-    return voice_file
+    print(f"  ✅ TTS 완료: {voice_file} ({total:.2f}초, {len(scenes)}장면)")
+    return voice_file, actual_durations
 
 
-def build_ass(scenes: list, ep_dir: Path, font_path: str) -> Path:
-    """장면별 자막 ASS 생성 — 크고 임팩트, 블러박스 배경"""
+def build_ass(scenes: list, ep_dir: Path, font_path: str, durations: list) -> Path:
+    """장면별 자막 ASS 생성. durations = TTS 실제 길이 리스트."""
     top_bar_h = int(1920 * TOP_BAR_RATIO)
     bot_bar_h = int(1920 * BOT_BAR_RATIO)
     content_h = 1920 - top_bar_h - bot_bar_h
@@ -139,13 +124,9 @@ def build_ass(scenes: list, ep_dir: Path, font_path: str) -> Path:
         "",
         "[V4+ Styles]",
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-        # Hook: 오렌지, 크게
         f"Style: Hook,NotoSansCJK-Bold,80,&H0000AAFF,&H000000FF,&H00000000,&HAA000000,-1,0,0,0,100,100,2,0,3,4,2,5,60,60,{content_center_y - 80},1",
-        # 본문: 흰색, 굵게
         f"Style: Main,NotoSansCJK-Bold,68,&H00FFFFFF,&H000000FF,&H00000000,&HAA000000,-1,0,0,0,100,100,2,0,3,3,2,5,60,60,{content_center_y - 68},1",
-        # 저장유도: 밝은 노랑
         f"Style: Save,NotoSansCJK-Bold,64,&H0000FFFF,&H000000FF,&H00000000,&HAA000000,-1,0,0,0,100,100,2,0,3,3,2,5,60,60,{content_center_y - 64},1",
-        # 루프트리거: 시안
         f"Style: Loop,NotoSansCJK-Bold,60,&H00FFFF00,&H000000FF,&H00000000,&HAA000000,-1,0,0,0,100,100,2,0,3,3,2,2,60,60,80,1",
         "",
         "[Events]",
@@ -153,18 +134,16 @@ def build_ass(scenes: list, ep_dir: Path, font_path: str) -> Path:
     ]
 
     current = 0.0
-    for i, scene in enumerate(scenes):
-        dur = scene["duration"]
+    for i, (scene, dur) in enumerate(zip(scenes, durations)):
         start = _ts(current)
         end = _ts(current + dur - 0.05)
         caption = scene.get("caption", "").replace("\n", "\\N")
 
-        # 장면 위치에 따라 스타일 결정
         if i == 0:
             style = "Hook"
         elif i == len(scenes) - 1:
             style = "Loop"
-        elif scene.get("caption", "").find("저장") != -1 or scene.get("caption", "").find("💾") != -1:
+        elif "저장" in scene.get("caption", "") or "💾" in scene.get("caption", ""):
             style = "Save"
         else:
             style = "Main"
@@ -208,11 +187,9 @@ def make_ken_burns_clip(img_path: Path, duration: float, index: int, out_path: P
 
 def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: bool = True) -> Path:
     scenes = script["scenes"]
-    total_dur = script.get("total_duration", sum(s["duration"] for s in scenes))
     font_path = get_font()
     hook = script.get("hook", script.get("title", ""))
 
-    # hook을 두 줄로 분할 (상단 바 표시용)
     mid = len(hook) // 2
     for i in range(mid, len(hook)):
         if hook[i] == " ":
@@ -224,21 +201,34 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
     print(f"\n[1/6] 🎙️ TTS 생성...")
     voice_file = ep_dir / "voice_ko.mp3"
     if generate_tts and not voice_file.exists():
-        generate_scene_tts(scenes, ep_dir)
-    elif not voice_file.exists():
-        make_silence(str(voice_file), total_dur)
+        voice_file, actual_durations = generate_scene_tts(scenes, ep_dir)
+    elif voice_file.exists():
+        # 이미 생성된 경우 — scene별 파일에서 실제 길이 복원
+        actual_durations = []
+        for i, scene in enumerate(scenes):
+            tts_file = ep_dir / f"tts_scene{i+1}.mp3"
+            if tts_file.exists():
+                actual_durations.append(get_duration(str(tts_file)))
+            else:
+                actual_durations.append(float(scene["duration"]))
+    else:
+        actual_durations = [float(s["duration"]) for s in scenes]
+        make_silence(str(voice_file), sum(actual_durations))
+
+    total_dur = sum(actual_durations)
+    print(f"  총 길이: {total_dur:.2f}초")
 
     print(f"\n[2/6] 🎨 Ken Burns 이미지 클립 생성...")
     clip_files = []
-    for i, scene in enumerate(scenes):
+    for i, (scene, dur) in enumerate(zip(scenes, actual_durations)):
         img = ep_dir / f"bg{i+1}.jpg"
         if not img.exists():
             img = ep_dir / "bg1.jpg"
         clip_out = ep_dir / f"clip{i+1}.mp4"
-        ok = make_ken_burns_clip(img, scene["duration"], i, clip_out)
+        ok = make_ken_burns_clip(img, dur, i, clip_out)
         if ok:
             clip_files.append(clip_out)
-            print(f"  ✅ clip{i+1} ({scene['duration']}초, {'줌인' if i%2==0 else '줌아웃'})")
+            print(f"  ✅ clip{i+1} ({dur:.2f}초, {'줌인' if i%2==0 else '줌아웃'})")
 
     print(f"\n[3/6] 🔗 클립 연결...")
     concat_list = ep_dir / "concat.txt"
@@ -257,7 +247,7 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
             "[1:a]volume=1.0[v];[2:a]volume=0.18[b];[v][b]amix=inputs=2:duration=first[aout]",
             "-map", "0:v", "-map", "[aout]",
             "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2",
-            "-t", str(total_dur), str(base_mp4)
+            str(base_mp4)
         ], "bgm_mix")
         print("  ✅ BGM 믹싱 완료")
     else:
@@ -266,11 +256,11 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
             "-i", str(concat_out), "-i", str(voice_file),
             "-map", "0:v", "-map", "1:a",
             "-c:v", "copy", "-c:a", "aac",
-            "-t", str(total_dur), str(base_mp4)
+            str(base_mp4)
         ], "audio_mix")
 
     print(f"\n[5/6] 📝 자막 생성...")
-    ass_file = build_ass(scenes, ep_dir, font_path)
+    ass_file = build_ass(scenes, ep_dir, font_path, actual_durations)
     print(f"  ✅ 자막 완료: {ass_file}")
 
     print(f"\n[6/6] 🎬 최종 출력 (상하 바 + 브랜딩 + 자막)...")
@@ -306,6 +296,7 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
 
     if ok:
         print(f"\n✅ 완성: {output}")
+        print(f"   총 길이: {total_dur:.1f}초")
     else:
         print("❌ 최종 출력 실패")
     return output
