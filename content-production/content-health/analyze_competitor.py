@@ -34,9 +34,10 @@ SEARCH_QUERIES = [
     "매일 이렇게 했던 건강",
 ]
 VIDEOS_PER_QUERY = 15   # 쿼리당 수집 영상 수
-MIN_VIEWS       = 5000  # 최소 조회수 필터
-MAX_DURATION    = 65    # 쇼츠 최대 길이(초)
+MAX_DURATION    = 65    # 쇼츠 최대 길이(초) — 0이면 전체 포함
 TOP_N           = 50    # 분석 대상 상위 N개
+# yt-dlp 검색 결과는 view_count가 0으로 반환되는 경우가 많음
+# → 조회수 필터 없이 전체 수집, 제목 패턴 분석이 핵심
 
 
 def _fetch_videos(query: str, count: int) -> list:
@@ -82,13 +83,17 @@ def collect_videos() -> list:
             if vid_id and vid_id not in all_videos:
                 all_videos[vid_id] = v
 
+    # 제목 있는 것만 유지, 길이 필터 (duration=0이면 길이 정보 없음 → 포함)
     filtered = [
         v for v in all_videos.values()
-        if v["view_count"] >= MIN_VIEWS and 0 < v["duration"] <= MAX_DURATION
+        if v["title"] and (v["duration"] == 0 or v["duration"] <= MAX_DURATION)
     ]
+    # 조회수 있는 것 우선 정렬, 없는 것(0)은 뒤로
     filtered.sort(key=lambda x: x["view_count"], reverse=True)
     result = filtered[:TOP_N]
+    has_views = sum(1 for v in result if v["view_count"] > 0)
     print(f"\n  📊 수집 완료: 전체 {len(all_videos)}개 → 필터 후 {len(filtered)}개 → 상위 {len(result)}개 분석")
+    print(f"  ℹ️  조회수 확인 가능: {has_views}개 / 나머지는 제목 패턴 분석만")
     return result
 
 
@@ -100,13 +105,16 @@ def _analyze_with_claude(videos: list) -> dict:
 
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
 
-    # 영상 목록 텍스트 구성
+    # 영상 목록 텍스트 구성 (조회수 없으면 표시 생략)
     video_list = "\n".join(
         f"{i+1}. [{v['view_count']:,}회] \"{v['title']}\" ({v['duration']:.0f}초)"
+        if v["view_count"] > 0
+        else f"{i+1}. [조회수미확인] \"{v['title']}\""
         for i, v in enumerate(videos)
     )
 
-    prompt = f"""아래는 한국 유튜브 건강 쇼츠 상위 {len(videos)}개 영상의 제목과 조회수야.
+    prompt = f"""아래는 한국 유튜브 건강 쇼츠 {len(videos)}개 영상의 제목 목록이야.
+(일부는 조회수 정보가 없음 — 제목 패턴 분석에 집중)
 
 {video_list}
 
