@@ -250,8 +250,8 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
     print(f"\n[6/6] 🎬 최종 출력 (상하 바 + 브랜딩 + 자막)...")
     top_bar_h   = int(1920 * TOP_BAR_RATIO)
     bot_bar_h   = int(1920 * BOT_BAR_RATIO)
-    title_y1    = int(1920 * 0.07)
-    title_y2    = title_y1 + 85
+    title_y1    = int(1920 * 0.115)
+    title_y2    = title_y1 + 78
     watermark_y = int(1920 - bot_bar_h + bot_bar_h * 0.20)
     slogan_y    = watermark_y + 45
 
