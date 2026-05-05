@@ -36,24 +36,24 @@ def main():
         sys.exit(0)
 
     script = json.loads(script_file.read_text(encoding="utf-8"))
-    drama = script.get("drama", "")
+    title_topic = script.get("title", "")
     content_type = script.get("content_type", "")
     hook = script.get("hook", "")
     save_trigger = script.get("save_trigger", "")
     loop_trigger = script.get("loop_trigger", "")
-    tags_ko = script.get("tags_ko", ["매일의설계", "드라마", "쇼츠"])
+    tags_ko = script.get("tags_ko", ["건강상식연구소", "건강상식", "쇼츠"])
     total_duration = script.get("total_duration", 10)
 
-    title = f"{drama} | {hook}"
+    title = f"{title_topic} | {hook}"
     tags_line = " ".join(f"#{t}" for t in tags_ko)
     desc_lines = [
-        f"🎬 {drama} — {content_type}",
+        f"🔬 {title_topic} — {content_type}",
         "",
         save_trigger,
         "",
         "─────────────────────────",
-        "📌 매일의설계 | 어제보다 나은 오늘을 설계하자",
-        "구독 · 좋아요 · 알림 설정으로 매일 인사이트를 받아보세요.",
+        "📌 건강 상식 연구소 | 매일 하나씩, 건강 상식을 쌓자",
+        "구독 · 좋아요 · 알림 설정으로 매일 건강 정보를 받아보세요.",
         "",
         tags_line,
     ]
@@ -61,7 +61,7 @@ def main():
     print(json.dumps({
         "ep_dir": str(ep_dir),
         "title": title,
-        "drama": drama,
+        "title_topic": title_topic,
         "content_type": content_type,
         "hook": hook,
         "description_full": "\n".join(desc_lines),

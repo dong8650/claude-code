@@ -1,11 +1,11 @@
 """
 ai_orchestrator_v2.py
 =====================
-S급 드라마 쇼츠 파이프라인 오케스트레이터
+S급 건강 상식 쇼츠 파이프라인 오케스트레이터
 
 사용법:
   python3 ai_orchestrator_v2.py --batch --count 1 --auto
-  python3 ai_orchestrator_v2.py --topic glory_quote_revenge
+  python3 ai_orchestrator_v2.py --topic morning_water
 """
 import argparse
 import json
@@ -53,7 +53,7 @@ def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health
 
     ep_dir = get_next_ep_dir(BASE_DIR)
     ep_name = ep_dir.name
-    logger.info(f"[{ep_name}] 시작 — {topic.get('drama', topic.get('title', ''))} / {topic['content_type']} / {topic['theme']}")
+    logger.info(f"[{ep_name}] 시작 — {topic.get('title', '')} / {topic['content_type']} / {topic['theme']}")
 
     start_time = time.time()
 
@@ -99,7 +99,7 @@ def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health
     return {
         "ep_dir": str(ep_dir),
         "ep_name": ep_name,
-        "drama": topic.get("drama", topic.get("title", "")),
+        "title": topic.get("title", ""),
         "content_type": topic["content_type"],
         "hook": script.get("hook", ""),
         "video_path": str(output),
@@ -111,12 +111,12 @@ def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health
 
 
 def main():
-    parser = argparse.ArgumentParser(description="S급 드라마 쇼츠 생성")
+    parser = argparse.ArgumentParser(description="S급 건강 상식 쇼츠 생성")
     parser.add_argument("--batch", action="store_true")
     parser.add_argument("--count", type=int, default=1)
     parser.add_argument("--auto", action="store_true")
     parser.add_argument("--topic", type=str, default=None, help="특정 topic_id 지정")
-    parser.add_argument("--channel", type=str, default="health", help="health | drama")
+    parser.add_argument("--channel", type=str, default="health", help="채널 (기본값: health)")
     args = parser.parse_args()
 
     results = []
@@ -131,7 +131,7 @@ def main():
         if result.get("error"):
             logger.warning(f"  FAIL — {result['error']}")
         else:
-            logger.info(f"  PASS {result['ep_name']} | {result['drama']} | {result['content_type']} | {result['elapsed']:.1f}s")
+            logger.info(f"  PASS {result['ep_name']} | {result['title']} | {result['content_type']} | {result['elapsed']:.1f}s")
 
     success = [r for r in results if not r.get("error")]
     logger.info("=" * 55)

@@ -1,7 +1,7 @@
 """
 generate_image_v2.py
 ====================
-드라마 분위기 DALL-E 3 이미지 생성 (실제 배우/캐릭터 금지)
+건강 상식 DALL-E 3 이미지 생성 (귀여운 장기/캐릭터 스타일)
 9:16 세로형, 1024x1792
 """
 import base64
@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 
-def generate_drama_image(image_prompt: str, out_path: Path, retry: int = 3) -> Path:
+def generate_health_image(image_prompt: str, out_path: Path, retry: int = 3) -> Path:
     from openai import OpenAI
     sys.path.insert(0, str(Path(__file__).parent))
     from config import OPENAI_API_KEY
@@ -19,9 +19,9 @@ def generate_drama_image(image_prompt: str, out_path: Path, retry: int = 3) -> P
 
     safe_prompt = (
         f"{image_prompt}, "
-        "vertical 9:16 composition, cinematic Korean drama style, "
-        "no real people faces, no celebrities, silhouette or back view only, "
-        "dramatic lighting, moody atmosphere, 4K quality"
+        "vertical 9:16 composition, cute cartoon style, kawaii health infographic, "
+        "adorable organ characters, no real people faces, educational illustration, "
+        "bright cheerful colors, clean background, 4K quality"
     )
 
     for attempt in range(retry):
@@ -47,12 +47,12 @@ def generate_drama_image(image_prompt: str, out_path: Path, retry: int = 3) -> P
 def generate_all_images(scenes: list, ep_dir: Path) -> list:
     image_paths = []
     for i, scene in enumerate(scenes):
-        prompt = scene.get("image_prompt", "cinematic Korean drama atmosphere, emotional scene")
+        prompt = scene.get("image_prompt", "cute cartoon health illustration, educational, kawaii organ characters")
         out_path = ep_dir / f"bg{i+1}.jpg"
         if out_path.exists():
             image_paths.append(str(out_path))
             continue
-        generate_drama_image(prompt, out_path)
+        generate_health_image(prompt, out_path)
         image_paths.append(str(out_path))
         time.sleep(1)
     return image_paths
