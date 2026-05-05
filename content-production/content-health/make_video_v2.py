@@ -175,19 +175,27 @@ def _ts(sec: float) -> str:
     return f"{h}:{m:02d}:{s:05.2f}"
 
 
-def make_ken_burns_clip(img_path: Path, duration: float, index: int, out_path: Path) -> bool:
-    """v1 동일 Ken Burns: 짝수=줌인, 홀수=줌아웃"""
+def make_ken_burns_clip(img_path: Path, duration: float, index: int, out_path: Path) -> float:
+    """v1 동일 Ken Burns: 짝수=줌인, 홀수=줌아웃
+    Returns: 실제 생성된 클립 길이(초). 실패 시 0.0.
+    """
     frames = int(duration * 25)
+    if frames < 1:
+        frames = 1
     if index % 2 == 0:
         zoom_expr = "min(zoom+0.0008,1.3)"
     else:
         zoom_expr = "if(eq(on,1),1.3,max(zoom-0.0008,1.0))"
 
-    return run_cmd([
+    ok = run_cmd([
         "ffmpeg", "-y",
         "-loop", "1", "-i", str(img_path),
         "-t", str(duration),
         "-vf",
+        # 1) 세로형 강제: 가로 이미지도 1080x1920 portrait로 cover → center crop
+        f"scale=1080:1920:force_original_aspect_ratio=increase,"
+        f"crop=1080:1920,"
+        # 2) Ken Burns zoompan을 위해 확대
         f"scale=8000:-1,"
         f"zoompan=z='{zoom_expr}':d={frames}:"
         f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920,"
@@ -195,6 +203,10 @@ def make_ken_burns_clip(img_path: Path, duration: float, index: int, out_path: P
         "-c:v", "libx264", "-crf", "18", "-preset", "medium",
         "-pix_fmt", "yuv420p", str(out_path)
     ], f"ken_burns_{index}")
+
+    if not ok:
+        return 0.0
+    return get_duration(str(out_path))   # 실제 클립 길이 반환
 
 
 def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: bool = True) -> Path:
@@ -236,15 +248,17 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
 
     print(f"\n[2/6] 🎨 Ken Burns 이미지 클립 생성...")
     clip_files = []
+    actual_clip_durations = []   # ffprobe로 측정한 실제 클립 길이 (자막 타이밍 기준)
     for i, (scene, dur) in enumerate(zip(scenes, actual_durations)):
         img = ep_dir / f"bg{i+1}.jpg"
         if not img.exists():
             img = ep_dir / "bg1.jpg"
         clip_out = ep_dir / f"clip{i+1}.mp4"
-        ok = make_ken_burns_clip(img, dur, i, clip_out)
-        if ok:
+        clip_dur = make_ken_burns_clip(img, dur, i, clip_out)
+        if clip_dur > 0:
             clip_files.append(clip_out)
-            print(f"  ✅ clip{i+1} ({dur:.2f}초, {'줌인' if i%2==0 else '줌아웃'})")
+            actual_clip_durations.append(clip_dur)
+            print(f"  ✅ clip{i+1} ({clip_dur:.2f}초, {'줌인' if i%2==0 else '줌아웃'})")
 
     print(f"\n[3/6] 🔗 클립 연결...")
     concat_list = ep_dir / "concat.txt"
@@ -276,7 +290,8 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
         ], "audio_mix")
 
     print(f"\n[5/6] 📝 자막 생성...")
-    ass_file = build_ass(scenes, ep_dir, font_path, actual_durations)
+    # 자막 타이밍은 실제 클립 길이 기준 (TTS 길이 아님 — 프레임 정렬 오차 제거)
+    ass_file = build_ass(scenes, ep_dir, font_path, actual_clip_durations)
     print(f"  ✅ 자막 완료: {ass_file}")
 
     print(f"\n[6/6] 🎬 최종 출력 (상하 바 + 브랜딩 + 자막)...")
@@ -307,6 +322,7 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
         "-vf", vf,
         "-c:v", "libx264", "-preset", "medium", "-crf", "18",
         "-pix_fmt", "yuv420p", "-c:a", "copy",
+        "-shortest",   # 영상/음성 중 짧은 쪽에 맞춰 트림 (미세 길이 차이 제거)
         str(output)
     ], "final")
 
