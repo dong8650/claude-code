@@ -139,14 +139,33 @@ cd /root/claude-code && git pull origin main
 
 ---
 
+## 알고리즘 2차 테스트 돌파 전략
+
+> 현재 채널 상태: 1차 통과(~2.5k) → **2차 실패** → 3차 미도달
+
+| 단계 | 조회수 | 알고리즘이 보는 것 | 통과 조건 | 현재 |
+|------|--------|-----------------|---------|------|
+| 1차 | ~500 | 클릭율, 초반 3초 이탈 | 끝까지 보게 만든다 | ✅ 통과 |
+| 2차 | ~2.5k | **완시율 85%+, 반복재생, 저장율** | 다시 보게 만든다 | ❌ 실패 |
+| 3차 | ~10k | 공유, 댓글, 외부 유입 | 공유하고 싶게 만든다 | 미도달 |
+
+**2차 실패 원인 (코드 수준 진단)**:
+1. Hook이 "정보 전달형" → Identity Attack 없음 → **v2.5에서 Hook 3대 공식으로 수정** ✅
+2. Quality Gate 없어 저품질 대본 그대로 통과 → **v2.5에서 Quality Gate 추가** ✅
+3. 루프트리거 추상적 ("복선 있음") → 반복재생 유발 안 됨 → **v2.5에서 구체적 복선 강제** ✅
+4. 첫 프레임 최적화 미구현 → 피드 썸네일 효과 없음 → **미구현**
+5. YouTube Analytics 피드백 루프 없음 → **미구현**
+
+---
+
 ## 알고리즘 수치 목표
 
 | 지표 | 목표 | 적용 방법 |
 |------|------|---------|
-| 완시율 | 85%+ | 25초 이내 + 2초마다 새 정보 |
+| 완시율 | 85%+ | 22~26초 + 2초마다 새 정보 (Hook 강도가 핵심) |
 | 좋아요율 | 5%+ | 공감 자막 "매일 이렇게 했던 당신" |
-| 반복시청 | 발생 | 루프트리거 마지막 장면 |
-| 저장 | 발생 | 23~24초 저장유도 |
+| 반복시청 | 발생 | 루프트리거 — Hook 복선 구체적 언급 강제 |
+| 저장 | 발생 | 저장유도 씬 + 구체적 행동 촉구 |
 | 공유 | 발생 | 잘못된 상식 반전 + 감정충격 |
 
 ---
@@ -178,6 +197,37 @@ cd /root/claude-code && git pull origin main
 - SSH 노드 3곳: `REPLACE_WITH_SSH_CREDENTIAL_ID` → 해당 서버 SSH Credential 지정
 - YouTube 노드: `REPLACE_WITH_YOUTUBE_CREDENTIAL_ID` → YouTube OAuth2 Credential 지정
 - Slack Credential ID는 각 서버에서 등록
+
+---
+
+## 서버 패키지
+
+```bash
+# 기본 (초기 세팅 시)
+pip install anthropic openai requests pillow edge-tts elevenlabs
+apt install ffmpeg
+
+# 알고리즘 최적화 추가 패키지 (v2.6~)
+pip install yt-dlp google-api-python-client google-auth-oauthlib numpy moviepy
+```
+
+| 패키지 | 용도 | 구현 상태 |
+|--------|------|---------|
+| `yt-dlp` | 경쟁 채널 쇼츠 Hook 패턴 분석 | ✅ analyze_competitor.py |
+| `google-api-python-client` | YouTube Analytics API (완시율·반복재생 측정) | ⏳ 미구현 |
+| `google-auth-oauthlib` | YouTube Analytics OAuth 인증 | ⏳ 미구현 |
+| `numpy` | 오디오 파형 분석 (BGM 볼륨 자동 최적화) | ⏳ 미구현 |
+| `moviepy` | 빠른 컷 편집 (장면 전환 효과) | ⏳ 미구현 |
+
+---
+
+## 미구현 예정 기능
+
+| 기능 | 우선순위 | 설명 |
+|------|---------|------|
+| YouTube Analytics 연동 | ⭐⭐⭐ | 실제 완시율·반복재생 수 읽어서 어떤 Hook이 효과적인지 피드백 루프 |
+| 첫 프레임 최적화 | ⭐⭐ | 가장 충격적인 장면을 첫 0.3초에 배치 (피드 썸네일 효과) |
+| BGM 볼륨 자동 최적화 | ⭐ | numpy로 오디오 파형 분석 → Hook 장면 BGM 강조 |
 
 ---
 
