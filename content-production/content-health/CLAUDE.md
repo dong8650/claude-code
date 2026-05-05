@@ -41,7 +41,7 @@ content-health/
 ├── topics_health.json          # 건강 주제 풀 30개
 ├── health_used.json            # 서버 고유 — git 미포함
 ├── generate_script_v2.py       # Claude API → S급 대본 JSON (Quality Gate 포함)
-├── generate_image_v2.py        # DALL-E 3 → 귀여운 장기 캐릭터 이미지 (9:16)
+├── generate_image_v2.py        # ~~DALL-E 3 → 귀여운 장기 캐릭터 이미지 (9:16)~~ → DALL-E 3 실사/시네마틱 3종 (photo/digital/object, 9:16)
 ├── make_video_v2.py            # FFmpeg → S급 영상 (TTS 실제 길이 기준, 장면별 속도)
 ├── ai_orchestrator_v2.py       # CLI 오케스트레이터 (자동화용)
 ├── run_custom_v2.py            # 사전 정의 스크립트 즉시 실행
@@ -237,11 +237,37 @@ pip install yt-dlp google-api-python-client google-auth-oauthlib numpy moviepy
 ## 주의사항
 
 - DALL-E image_prompt: 실사/시네마틱 스타일. 사람은 뒷모습·실루엣·부분(손발)만 허용. 얼굴 금지.
-- 감정충격(scene5)·잘못된상식(scene4) 씬: 오브젝트 기반 프롬프트 필수 (content_policy_violation 방지)
+- ~~감정충격(scene5)·잘못된상식(scene4) 씬: 오브젝트 기반 프롬프트 필수~~ → 감정충격(scene5)만 object 고정 필수. scene4(잘못된상식)는 AI 자율 선택.
 - content_policy_violation 발생 시 safe_fallback 자동 전환 (generate_image_v2.py 내장)
 - `health_used.json` — 서버 고유, git push 금지
 - BGM: `/root/content/runtime/health/bgm/bgm_dramatic_ambient.mp3`
 - config.py: `/root/content/runtime/health/config.py`
+
+---
+
+## image_style 3종 시스템 (v3.0~)
+
+씬마다 `image_style` 필드로 DALL-E 생성 방식을 결정. **씬 위치가 아닌 씬 내용 기준**으로 AI가 자율 선택.
+
+| 스타일 | 선택 기준 | 적용 예시 |
+|--------|---------|---------|
+| `photo` | 현실에서 찍을 수 있는 장면 (운동, 생활, 행동) | 달리는 사람 뒷모습, 커피 마시는 장면 |
+| `digital` | 눈에 안 보이는 내부 메커니즘 (뇌·세포·신호·장기) | 도파민 신경망, 목 디스크 구조 압박 |
+| `object` | 사람 없이 사물로 상황 암시 | 닫힌 짐가방, 바닥의 운동화 |
+
+**고정 규칙**:
+- `scene5 감정충격` — `object` 고정 필수 (부정적 감정 씬 → content_policy_violation 차단)
+- `scene7 루프트리거` — scene1 Hook과 **동일한 image_style** 강제 (시각적 루프 연결)
+- 나머지 씬 — Claude가 씬 내용 보고 자율 판단
+
+**suffix 방식** (`generate_image_v2.py`):
+```python
+_SUFFIX = {
+    "photo":   "cinematic sports photography, photorealistic, golden hour, from behind or silhouette...",
+    "digital": "cinematic sci-fi digital art, glowing neon particles, dark background, 3D render...",
+    "object":  "cinematic still life photography, dramatic spotlight, dark moody, NO people...",
+}
+```
 
 ---
 
@@ -272,6 +298,14 @@ pip install yt-dlp google-api-python-client google-auth-oauthlib numpy moviepy
 ---
 
 ## 마지막 업데이트
+
+2026-05-05 — v3.0 image_style AI 자율 선택 시스템
+- generate_image_v2.py: ~~단일 BASE_SUFFIX~~ → photo/digital/object 3종 suffix 분리
+- generate_script_v2.py: ~~씬 위치 기준 고정 image_style~~ → 씬 내용 기준 AI 자율 판단
+  - scene5(감정충격): object 고정 유지 (부정적 감정 씬 content_policy 차단)
+  - ~~scene6(저장유도): object 고정~~ → photo/digital/object 자율 선택 (긍정 씬, 차단 위험 없음)
+  - scene7(루프트리거): ~~자유 선택~~ → scene1 Hook과 동일 image_style 강제 (시각적 루프 연결)
+- run_custom_v2.py: 달리기 후 뇌 변화 스크립트 — 카툰 프롬프트 → 씬별 realistic 프롬프트 + image_style 적용
 
 2026-05-05 — v2.9 이미지 스타일 실사/시네마틱 전환
 - generate_image_v2.py: 귀여운 장기 카툰 → 실사/시네마틱 스타일로 전환
