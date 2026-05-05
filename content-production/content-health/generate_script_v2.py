@@ -131,7 +131,7 @@ def _build_prompt(topic: dict, retry_feedback: str = "") -> str:
 2. 과학설명2 (duration ~5): 추가 효과/연구. 이모지 + 수치.
 3. 잘못된상식 반전 (duration ~5): "근데 대부분은..." 공감 유발.
 4. 감정충격 (duration ~3): "매일 이렇게 {'{'}행동{'}'}했던 당신..." 😱 짧고 강하게.
-5. 저장유도 (duration ~2): "저장해두고 내일부터 시작해 💾" — 구체적 행동 촉구.
+5. 좋아요+저장유도 (duration ~2): "공감됐으면 좋아요 누르고 저장해둬 💾👍" — 좋아요+저장 동시 촉구.
 6. 루프트리거 (duration ~1): Hook의 구체적 복선 언급. "첫 장면에서 {'{'}복선 내용{'}'} 이미 말했음 👀"
 
 ━━━ 루프트리거 핵심 규칙 ━━━
@@ -162,7 +162,7 @@ JSON만 출력 (마크다운/설명 없이):
     {{"duration": 5, "caption": "과학설명2\\n이모지 + 수치", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
     {{"duration": 5, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
     {{"duration": 3, "caption": "감정충격 😱", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
-    {{"duration": 2, "caption": "저장유도 💾", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
+    {{"duration": 2, "caption": "좋아요+저장유도 💾👍", "narration": "caption 내용 포함 나레이션", "image_prompt": "..."}},
     {{"duration": 1, "caption": "루프트리거 👀", "narration": "처음 장면 복선 언급 (10자 이내 짧게)", "image_prompt": "..."}}
   ],
   "total_duration": 24,

@@ -160,6 +160,8 @@ def make_video_stock(ep_dir: str, script: dict, style: str = "docsul"):
     title_y2    = int(1920 * 0.09) + 90
     watermark_y = int(1920 - bot_bar_h + bot_bar_h * 0.20)
     slogan_y    = watermark_y + 45
+    cta_y       = int(1920 - bot_bar_h - 50)
+    cta_start   = round(N_main - 1.2, 1)
 
     has_sub = (os.path.exists("subtitles_karaoke.ass") and
                os.path.getsize("subtitles_karaoke.ass") > 0)
@@ -180,7 +182,10 @@ def make_video_stock(ep_dir: str, script: dict, style: str = "docsul"):
         f"enable='lte(t,{N_main})',"
         f"drawtext=fontfile={FONT_PATH}:text='어제보다 나은 오늘을 설계하자':fontsize=24:fontcolor=white@0.7:"
         f"x=(w-text_w)/2:y={slogan_y}:borderw=1:bordercolor=black@0.3:"
-        f"enable='lte(t,{N_main})'"
+        f"enable='lte(t,{N_main})',"
+        f"drawtext=fontfile={FONT_PATH}:text='공감됐으면 좋아요  저장해두세요':fontsize=36:fontcolor=#FFD700:"
+        f"x=(w-text_w)/2:y={cta_y}:borderw=2:bordercolor=black@0.8:"
+        f"enable='between(t,{cta_start},{N_main})'"
     )
     ok = run(["ffmpeg", "-y",
         "-i", "base_with_ending.mp4",

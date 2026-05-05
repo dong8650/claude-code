@@ -242,6 +242,9 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
     watermark_y = int(1920 - bot_bar_h + bot_bar_h * 0.20)
     slogan_y    = watermark_y + 45
 
+    cta_y = int(1920 - bot_bar_h - 50)
+    cta_start = round(voice_dur - 1.2, 1)
+
     vf = (
         f"drawbox=x=0:y=0:w=iw:h={top_bar_h}:color=black@1.0:t=fill,"
         f"drawbox=x=0:y=ih-{bot_bar_h}:w=iw:h={bot_bar_h}:color=black@1.0:t=fill,"
@@ -253,7 +256,10 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
         f"drawtext=fontfile={font_path}:text='{WATERMARK}':fontsize=26:fontcolor=white@0.45:"
         f"x=(w-text_w)/2:y={watermark_y}:borderw=1:bordercolor=black@0.3,"
         f"drawtext=fontfile={font_path}:text='{SLOGAN}':fontsize=24:fontcolor=white@0.7:"
-        f"x=(w-text_w)/2:y={slogan_y}:borderw=1:bordercolor=black@0.3"
+        f"x=(w-text_w)/2:y={slogan_y}:borderw=1:bordercolor=black@0.3,"
+        f"drawtext=fontfile={font_path}:text='공감됐으면 좋아요  저장해두세요':fontsize=36:fontcolor=#FFD700:"
+        f"x=(w-text_w)/2:y={cta_y}:borderw=2:bordercolor=black@0.8:"
+        f"enable='gte(t,{cta_start})'"
     )
 
     output = ep_dir / "output_final.mp4"
