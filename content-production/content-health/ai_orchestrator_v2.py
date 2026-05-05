@@ -96,7 +96,7 @@ def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health
     logger.info(f"[{ep_name}] 대본 완성 — Hook: {script.get('hook', '')}")
 
     # 2. 이미지 생성
-    logger.info(f"[{ep_name}] DALL-E 이미지 생성 중... ({len(script['scenes'])}장)")
+    logger.info(f"[{ep_name}] Flux 이미지 생성 중... ({len(script['scenes'])}장)")
     try:
         from generate_image_v2 import generate_all_images
         generate_all_images(script["scenes"], ep_dir)
@@ -216,8 +216,8 @@ def run_episode_both(topic_id: str = None, auto: bool = False) -> dict:
     )
     logger.info(f"[{sf_ep_name}] 숏폼 대본 완성 — Hook: {sf_script.get('hook', '')}")
 
-    # 숏폼은 DALL-E 이미지 독립 생성 (롱폼은 Pexels, 숏폼은 DALL-E)
-    logger.info(f"[{sf_ep_name}] DALL-E 이미지 생성 중... ({len(sf_script['scenes'])}장)")
+    # 숏폼은 Flux 이미지 독립 생성 (롱폼은 Pexels, 숏폼은 Flux)
+    logger.info(f"[{sf_ep_name}] Flux 이미지 생성 중... ({len(sf_script['scenes'])}장)")
     try:
         from generate_image_v2 import generate_all_images
         generate_all_images(sf_script["scenes"], sf_ep_dir)
