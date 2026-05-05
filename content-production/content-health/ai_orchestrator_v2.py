@@ -15,7 +15,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent
+BASE_DIR    = Path(__file__).parent
+RUNTIME_DIR = Path("/root/content/runtime/health")
 sys.path.insert(0, str(BASE_DIR))
 
 logging.basicConfig(
@@ -26,10 +27,10 @@ logging.basicConfig(
 logger = logging.getLogger("orchestrator_v2")
 
 
-def get_next_ep_dir(base: Path) -> Path:
+def get_next_ep_dir(base: Path = None) -> Path:
     today = datetime.now().strftime("%Y%m%d")
-    episodes_dir = base / "episodes_v2"
-    episodes_dir.mkdir(exist_ok=True)
+    episodes_dir = RUNTIME_DIR / "episodes"
+    episodes_dir.mkdir(parents=True, exist_ok=True)
     existing = sorted(episodes_dir.glob(f"{today}_*"))
     seq = len(existing) + 1
     ep_dir = episodes_dir / f"{today}_{seq:03d}"
@@ -51,7 +52,7 @@ def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health
         used_ids = load_used()
         topic, used_ids = pick_topic(pool, used_ids)
 
-    ep_dir = get_next_ep_dir(BASE_DIR)
+    ep_dir = get_next_ep_dir()
     ep_name = ep_dir.name
     logger.info(f"[{ep_name}] 시작 — {topic.get('title', '')} / {topic['content_type']} / {topic['theme']}")
 
@@ -82,7 +83,7 @@ def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health
     logger.info(f"[{ep_name}] 영상 합성 중 (TTS + Ken Burns + BGM)...")
     try:
         from make_video_v2 import make_video
-        bgm_path = "/root/auto_pipeline/bgm/bgm_dramatic_ambient.mp3"
+        bgm_path = str(RUNTIME_DIR / "bgm/bgm_dramatic_ambient.mp3")
         output = make_video(ep_dir, script, bgm_path if Path(bgm_path).exists() else None, generate_tts=True)
     except Exception as e:
         logger.error(f"[{ep_name}] 영상 합성 실패: {e}")

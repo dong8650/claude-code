@@ -10,9 +10,9 @@ import time
 from pathlib import Path
 from datetime import datetime
 
-BASE_DIR = Path(__file__).parent
+BASE_DIR    = Path(__file__).parent
+RUNTIME_DIR = Path("/root/content/runtime/health")
 sys.path.insert(0, str(BASE_DIR))
-sys.path.insert(0, "/root/auto_pipeline")
 
 # S급 7씬 구조 (3+5+6+5+3+2+1 = 25초)
 SCRIPT = {
@@ -72,8 +72,8 @@ SCRIPT = {
 
 def main():
     today = datetime.now().strftime("%Y%m%d")
-    episodes_dir = BASE_DIR / "episodes_v2"
-    episodes_dir.mkdir(exist_ok=True)
+    episodes_dir = RUNTIME_DIR / "episodes"
+    episodes_dir.mkdir(parents=True, exist_ok=True)
     existing = sorted(episodes_dir.glob(f"{today}_*"))
     seq = len(existing) + 1
     ep_dir = episodes_dir / f"{today}_{seq:03d}"
@@ -94,7 +94,7 @@ def main():
     # 3+4. 영상 합성 (TTS + Ken Burns + BGM)
     print(f"\n🎬 영상 합성 중 (TTS + Ken Burns + BGM)...")
     from make_video_v2 import make_video
-    bgm_path = "/root/auto_pipeline/bgm/bgm_dramatic_ambient.mp3"
+    bgm_path = str(RUNTIME_DIR / "bgm/bgm_dramatic_ambient.mp3")
     output = make_video(ep_dir, SCRIPT, bgm_path if Path(bgm_path).exists() else None, generate_tts=True)
     print(f"\n✅ 완성: {output}")
 

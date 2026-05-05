@@ -13,9 +13,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent
-POOL_FILE = BASE_DIR / "infographic_topic_pool.json"
-USED_FILE = BASE_DIR / "infographic_used.json"
+BASE_DIR     = Path(__file__).parent
+RUNTIME_DIR  = Path("/root/content/runtime/mindset")
+POOL_FILE    = BASE_DIR / "infographic_data/infographic_topic_pool.json"
+USED_FILE    = RUNTIME_DIR / "infographic_used.json"
 
 
 def load_used() -> set:
@@ -133,13 +134,15 @@ def main():
 
     today = datetime.now().strftime("%Y%m%d")
     out_file = f"data_{today}.json"
-    (BASE_DIR / out_file).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    out_path = RUNTIME_DIR / out_file
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
     used_ids.add(topic["id"])
     save_used(used_ids)
 
     print(json.dumps({
-        "data_file": out_file,
+        "data_file": str(out_path),
         "topic_id": topic["id"],
         "title": data.get("title", topic["title"]),
     }, ensure_ascii=False))

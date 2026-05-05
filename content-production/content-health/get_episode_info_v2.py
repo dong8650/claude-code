@@ -8,8 +8,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent
-EPISODES_DIR = BASE_DIR / "episodes_v2"
+EPISODES_DIR = Path("/root/content/runtime/health/episodes")
 
 
 def main():

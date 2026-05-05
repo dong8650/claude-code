@@ -11,8 +11,9 @@ import re
 import sys
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent
-USED_FILE = BASE_DIR / "health_used.json"
+BASE_DIR     = Path(__file__).parent
+RUNTIME_DIR  = Path("/root/content/runtime/health")
+USED_FILE    = RUNTIME_DIR / "health_used.json"
 
 
 def load_used() -> set:

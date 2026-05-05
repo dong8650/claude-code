@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-BASE_DIR = Path("/root/auto_pipeline")
+BASE_DIR = Path("/root/content/runtime/mindset")
 DEFAULT_TAGS = ["매일의설계", "직장인", "쇼츠", "자기계발", "동기부여"]
 
 

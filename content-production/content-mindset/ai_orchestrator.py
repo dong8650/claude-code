@@ -41,8 +41,8 @@ from quality_gate import recheck_v3
 
 log = logging.getLogger("orchestrator")
 
-BASE_DIR    = Path(os.getenv("PIPELINE_BASE", "/root/auto_pipeline"))
-TOPICS_FILE = Path(os.getenv("TOPICS_FILE",   "/root/auto_pipeline/topics.json"))
+BASE_DIR    = Path(os.getenv("PIPELINE_BASE", "/root/content/runtime/mindset"))
+TOPICS_FILE = Path(os.getenv("TOPICS_FILE",   "/root/content/runtime/mindset/topics.json"))
 
 # ─────────────────────────────────────────────
 # 콘텐츠 타입 비율

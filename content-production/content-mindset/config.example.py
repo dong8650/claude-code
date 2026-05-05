@@ -18,13 +18,13 @@ FPS          = 25
 BGM_VOLUME   = 0.12
 FONT_PATH    = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
 WATERMARK    = "© 2026 매일의 설계"
-BGM_PATH     = "/root/auto_pipeline/bgm/bgm_philosophy.mp3"
-ENDING_PATH  = "/root/auto_pipeline/bgm/ending_card_text.mp4"
+BGM_PATH     = "/root/content/runtime/mindset/bgm/bgm_philosophy.mp3"
+ENDING_PATH  = "/root/content/runtime/mindset/bgm/ending_card_text.mp4"
 
 BGM_MAP = {
-    "docsul": "/root/auto_pipeline/bgm/bgm_dark_cinematic.mp3",
-    "janas":  "/root/auto_pipeline/bgm/bgm_dramatic_ambient.mp3",
-    "list":   "/root/auto_pipeline/bgm/bgm_philosophy.mp3",
+    "docsul": "/root/content/runtime/mindset/bgm/bgm_dark_cinematic.mp3",
+    "janas":  "/root/content/runtime/mindset/bgm/bgm_dramatic_ambient.mp3",
+    "list":   "/root/content/runtime/mindset/bgm/bgm_philosophy.mp3",
 }
 
 # n8n 자동화

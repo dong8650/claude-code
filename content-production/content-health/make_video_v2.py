@@ -316,7 +316,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--ep", required=True)
     parser.add_argument("--script", required=True)
-    parser.add_argument("--bgm", default="/root/auto_pipeline/bgm/bgm_dramatic_ambient.mp3")
+    parser.add_argument("--bgm", default="/root/content/runtime/health/bgm/bgm_dramatic_ambient.mp3")
     args = parser.parse_args()
 
     ep_dir = Path(args.ep)
