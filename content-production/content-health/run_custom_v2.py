@@ -23,37 +23,37 @@ SCRIPT = {
         {
             "duration": 3,
             "caption": "달리기 20분 후\n뇌에서 일어나는 일",
-            "narration": "달리기 20분 후, 뇌에서 일어나는 일입니다",
+            "narration": "달리기 20분 후 뇌에서 일어나는 일",
             "image_prompt": "cute cartoon brain character running joyfully with tiny legs, endorphin sparkles floating around, bright colorful kawaii health infographic style, 9:16 vertical portrait"
         },
         {
             "duration": 5,
             "caption": "도파민 + 세로토닌 동시 분비\n→ 항우울제와 동일한 효과\n→ 지속 시간 최대 2~3시간 🧠",
-            "narration": "도파민과 세로토닌이 동시에 분비되면서, 항우울제와 동일한 효과가 나타납니다. 지속 시간은 최대 2~3시간",
+            "narration": "도파민, 세로토닌 동시 분비. 항우울제와 동일한 효과, 2~3시간 지속",
             "image_prompt": "cute cartoon dopamine and serotonin molecule characters high-fiving, happy kawaii brain in background, colorful chemistry bubbles, 9:16 vertical portrait, kawaii health science style"
         },
         {
             "duration": 6,
             "caption": "BDNF(뇌유래신경영양인자) 분비\n→ 뇌세포 새로 생성\n→ 기억력·집중력 즉시 향상 💡",
-            "narration": "게다가 BDNF라는 물질이 분비되면서 뇌세포가 새로 생성됩니다. 기억력과 집중력이 즉시 향상돼요",
+            "narration": "BDNF 분비로 뇌세포가 새로 생성됩니다. 기억력, 집중력 즉시 향상",
             "image_prompt": "cute cartoon brain cells growing and multiplying, BDNF molecule as a cute watering can nourishing brain flowers, bright educational health illustration, 9:16 vertical portrait"
         },
         {
             "duration": 5,
             "caption": "근데 대부분이\n'운동 후에 머리 아프다'\n그냥 쉬어버림 ⚠️",
-            "narration": "그런데 대부분의 사람들은 운동 후 머리가 아프다며 그냥 쉬어버립니다",
+            "narration": "근데 대부분은 운동 후 머리 아프다며 그냥 쉬어버림",
             "image_prompt": "cute cartoon person lying on couch looking tired, kawaii sad brain character watching from the side, soft cozy colors, 9:16 vertical portrait, health awareness illustration"
         },
         {
             "duration": 3,
             "caption": "매일 쉬기만 했던 당신\n뇌가 굶고 있었음 😱",
-            "narration": "매일 쉬기만 했던 당신, 사실 뇌가 굶고 있었습니다",
+            "narration": "매일 쉬기만 했던 당신, 뇌가 굶고 있었음",
             "image_prompt": "cute cartoon brain character looking hungry and sad, holding empty bowl, dramatic but kawaii expression, bright colorful background, 9:16 vertical portrait"
         },
         {
             "duration": 2,
             "caption": "저장해두고 운동 하기 싫을 때\n꺼내봐 💾",
-            "narration": "저장해두고 운동하기 싫을 때 꺼내봐요",
+            "narration": "저장해두고 꺼내봐",
             "image_prompt": "cute cartoon running shoe with golden bookmark ribbon, save icon glowing, motivational bright kawaii colors, cheerful health illustration, 9:16 vertical portrait"
         },
         {

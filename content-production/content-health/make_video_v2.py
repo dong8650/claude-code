@@ -14,8 +14,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-FONT_PATH = "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc"
-FONT_FALLBACK = "/root/auto_pipeline/NotoSansCJK-Bold.ttc"
+FONT_PATH = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+FONT_FALLBACK = "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc"
 CHANNEL_NAME = "매일의 설계"
 SLOGAN = "매일 하나씩, 건강 상식을 쌓자"
 WATERMARK = "© 2026 매일의 설계"
