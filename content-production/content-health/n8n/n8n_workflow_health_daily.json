@@ -33,11 +33,28 @@
       }
     },
     {
+      "id": "node-ssh-competitor",
+      "name": "Competitor Analysis (월요일만)",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "parameters": {
+        "resource": "command",
+        "command": "DOW=$(date +%u); if [ \"$DOW\" = \"1\" ]; then cd /root/claude-code/content-production/content-health && python3 analyze_competitor.py > /root/content/runtime/health/competitor_analysis.log 2>&1 && echo \"✅ 경쟁분석 완료 (월요일)\"; else echo \"⏭️ 경쟁분석 스킵 ($(date +%A))\"; fi"
+      },
+      "credentials": {
+        "sshPassword": {
+          "id": "REPLACE_WITH_SSH_CREDENTIAL_ID",
+          "name": "Content Server SSH"
+        }
+      }
+    },
+    {
       "id": "node-ssh-ep-gen",
       "name": "Episode Generate",
       "type": "n8n-nodes-base.ssh",
       "typeVersion": 1,
-      "position": [680, 300],
+      "position": [900, 300],
       "parameters": {
         "resource": "command",
         "command": "cd /root/claude-code/content-production/content-health && setsid python3 -u ai_orchestrator_v2.py --batch --count 1 --auto > /root/content/runtime/health/daily_gen_v2.log 2>&1 </dev/null & echo \"PID=$!\""
@@ -54,7 +71,7 @@
       "name": "Wait 30m",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
-      "position": [900, 300],
+      "position": [1120, 300],
       "parameters": {
         "resume": "timeInterval",
         "amount": 30,
@@ -67,7 +84,7 @@
       "name": "Get Episode Info",
       "type": "n8n-nodes-base.ssh",
       "typeVersion": 1,
-      "position": [1120, 300],
+      "position": [1340, 300],
       "parameters": {
         "resource": "command",
         "command": "cd /root/claude-code/content-production/content-health && python3 get_episode_info_v2.py"
@@ -84,7 +101,7 @@
       "name": "Episode Metadata",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 300],
+      "position": [1560, 300],
       "parameters": {
         "jsCode": "const raw = JSON.parse($json.stdout.trim());\nif (raw.error) {\n  return [{ json: { error: raw.error, ep_dir: raw.ep_dir || '', video_path: null, title: null } }];\n}\nconst { title, description_full, tags_ko, video_path, privacy } = raw;\nreturn [{ json: { title, description_full, tags_ko: tags_ko || ['건강상식', '매일의설계', '쇼츠'], video_path, privacy: privacy || 'private', error: null } }];"
       }
@@ -94,7 +111,7 @@
       "name": "Episode OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [1560, 300],
+      "position": [1780, 300],
       "parameters": {
         "conditions": {
           "string": [
@@ -111,7 +128,7 @@
       "name": "Read Episode Video",
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
-      "position": [1780, 200],
+      "position": [2000, 200],
       "parameters": {
         "operation": "read",
         "fileSelector": "={{ $('Episode Metadata').item.json.video_path }}"
@@ -122,7 +139,7 @@
       "name": "YouTube Episode",
       "type": "n8n-nodes-base.youTube",
       "typeVersion": 1,
-      "position": [2000, 200],
+      "position": [2220, 200],
       "parameters": {
         "resource": "video",
         "operation": "upload",
@@ -149,7 +166,7 @@
       "name": "Slack Success",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2,
-      "position": [2220, 200],
+      "position": [2440, 200],
       "parameters": {
         "resource": "message",
         "operation": "post",
@@ -167,7 +184,7 @@
       "name": "Slack Failure",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2,
-      "position": [1780, 400],
+      "position": [2000, 400],
       "parameters": {
         "resource": "message",
         "operation": "post",
@@ -182,12 +199,13 @@
     }
   ],
   "connections": {
-    "Cron 01:00":       { "main": [[{ "node": "Git Sync",         "type": "main", "index": 0 }]] },
-    "Git Sync":         { "main": [[{ "node": "Episode Generate", "type": "main", "index": 0 }]] },
-    "Episode Generate": { "main": [[{ "node": "Wait 30m",         "type": "main", "index": 0 }]] },
-    "Wait 30m":         { "main": [[{ "node": "Get Episode Info", "type": "main", "index": 0 }]] },
-    "Get Episode Info": { "main": [[{ "node": "Episode Metadata", "type": "main", "index": 0 }]] },
-    "Episode Metadata": { "main": [[{ "node": "Episode OK?",      "type": "main", "index": 0 }]] },
+    "Cron 01:00":                    { "main": [[{ "node": "Git Sync",                    "type": "main", "index": 0 }]] },
+    "Git Sync":                      { "main": [[{ "node": "Competitor Analysis (월요일만)", "type": "main", "index": 0 }]] },
+    "Competitor Analysis (월요일만)": { "main": [[{ "node": "Episode Generate",             "type": "main", "index": 0 }]] },
+    "Episode Generate":              { "main": [[{ "node": "Wait 30m",                     "type": "main", "index": 0 }]] },
+    "Wait 30m":                      { "main": [[{ "node": "Get Episode Info",              "type": "main", "index": 0 }]] },
+    "Get Episode Info":              { "main": [[{ "node": "Episode Metadata",              "type": "main", "index": 0 }]] },
+    "Episode Metadata":              { "main": [[{ "node": "Episode OK?",                  "type": "main", "index": 0 }]] },
     "Episode OK?": {
       "main": [
         [{ "node": "Read Episode Video", "type": "main", "index": 0 }],
