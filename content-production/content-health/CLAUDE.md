@@ -286,6 +286,7 @@ pip install yt-dlp google-api-python-client google-auth-oauthlib numpy moviepy
 ```
 
 > **규칙**: 수치 1개 이상 필수 (신뢰도), 마지막에 저장 유도, 롱폼은 참여 유도 질문 추가
+> **금지**: 설명란에 `<` `>` 꺾쇄괄호 사용 금지 — YouTube가 허용하지 않음. 비교 표현은 `A가 B보다` 형식으로 대체.
 
 ---
 
