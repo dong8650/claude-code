@@ -1,0 +1,182 @@
+"""
+test_run_realistic.py
+=====================
+[테스트] 실사/포토리얼리스틱 이미지 스타일 — 달리기 후 뇌 변화
+
+run_custom_v2.py 와 동일한 스크립트/파이프라인.
+차이점: DALL-E 프롬프트를 카툰→시네마틱 실사 스타일로 변경.
+기존 make_video_v2.py 코드 변경 없음.
+
+실행: python3 test_run_realistic.py
+출력: /root/content/runtime/health/episodes/test_realistic_YYYYMMDD_001/output_final.mp4
+"""
+import json
+import sys
+import time
+from pathlib import Path
+from datetime import datetime
+
+BASE_DIR    = Path(__file__).parent
+RUNTIME_DIR = Path("/root/content/runtime/health")
+sys.path.insert(0, str(BASE_DIR))
+
+# ── 실사 스타일 이미지 프롬프트로 교체된 스크립트 ──────────────────────
+SCRIPT = {
+    "title": "달리기 후 뇌 변화",
+    "content_type": "건강상식",
+    "hook": "달리기 20분 후 뇌에서 일어나는 일",
+    "scenes": [
+        {
+            "duration": 3,
+            "caption": "달리기 20분 후\n뇌에서 일어나는 일",
+            "narration": "달리기 20분 후 뇌에서 일어나는 일",
+            "image_prompt": (
+                "cinematic surreal artwork of a glowing human brain sprouting tiny running legs, "
+                "dark dramatic atmosphere, neon blue-purple bioluminescent glow, "
+                "no text, no human faces, 9:16 vertical portrait"
+            ),
+        },
+        {
+            "duration": 5,
+            "caption": "도파민 + 세로토닌 동시 분비\n→ 항우울제와 동일한 효과\n→ 지속 시간 최대 2~3시간 🧠",
+            "narration": "도파민, 세로토닌 동시 분비. 항우울제와 동일한 효과, 2~3시간 지속",
+            "image_prompt": (
+                "photorealistic macro of luminous dopamine and serotonin molecule structures, "
+                "glowing neon orbs connected by electric synaptic pathways, "
+                "deep black background with purple-gold highlights, "
+                "no text, no human faces, 9:16 vertical"
+            ),
+        },
+        {
+            "duration": 6,
+            "caption": "BDNF(뇌유래신경영양인자) 분비\n→ 뇌세포 새로 생성\n→ 기억력·집중력 즉시 향상 💡",
+            "narration": "BDNF 분비로 뇌세포가 새로 생성됩니다. 기억력, 집중력 즉시 향상",
+            "image_prompt": (
+                "cinematic macro photography of bioluminescent neural connections branching and growing, "
+                "neurons forming new synapses, dark blue-black background, "
+                "bright electric-green and cyan glow, no text, no human faces, 9:16 vertical portrait"
+            ),
+        },
+        {
+            "duration": 5,
+            "caption": "근데 대부분이\n'운동 후에 머리 아프다'\n그냥 쉬어버림 ⚠️",
+            "narration": "근데 대부분은 운동 후 머리 아프다며 그냥 쉬어버림",
+            "image_prompt": (
+                "cinematic photo style of a person's legs slumped on a couch, "
+                "tired exhausted atmosphere, dark moody room, soft side lighting, "
+                "no human face visible, 9:16 vertical portrait"
+            ),
+        },
+        {
+            "duration": 3,
+            "caption": "매일 쉬기만 했던 당신\n뇌가 굶고 있었음 😱",
+            "narration": "매일 쉬기만 했던 당신, 뇌가 굶고 있었음",
+            "image_prompt": (
+                "dramatic concept art of a withered dimly glowing human brain in a dark void, "
+                "contrasted with a bright healthy version nearby, surreal cinematic atmosphere, "
+                "no text, no human faces, 9:16 vertical portrait"
+            ),
+        },
+        {
+            "duration": 2,
+            "caption": "저장해두고 운동 하기 싫을 때\n꺼내봐 💾",
+            "narration": "저장해두고 꺼내봐",
+            "image_prompt": (
+                "cinematic shot of worn running shoes on dark wooden floor, "
+                "single golden spotlight from above, bookmark save icon glowing softly in background, "
+                "motivational dramatic lighting, no text, 9:16 vertical portrait"
+            ),
+        },
+        {
+            "duration": 1,
+            "caption": "처음부터 보면 복선 있음 👀",
+            "narration": "",
+            "image_prompt": (
+                "surreal cinematic image of a neon loop arrow circling a glowing brain silhouette, "
+                "dark dramatic atmosphere, electric blue-purple, no text, 9:16 vertical portrait"
+            ),
+        },
+    ],
+    "total_duration": 25,
+    "save_trigger": "저장해두고 운동 하기 싫을 때 꺼내봐 💾",
+    "loop_trigger": "처음부터 보면 복선 있음 👀",
+    "tags_ko": ["건강상식연구소", "달리기", "뇌과학", "운동효과", "쇼츠"],
+}
+
+
+def generate_realistic_image(image_prompt: str, out_path: Path, retry: int = 3) -> Path:
+    """실사/시네마틱 DALL-E 이미지 (카툰 스타일 없음)."""
+    import base64
+    from openai import OpenAI
+    sys.path.insert(0, "/root/content/runtime/health")
+    from config import OPENAI_API_KEY
+
+    client = OpenAI(api_key=OPENAI_API_KEY)
+
+    safe_prompt = (
+        f"{image_prompt}, "
+        "TALL VERTICAL 9:16 PORTRAIT composition, single main subject centered vertically, "
+        "NO horizontal side-by-side layout, NO text overlay in image, NO real human faces, "
+        "photorealistic or cinematic digital art style, dramatic professional lighting"
+    )
+
+    for attempt in range(retry):
+        try:
+            resp = client.images.generate(
+                model="dall-e-3",
+                prompt=safe_prompt,
+                size="1024x1792",
+                quality="standard",
+                n=1,
+                response_format="b64_json",
+            )
+            img_data = base64.b64decode(resp.data[0].b64_json)
+            out_path.write_bytes(img_data)
+            print(f"    ✅ {out_path.name}")
+            return out_path
+        except Exception as e:
+            if attempt < retry - 1:
+                time.sleep(2 ** attempt)
+            else:
+                print(f"    ❌ {out_path.name}: {e}")
+                raise e
+
+
+def main():
+    ep_dir = RUNTIME_DIR / "episodes" / f"test_realistic_{datetime.now().strftime('%Y%m%d')}_001"
+    ep_dir.mkdir(parents=True, exist_ok=True)
+    print(f"\n📁 테스트 디렉토리: {ep_dir}")
+    print("🎨 스타일: 실사/시네마틱 DALL-E (카툰 없음)\n")
+
+    (ep_dir / "script_v2.json").write_text(
+        json.dumps(SCRIPT, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    print("✅ 스크립트 저장 완료")
+
+    # 실사 이미지 생성
+    print(f"\n🖼️  DALL-E 실사 이미지 생성 중... ({len(SCRIPT['scenes'])}장)")
+    for i, scene in enumerate(SCRIPT["scenes"]):
+        out_path = ep_dir / f"bg{i+1}.jpg"
+        if out_path.exists():
+            print(f"    ⏭️  bg{i+1}.jpg 이미 존재, 스킵")
+            continue
+        generate_realistic_image(scene["image_prompt"], out_path)
+        time.sleep(1)
+    print("✅ 이미지 생성 완료\n")
+
+    # 영상 합성 — make_video_v2.py 그대로 사용 (변경 없음)
+    print("🎬 영상 합성 중 (TTS + Ken Burns + BGM)...")
+    from make_video_v2 import make_video
+    bgm_path = str(RUNTIME_DIR / "bgm/bgm_dramatic_ambient.mp3")
+    output = make_video(
+        ep_dir, SCRIPT,
+        bgm_path if Path(bgm_path).exists() else None,
+        generate_tts=True,
+    )
+    print(f"\n✅ 완성: {output}")
+
+
+if __name__ == "__main__":
+    start = time.time()
+    main()
+    print(f"⏱️  총 소요: {time.time()-start:.1f}초")
