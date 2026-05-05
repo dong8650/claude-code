@@ -15,9 +15,10 @@ import re
 import sys
 from pathlib import Path
 
-BASE_DIR     = Path(__file__).parent
-RUNTIME_DIR  = Path("/root/content/runtime/health")
-USED_FILE    = RUNTIME_DIR / "health_used.json"
+BASE_DIR      = Path(__file__).parent
+RUNTIME_DIR   = Path("/root/content/runtime/health")
+USED_FILE     = RUNTIME_DIR / "health_used.json"
+INSIGHTS_FILE = RUNTIME_DIR / "competitor_insights.json"
 
 SCORE_PASS   = 7   # scroll_stop_power / emotional_attack 최소 기준
 LOOP_PASS    = 6   # loop_value 최소 기준
@@ -35,6 +36,52 @@ def save_used(used_ids: set):
         json.dumps({"used_ids": list(used_ids)}, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+
+
+def load_competitor_insights() -> str:
+    """competitor_insights.json에서 핵심 인사이트 텍스트 추출."""
+    if not INSIGHTS_FILE.exists():
+        return ""
+    try:
+        data = json.loads(INSIGHTS_FILE.read_text(encoding="utf-8"))
+        a = data.get("analysis", {})
+        stats = a.get("hook_type_stats", {})
+        winning = a.get("winning_hook_type", "")
+        phrases = a.get("key_phrases", [])[:6]
+        top_hooks = a.get("top_hooks", [])[:3]
+        recommendation = a.get("recommendation", "")
+        generated = data.get("generated_at", "")[:10]
+
+        lines = [f"━━━ 경쟁 채널 분석 인사이트 ({generated}) ━━━"]
+
+        if winning:
+            lines.append(f"🏆 최강 Hook 타입: {winning}")
+
+        if stats:
+            sorted_types = sorted(
+                [(k, v) for k, v in stats.items() if v.get("count", 0) > 0],
+                key=lambda x: x[1].get("avg_views", 0), reverse=True
+            )
+            lines.append("📊 Hook 타입별 평균 조회수:")
+            for htype, stat in sorted_types[:3]:
+                lines.append(f"  - {htype}: 평균 {stat['avg_views']:,}회 / 최고 {stat['max_views']:,}회")
+                if stat.get("best_title"):
+                    lines.append(f"    예: \"{stat['best_title']}\"")
+
+        if top_hooks:
+            lines.append("🔥 실제 고성과 Hook 예시 (참고용):")
+            for h in top_hooks:
+                lines.append(f"  [{h.get('views',0):,}회] \"{h.get('title','')}\" ({h.get('hook_type','')})")
+
+        if phrases:
+            lines.append(f"💡 고성과 제목 핵심 문구: {', '.join(phrases)}")
+
+        if recommendation:
+            lines.append(f"📌 적용 인사이트: {recommendation}")
+
+        return "\n".join(lines)
+    except Exception:
+        return ""
 
 
 def pick_topic(pool: list, used_ids: set) -> tuple:
@@ -58,8 +105,12 @@ def _build_prompt(topic: dict, retry_feedback: str = "") -> str:
 {retry_feedback}
 """
 
+    competitor_block = load_competitor_insights()
+    if competitor_block:
+        competitor_block = "\n" + competitor_block + "\n"
+
     return f"""너는 유튜브 쇼츠 알고리즘 전문가. 조회수 2.5k 천장을 돌파하는 S급 건강 쇼츠 대본만 작성.
-{retry_block}
+{retry_block}{competitor_block}
 주제: {title}
 테마: {theme}
 잘못된 상식 (반전 포인트): {myth}
@@ -161,6 +212,11 @@ def generate_script(topic: dict) -> dict:
 
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
     retry_feedback = ""
+
+    if INSIGHTS_FILE.exists():
+        print(f"  📈 경쟁 분석 인사이트 로드: {INSIGHTS_FILE.name}")
+    else:
+        print(f"  ℹ️  경쟁 분석 없음 (python3 analyze_competitor.py 실행 시 활성화)")
 
     for attempt in range(MAX_RETRY + 1):
         prompt = _build_prompt(topic, retry_feedback)

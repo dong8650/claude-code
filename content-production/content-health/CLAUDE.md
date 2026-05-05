@@ -38,12 +38,15 @@ content-health/
 ├── CLAUDE.md
 ├── topics_health.json          # 건강 주제 풀 30개
 ├── health_used.json            # 서버 고유 — git 미포함
-├── generate_script_v2.py       # Claude API → S급 대본 JSON
+├── generate_script_v2.py       # Claude API → S급 대본 JSON (Quality Gate 포함)
 ├── generate_image_v2.py        # DALL-E 3 → 귀여운 장기 캐릭터 이미지 (9:16)
-├── make_video_v2.py            # FFmpeg → 25초 S급 영상 (v1 효과 이식)
+├── make_video_v2.py            # FFmpeg → S급 영상 (TTS 실제 길이 기준, 장면별 속도)
 ├── ai_orchestrator_v2.py       # CLI 오케스트레이터 (자동화용)
 ├── run_custom_v2.py            # 사전 정의 스크립트 즉시 실행
 ├── get_episode_info_v2.py      # n8n SSH 노드용
+├── analyze_competitor.py       # 경쟁 채널 분석 (yt-dlp + Claude, 주 1회 권장)
+
+competitor_insights.json       # 서버 고유 — git 미포함 (analyze_competitor.py 생성)
 
 episodes_v2/                   # 서버 고유 — git 미포함
 └── YYYYMMDD_NNN/
@@ -77,6 +80,12 @@ episodes_v2/                   # 서버 고유 — git 미포함
 ```bash
 HEALTH=/root/claude-code/content-production/content-health
 RUNTIME=/root/content/runtime/health
+
+# 경쟁 채널 분석 (주 1회 권장 — 처음 실행 시 또는 매주 월요일)
+cd $HEALTH && python3 analyze_competitor.py
+
+# 분석 결과만 출력 (재실행 없이)
+cd $HEALTH && python3 analyze_competitor.py --report
 
 # 자동 (주제 풀에서 순서대로)
 cd $HEALTH && python3 ai_orchestrator_v2.py --batch --count 1 --auto
@@ -203,6 +212,13 @@ cd /root/claude-code && git pull origin main
 ---
 
 ## 마지막 업데이트
+
+2026-05-05 — v2.6 경쟁 채널 분석 연동
+- analyze_competitor.py 신규: yt-dlp로 건강 쇼츠 상위 영상 수집 → Claude Hook 패턴 분류
+- competitor_insights.json 생성 (RUNTIME_DIR, git 미포함)
+- generate_script_v2.py: 인사이트 자동 로드 → 대본 생성 프롬프트에 주입
+  - 최강 Hook 타입, 고성과 제목 예시, 핵심 문구가 Claude 대본에 반영됨
+- 서버 필수 패키지: yt-dlp, google-api-python-client, google-auth-oauthlib, numpy, moviepy
 
 2026-05-05 — v2.5 알고리즘 최적화 (2.5k 천장 돌파 목표)
 - generate_script_v2.py: Hook 3대 공식 강제, Quality Gate (scroll_stop≥7, emotional≥7, loop≥6)
