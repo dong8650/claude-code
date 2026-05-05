@@ -16,9 +16,9 @@ from pathlib import Path
 
 FONT_PATH = "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc"
 FONT_FALLBACK = "/root/auto_pipeline/NotoSansCJK-Bold.ttc"
-CHANNEL_NAME = "건강 상식 연구소"
+CHANNEL_NAME = "매일의 설계"
 SLOGAN = "매일 하나씩, 건강 상식을 쌓자"
-WATERMARK = "@health.lab.kr"
+WATERMARK = "매일의 설계"
 TOP_BAR_RATIO = 0.20
 BOT_BAR_RATIO = 0.18
 
