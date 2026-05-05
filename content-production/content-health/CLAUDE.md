@@ -12,22 +12,24 @@
 | 워터마크 | © 2026 매일의 설계 |
 | 슬로건 | 매일 하나씩, 건강 상식을 쌓자 |
 | 콘텐츠 | 잘못된 건강 상식 뒤집기 — 반복재생·저장 폭발 |
-| 길이 | 25초 고정 (S급 루프 구조) |
+| 길이 | 22~26초 (TTS 실제 길이 기준, 고정 아님) |
 | 이미지 | DALL-E 3 귀여운 장기/캐릭터 스타일 (실제 사람 금지) |
 
 ---
 
-## S급 포맷 (25초 고정)
+## S급 포맷 (7장면, TTS 실제 길이 기준 — 22~26초 최적)
 
 ```
-0~3초   🔥 Hook       — "의사들이 매일 하는데 우리만 모름"
-4~8초   ✅ 과학설명1  — 핵심 메커니즘 + 수치
-9~14초  ✅ 과학설명2  — 추가 효과 + 이모지
-15~19초 ⚠️ 잘못된상식 — 반전 포인트 "근데 대부분이..."
-20~22초 😱 감정충격   — "매일 이렇게 했던 당신..."
-23~24초 💾 저장유도   — "저장해두고 내일부터 해봐"
-25초    👀 루프트리거 — "처음부터 보면 복선 있음"
+scene1  🔥 Hook       — Hook 3대 공식 중 1개 (정체성공격/전문가반전/잘못된상식직격)
+scene2  ✅ 과학설명1  — 핵심 메커니즘 + 수치 (→ 기호 활용)
+scene3  ✅ 과학설명2  — 추가 효과 + 이모지 + 수치
+scene4  ⚠️ 잘못된상식 — 반전 포인트 "근데 대부분은..."
+scene5  😱 감정충격   — "매일 이렇게 했던 당신..." 짧고 강하게
+scene6  💾 저장유도   — 구체적 행동 촉구 + 💾
+scene7  👀 루프트리거 — Hook 복선 구체적 언급 (추상적 "복선 있음" 금지)
 ```
+
+**영상 길이 자동 결정**: TTS 실제 발화 시간 = 클립 길이 = 자막 타이밍 (고정 없음)
 
 ---
 
@@ -69,7 +71,9 @@ episodes_v2/                   # 서버 고유 — git 미포함
 | 하단 검은 바 | 22% + 워터마크 | ✅ 18% + @health.lab.kr |
 | 자막 스타일 | ASS Karaoke (노래방 효과) | ✅ ASS 장면별 (Hook=오렌지, Main=흰색, Save=노랑, Loop=시안) |
 | BGM 믹싱 | voice 1.0 + bgm 0.18 | ✅ 동일 |
-| TTS | 3분할 (hook/body/closing) | ✅ 장면별 실제 TTS 길이 기준 (싱크 보장) |
+| TTS | 3분할 (hook/body/closing) | ✅ 장면별 실제 TTS 길이 기준 + 장면별 속도 차별화 |
+| 자막 싱크 | TTS 예상 길이 기준 | ✅ 실제 클립 길이(ffprobe) 기준 — 프레임 정렬 오차 제거 |
+| 이미지 방향 | 가로 이미지 오류 가능 | ✅ force_original_aspect_ratio=increase → crop 1080x1920 강제 |
 | 해상도 | 1080×1920 25fps | ✅ 동일 |
 | CRF | 18 | ✅ 동일 |
 
@@ -158,8 +162,9 @@ cd /root/claude-code && git pull origin main
 ### 일일 자동화 실행 흐름
 
 ```
-01:00 Cron
+01:00 Cron (매일)
     ↓ SSH — git pull (Git Sync)
+    ↓ SSH — 경쟁 분석 (월요일만): analyze_competitor.py → competitor_insights.json
     ↓ SSH — setsid ai_orchestrator_v2.py --batch --count 1 --auto (백그라운드)
     ↓ Wait 30분
     ↓ SSH — get_episode_info_v2.py (에피소드 메타데이터 JSON)
@@ -212,6 +217,18 @@ cd /root/claude-code && git pull origin main
 ---
 
 ## 마지막 업데이트
+
+2026-05-05 — v2.7 싱크 완전 수정 + 세로형 강제
+- make_video_v2.py: make_ken_burns_clip() → bool 반환 → float(실제 클립 길이) 반환으로 변경
+- make_video_v2.py: actual_clip_durations 수집 (ffprobe 측정) → build_ass()에 적용
+  - 기존: TTS 파일 길이 기준 자막 타이밍 → 프레임 정렬 오차 누적 (씬7개 기준 ~0.1초 오차)
+  - 수정: 실제 클립 길이 기준 자막 타이밍 → 영상=자막 완전 동기화
+- make_video_v2.py: 최종 출력에 -shortest 추가 (음성/영상 미세 차이 트림)
+- make_video_v2.py: Ken Burns 전처리 세로형 강제
+  - scale=1080:1920:force_original_aspect_ratio=increase → crop=1080:1920
+  - DALL-E 가로/정사각형 이미지도 portrait로 변환 후 Ken Burns 적용
+- analyze_competitor.py: MIN_VIEWS 필터 제거 (yt-dlp 검색 결과 view_count=0 문제 해결)
+  - 74개 영상 전체 제목 패턴 분석 가능
 
 2026-05-05 — v2.6 경쟁 채널 분석 연동
 - analyze_competitor.py 신규: yt-dlp로 건강 쇼츠 상위 영상 수집 → Claude Hook 패턴 분류
