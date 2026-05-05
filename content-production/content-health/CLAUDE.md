@@ -13,9 +13,8 @@
 | 슬로건 | 매일 하나씩, 건강 상식을 쌓자 (health 전용, 로컬 상수) |
 | 콘텐츠 | 잘못된 건강 상식 뒤집기 — 반복재생·저장 폭발 |
 | 길이 | **35~50초 목표** (30초 미만 정보량 부족 경고, 55초 초과 완시율 경고) |
-| 숏폼 이미지 | fal.ai Flux.1 Dev ($0.025/장) — photo/digital/object 3종 스타일 |
+| 숏폼 이미지 | **fal.ai Flux.1 Dev** ($0.025/장, 7장 월 $5) — photo/digital/object 3종 스타일 |
 | 롱폼 이미지 | Pexels 무료 API (pexels_query 키워드 검색) |
-| 이미지 대안 | Together AI FLUX.1 Schnell ($0.003/장, 8배 저렴) — 채널 궤도 오른 후 품질 비교 테스트 예정. SDXL은 9:16 portrait 품질 불안정으로 제외. |
 
 ---
 
@@ -232,6 +231,19 @@ pip install yt-dlp google-api-python-client google-auth-oauthlib numpy moviepy
 | `google-auth-oauthlib` | YouTube Analytics OAuth 인증 | ✅ 동일 |
 | `numpy` | 오디오 파형 분석 (BGM 볼륨 자동 최적화) | ⏳ 미구현 |
 | `moviepy` | 빠른 컷 편집 (장면 전환 효과) | ⏳ 미구현 |
+
+---
+
+## 숏폼 이미지 생성 옵션 비교
+
+| AI | 가격/장 | 7장 월비용 | 품질 | 비고 |
+|----|---------|----------|------|------|
+| DALL-E 3 | $0.080 | $17 | ★★★★★ | 이전 사용, fal.ai 전환으로 제거 |
+| **Flux.1 Dev** | **$0.025** | **$5** | ★★★★★ | **현재 사용** (fal.ai) |
+| Flux.1 Schnell | $0.003 | $0.6 | ★★★★ | fal.ai — 채널 궤도 후 전환 테스트 예정 |
+| Stable Diffusion (자체) | 전기세만 | ~$0 | ★★★ | GPU 서버 필요, 운영 부담 |
+
+> **현재 전략**: Flux.1 Dev 유지 (품질 우선, 알고리즘 2차 통과 목표). 채널 성과 안정화 후 Schnell 전환 비교 테스트.
 
 ---
 
