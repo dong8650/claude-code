@@ -150,15 +150,20 @@ def _build_prompt(topic: dict, retry_feedback: str = "") -> str:
               선택 기준: 눈에 보이지 않는 내부 메커니즘 (뇌·세포·신호전달·장기·화학물질 등)
               glowing neon particles, dark background, 3D render 느낌
 
-  "object"  — 오브젝트 전용, 사람 완전 금지 ← 감정충격·저장유도 씬 필수 (content_policy 방지)
-              선택 기준: 사람 없이 사물로 상황을 암시해야 하는 씬
+  "object"  — 오브젝트 전용, 사람 완전 금지 ← 감정충격 씬(scene5) 필수 (content_policy 방지)
+              선택 기준: 사람이 부정적 감정/상황에 있는 씬 — DALL-E가 차단하므로 오브젝트로 대체
               운동화·가방·타월·음식·약 등 주제 관련 오브젝트만
+
+추가 규칙:
+  scene7 루프트리거: 반드시 scene1 Hook과 동일한 image_style 사용 (시각적 루프 연결)
+    → Hook이 photo였으면 scene7도 photo, Hook이 digital이었으면 scene7도 digital
 
 판단 예시:
   "달리기 후 도파민 분비" → digital (뇌 내부 신경물질, 눈에 안 보임)
   "커피 마시는 아침 장면" → photo (실제 생활 장면)
   "목 디스크 구조 압박" → digital (신체 내부 구조)
   "운동 포기하고 쉬는 상황" → object (사람 없이 운동화·짐가방으로 표현)
+  "저장유도 — 동기부여 장면" → photo 또는 digital (긍정적 씬, 자유 선택)
 
 공통: DALL-E 3 영문 프롬프트, 9:16 portrait orientation, NO text in image
 
@@ -179,8 +184,8 @@ JSON만 출력 (마크다운/설명 없이):
     {{"duration": 5, "caption": "과학설명2\\n이모지 + 수치", "narration": "caption 내용 포함 나레이션", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 DALL-E 프롬프트"}},
     {{"duration": 5, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "caption 내용 포함 나레이션", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 DALL-E 프롬프트"}},
     {{"duration": 3, "caption": "감정충격 😱", "narration": "caption 내용 포함 나레이션", "image_style": "object", "image_prompt": "cinematic still life of [주제 관련 오브젝트], dark moody atmosphere, dramatic spotlight, no people, no text, 9:16 vertical portrait"}},
-    {{"duration": 2, "caption": "좋아요+저장유도 💾👍", "narration": "caption 내용 포함 나레이션", "image_style": "object", "image_prompt": "cinematic still life of [주제 관련 오브젝트], warm golden light, inspiring atmosphere, no people, no text, 9:16 vertical portrait"}},
-    {{"duration": 1, "caption": "루프트리거 👀", "narration": "처음 장면 복선 언급 (10자 이내 짧게)", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 DALL-E 프롬프트"}}
+    {{"duration": 2, "caption": "좋아요+저장유도 💾👍", "narration": "caption 내용 포함 나레이션", "image_style": "photo|digital|object 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 DALL-E 프롬프트"}},
+    {{"duration": 1, "caption": "루프트리거 👀", "narration": "처음 장면 복선 언급 (10자 이내 짧게)", "image_style": "scene1과 동일한 스타일", "image_prompt": "scene1 Hook 장면을 재소환하는 이미지 — 뒷모습/실루엣/개념 재현, mysterious atmosphere, no text, 9:16 vertical portrait"}}
   ],
   "total_duration": 24,
   "save_trigger": "저장유도 문장",
