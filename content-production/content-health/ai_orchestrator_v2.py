@@ -177,9 +177,10 @@ def run_episode_both(topic_id: str = None, auto: bool = False) -> dict:
     )
     logger.info(f"[{lf_ep_name}] 롱폼 대본 완성 — {len(lf_script['scenes'])}씬")
 
-    logger.info(f"[{lf_ep_name}] DALL-E 이미지 생성 중... ({len(lf_script['scenes'])}장)")
+    logger.info(f"[{lf_ep_name}] Pexels 이미지 다운로드 중... ({len(lf_script['scenes'])}장, 무료)")
     try:
-        generate_all_images(lf_script["scenes"], lf_ep_dir)
+        from generate_image_longform import generate_all_images_pexels
+        generate_all_images_pexels(lf_script["scenes"], lf_ep_dir)
     except Exception as e:
         logger.error(f"[{lf_ep_name}] 롱폼 이미지 실패: {e}")
         return {"longform": {"error": str(e)}, "shortform": {"error": "longform failed"}}
@@ -200,9 +201,6 @@ def run_episode_both(topic_id: str = None, auto: bool = False) -> dict:
     sf_ep_name = sf_ep_dir.name
     sf_start   = time.time()
 
-    # 롱폼 이미지 → 숏폼 ep_dir에 7장 복사 (DALL-E 비용 절감)
-    _pick_shortform_images(lf_ep_dir, len(lf_script["scenes"]), sf_ep_dir)
-
     logger.info(f"[{sf_ep_name}] 숏폼 대본 생성 중...")
     try:
         sf_script = generate_script(topic)
@@ -218,8 +216,19 @@ def run_episode_both(topic_id: str = None, auto: bool = False) -> dict:
     )
     logger.info(f"[{sf_ep_name}] 숏폼 대본 완성 — Hook: {sf_script.get('hook', '')}")
 
-    # 이미지는 롱폼에서 복사됨 → generate_all_images 스킵, 바로 영상 합성
-    logger.info(f"[{sf_ep_name}] 숏폼 영상 합성 중 (이미지 재활용)...")
+    # 숏폼은 DALL-E 이미지 독립 생성 (롱폼은 Pexels, 숏폼은 DALL-E)
+    logger.info(f"[{sf_ep_name}] DALL-E 이미지 생성 중... ({len(sf_script['scenes'])}장)")
+    try:
+        from generate_image_v2 import generate_all_images
+        generate_all_images(sf_script["scenes"], sf_ep_dir)
+    except Exception as e:
+        logger.error(f"[{sf_ep_name}] 숏폼 이미지 실패: {e}")
+        return {
+            "longform": {"ep_dir": str(lf_ep_dir), "ep_name": lf_ep_name, "video_path": str(lf_output), "video_type": "longform", "elapsed": lf_elapsed},
+            "shortform": {"error": str(e)},
+        }
+
+    logger.info(f"[{sf_ep_name}] 숏폼 영상 합성 중...")
     try:
         sf_output = make_video(sf_ep_dir, sf_script, bgm, generate_tts=True)
     except Exception as e:

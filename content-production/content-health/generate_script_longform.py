@@ -65,7 +65,7 @@ JSON만 출력 (마크다운/설명 없이):
   "content_type": "건강상식",
   "hook": "Hook 문장",
   "scenes": [
-    {{"duration": 4, "caption": "자막\\n2~3줄", "narration": "자연스러운 대화체 나레이션", "image_style": "photo|digital|object", "image_prompt": "cinematic ... 9:16 vertical portrait, NO text, NO real human faces"}}
+    {{"duration": 4, "caption": "자막\\n2~3줄", "narration": "자연스러운 대화체 나레이션", "pexels_query": "2-3 English keywords for Pexels photo search (simple nouns, e.g. runner road, brain neurons, phone neck, sleeping person)"}}
   ],
   "total_duration": 180,
   "save_trigger": "저장유도 문장",
