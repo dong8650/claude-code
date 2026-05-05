@@ -1,6 +1,6 @@
 # content-health — 매일의 설계 건강편
 
-> content-mindset(감정·철학·인간관계)과 독립 운영. Claude API 전용 (OpenAI = DALL-E만 사용).
+> content-mindset(감정·철학·인간관계)과 독립 운영. 대본: Claude API. 숏폼 이미지: fal.ai Flux.1 Dev. 롱폼 이미지: Pexels 무료.
 
 ---
 
@@ -12,23 +12,25 @@
 | 워터마크 | © 2026 매일의 설계 (`channel_branding.WATERMARK`) |
 | 슬로건 | 매일 하나씩, 건강 상식을 쌓자 (health 전용, 로컬 상수) |
 | 콘텐츠 | 잘못된 건강 상식 뒤집기 — 반복재생·저장 폭발 |
-| 길이 | ~~22~26초~~ → 18~30초 유효 (경고 기준), 22~26초 최적 (TTS 실제 길이 기준, 고정 아님) |
-| 이미지 | DALL-E 3 실사/시네마틱 스타일 (사람은 뒷모습·실루엣·부분만, 감정충격씬은 오브젝트 기반) |
+| 길이 | **35~50초 목표** (30초 미만 정보량 부족 경고, 55초 초과 완시율 경고) |
+| 숏폼 이미지 | fal.ai Flux.1 Dev ($0.025/장) — photo/digital/object 3종 스타일 |
+| 롱폼 이미지 | Pexels 무료 API (pexels_query 키워드 검색) |
 
 ---
 
-## S급 포맷 (7장면, TTS 실제 길이 기준 — 22~26초 최적)
+## S급 포맷 (7장면, TTS 실제 길이 기준 — 35~50초 목표)
 
 ```
-scene1  🔥 Hook       — Hook 3대 공식 중 1개 (정체성공격/전문가반전/잘못된상식직격)
-scene2  ✅ 과학설명1  — 핵심 메커니즘 + 수치 (→ 기호 활용)
-scene3  ✅ 과학설명2  — 추가 효과 + 이모지 + 수치
-scene4  ⚠️ 잘못된상식 — 반전 포인트 "근데 대부분은..."
-scene5  😱 감정충격   — "매일 이렇게 했던 당신..." 짧고 강하게
-scene6  💾👍 좋아요+저장유도 — 좋아요+저장 동시 촉구 ("공감됐으면 좋아요 누르고 저장해둬 💾👍")
-scene7  👀 루프트리거 — Hook 복선 구체적 언급 (추상적 "복선 있음" 금지)
+scene1  🔥 Hook       (~5초, 25자)  — Hook 3대 공식 중 1개 (정체성공격/전문가반전/잘못된상식직격)
+scene2  ✅ 과학설명1  (~8초, 40자)  — 핵심 메커니즘 + 수치 (→ 기호 활용)
+scene3  ✅ 과학설명2  (~8초, 40자)  — 추가 효과 + 이모지 + 수치
+scene4  ⚠️ 잘못된상식 (~8초, 40자) — 반전 포인트 "근데 대부분은..."
+scene5  😱 감정충격   (~5초, 25자)  — "매일 이렇게 했던 당신..." 짧고 강하게
+scene6  💾👍 저장유도  (~4초, 20자)  — 좋아요+저장 동시 촉구
+scene7  👀 루프트리거 (~3초, 15자)  — Hook 복선 구체적 언급 (추상적 "복선 있음" 금지)
 ```
 
+**narration 규칙**: 전체 165자 이내 (5자/초 기준). caption 핵심 1~2문장만.
 **영상 길이 자동 결정**: TTS 실제 발화 시간 = 클립 길이 = 자막 타이밍 (고정 없음)
 
 ---
@@ -41,7 +43,8 @@ content-health/
 ├── topics_health.json          # 건강 주제 풀 30개
 ├── health_used.json            # 서버 고유 — git 미포함
 ├── generate_script_v2.py       # Claude API → S급 대본 JSON (Quality Gate 포함)
-├── generate_image_v2.py        # ~~DALL-E 3 → 귀여운 장기 캐릭터 이미지 (9:16)~~ → DALL-E 3 실사/시네마틱 3종 (photo/digital/object, 9:16)
+├── generate_image_v2.py        # 숏폼 이미지 — fal.ai Flux.1 Dev ($0.025/장), photo/digital/object 3종 (9:16)
+├── generate_image_longform.py  # 롱폼 이미지 — Pexels 무료 API (pexels_query 키워드 검색)
 ├── make_video_v2.py            # FFmpeg → S급 영상 (TTS 실제 길이 기준, 장면별 속도)
 ├── ai_orchestrator_v2.py       # CLI 오케스트레이터 (자동화용)
 ├── run_custom_v2.py            # 사전 정의 스크립트 즉시 실행
@@ -298,6 +301,17 @@ _SUFFIX = {
 ---
 
 ## 마지막 업데이트
+
+2026-05-06 — v3.2 숏폼 길이 35~50초 + fal.ai Flux 전환
+- 숏폼 목표 길이: ~~22~26초~~ → **35~50초** (정보량 확보, 완시율 유지 균형)
+- 씬별 duration 상향: Hook 3→5, 과학설명 5→8, 감정충격 3→5, 저장유도 2→4, 루프 1→3
+- narration 글자수 규칙 추가: 전체 165자 이내 (5자/초 기준), 씬별 상한 명시
+- make_video_v2.py 경고 기준: 30초 초과 → 55초 초과 / 18초 미만 → 30초 미만
+- 숏폼 이미지: ~~DALL-E 3 ($0.08/장)~~ → **fal.ai Flux.1 Dev ($0.025/장, 69% 절감)**
+- generate_image_v2.py: `_call_flux()` fal-client 기반으로 전면 교체
+- generate_image_longform.py 신규: 롱폼 전용 Pexels 무료 이미지 (pexels_query 키워드 검색)
+- ai_orchestrator_v2.py: --mode both 추가 (롱폼=Pexels, 숏폼=Flux 독립 생성)
+- n8n_workflow_health_daily_both.json 신규: Wait 90분, 롱폼+숏폼 YouTube 업로드 2개
 
 2026-05-05 — v3.0 image_style AI 자율 선택 시스템 + CLAUDE.md 현행화
 - CLAUDE.md 전체 검토 후 코드와 불일치 항목 수정:
