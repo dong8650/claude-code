@@ -1,26 +1,41 @@
 """
-make_video_v2.py
-================
-S급 쇼츠 영상 합성 — v1 효과 완전 이식
-- Ken Burns zoompan (짝수=줌인, 홀수=줌아웃)
-- 상단/하단 검은 바 + 채널 브랜딩
-- 장면별 자막 (ASS, 크고 임팩트 있는 스타일)
-- BGM 믹싱 (voice 1.0 + bgm 0.18)
-- TTS 실제 길이 기준으로 클립·자막 타이밍 결정 (싱크 보장)
+make_video_v2.py — 건강편 영상 합성
+=====================================
+content-pipeline-core 공통 모듈 사용:
+  - make_ken_burns_clip  (portrait_safe 포함)
+  - concat_clips
+  - mix_bgm              (-stream_loop -1 + -t 하드컷)
+  - assemble_video       (2단계 mux+overlay, -c:a aac, -t 하드컷)
+
+채널 고유 로직만 이 파일에 유지:
+  - generate_scene_tts   (장면별 TTS + 속도 차별화)
+  - build_ass            (장면별 ASS 자막)
+  - make_video           (오케스트레이션)
 """
 import asyncio
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-FONT_PATH = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+# pipeline-core 공통 모듈 로드
+_CORE = Path(__file__).parent.parent / "content-pipeline-core"
+sys.path.insert(0, str(_CORE))
+from ffmpeg_utils import get_duration, make_silence
+from video_core import make_ken_burns_clip, concat_clips, assemble_video
+from audio_core import mix_bgm
+
+FONT_PATH     = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
 FONT_FALLBACK = "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc"
-CHANNEL_NAME = "매일의 설계"
-SLOGAN = "매일 하나씩, 건강 상식을 쌓자"
-WATERMARK = "© 2026 매일의 설계"
+CHANNEL_NAME  = "매일의 설계"
+SLOGAN        = "매일 하나씩, 건강 상식을 쌓자"
+WATERMARK     = "© 2026 매일의 설계"
 TOP_BAR_RATIO = 0.20
 BOT_BAR_RATIO = 0.18
+
+# 장면별 TTS 속도: Hook 느리게(강조), 감정충격 느리게(여운), 루프트리거 빠르게(긴박감)
+SCENE_TTS_RATES = ["-5%", "+8%", "+5%", "+0%", "-8%", "+5%", "+12%"]
 
 
 def get_font() -> str:
@@ -28,47 +43,6 @@ def get_font() -> str:
         if Path(p).exists():
             return p
     return "NotoSansCJK-Bold"
-
-
-def get_duration(path: str) -> float:
-    r = subprocess.run([
-        "ffprobe", "-i", path,
-        "-show_entries", "format=duration",
-        "-v", "quiet", "-of", "csv=p=0"
-    ], capture_output=True, text=True)
-    try:
-        return float(r.stdout.strip())
-    except:
-        return 0.0
-
-
-def make_silence(path: str, duration: float):
-    subprocess.run([
-        "ffmpeg", "-y", "-f", "lavfi",
-        "-i", "anullsrc=r=44100:cl=stereo",
-        "-t", str(duration), "-q:a", "9",
-        "-acodec", "libmp3lame", path
-    ], capture_output=True)
-
-
-def run_cmd(cmd: list, label: str = "") -> bool:
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode != 0:
-        print(f"  ❌ FFmpeg 오류 [{label}]: {r.stderr[-200:]}")
-        return False
-    return True
-
-
-# 장면 인덱스별 TTS 속도: Hook 느리게(강조), 과학설명 빠르게(압축감), 감정충격 느리게(여운)
-SCENE_TTS_RATES = [
-    "-5%",   # 0: Hook        — 느리고 강하게
-    "+8%",   # 1: 과학설명1   — 빠르게, 정보 압축감
-    "+5%",   # 2: 과학설명2   — 약간 빠르게
-    "+0%",   # 3: 잘못된상식  — 보통 속도, 공감 유발
-    "-8%",   # 4: 감정충격    — 매우 느리게, 여운
-    "+5%",   # 5: 저장유도    — 약간 빠르게
-    "+12%",  # 6: 루프트리거  — 매우 빠르게, 긴박감
-]
 
 
 async def _tts_async(text: str, voice: str, out_path: str, rate: str = "+0%"):
@@ -85,81 +59,88 @@ def _caption_to_tts(caption: str) -> str:
 
 
 def generate_scene_tts(scenes: list, ep_dir: Path, voice: str = "ko-KR-SunHiNeural") -> tuple:
-    """장면별 TTS 생성. 실제 TTS 길이를 그대로 사용 (padding/trim 없음).
+    """장면별 TTS 생성.
+    narration 없으면 caption 텍스트로 대체 (이모지 제거).
     Returns: (voice_file, actual_durations)
     """
     print("  🎙️ 장면별 TTS 생성 중...")
     scene_audio_files = []
-    actual_durations = []
+    actual_durations  = []
 
     for i, scene in enumerate(scenes):
         narration = scene.get("narration", "").strip()
         caption   = scene.get("caption", "").strip()
         scene_audio = ep_dir / f"tts_scene{i+1}.mp3"
 
-        # 나레이션 없으면 캡션 텍스트로 대체 (이모지 제거 후 TTS)
         tts_text = narration or _caption_to_tts(caption)
-        rate = SCENE_TTS_RATES[i] if i < len(SCENE_TTS_RATES) else "+0%"
+        rate     = SCENE_TTS_RATES[i] if i < len(SCENE_TTS_RATES) else "+0%"
 
         if tts_text:
             asyncio.run(_tts_async(tts_text, voice, str(scene_audio), rate))
-            tts_dur = get_duration(str(scene_audio))
-            scene_audio_files.append(str(scene_audio))
-            actual_durations.append(tts_dur)
+            dur = get_duration(str(scene_audio))
             src = "나레이션" if narration else "캡션TTS"
-            print(f"    scene{i+1}: {tts_dur:.2f}초 ({src}, rate={rate})")
+            print(f"    scene{i+1}: {dur:.2f}초 ({src}, rate={rate})")
         else:
             dur = float(scene["duration"])
             make_silence(str(scene_audio), dur)
-            scene_audio_files.append(str(scene_audio))
-            actual_durations.append(dur)
             print(f"    scene{i+1}: {dur:.2f}초 (silence)")
 
-    # 전체 concat
-    voice_file = ep_dir / "voice_ko.mp3"
+        scene_audio_files.append(str(scene_audio))
+        actual_durations.append(dur)
+
+    voice_file  = ep_dir / "voice_ko.mp3"
     concat_list = ep_dir / "tts_full_concat.txt"
-    concat_list.write_text(
-        "\n".join(f"file '{f}'" for f in scene_audio_files), encoding="utf-8"
+    concat_list.write_text("\n".join(f"file '{f}'" for f in scene_audio_files), encoding="utf-8")
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "concat", "-safe", "0",
+         "-i", str(concat_list), "-c", "copy", str(voice_file)],
+        capture_output=True
     )
-    subprocess.run([
-        "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-        "-i", str(concat_list), "-c", "copy", str(voice_file)
-    ], capture_output=True)
 
     total = get_duration(str(voice_file))
-    print(f"  ✅ TTS 완료: {voice_file} ({total:.2f}초, {len(scenes)}장면)")
+    print(f"  ✅ TTS 완료: {voice_file.name} ({total:.2f}초, {len(scenes)}장면)")
     return voice_file, actual_durations
 
 
+def _ts(sec: float) -> str:
+    h = int(sec // 3600)
+    m = int((sec % 3600) // 60)
+    s = sec % 60
+    return f"{h}:{m:02d}:{s:05.2f}"
+
+
 def build_ass(scenes: list, ep_dir: Path, font_path: str, durations: list) -> Path:
-    """장면별 자막 ASS 생성. durations = TTS 실제 길이 리스트."""
-    top_bar_h = int(1920 * TOP_BAR_RATIO)
-    bot_bar_h = int(1920 * BOT_BAR_RATIO)
-    content_h = 1920 - top_bar_h - bot_bar_h
-    content_center_y = top_bar_h + content_h // 2
+    """장면별 ASS 자막 생성.
+    durations: 실제 클립 길이 목록 (ffprobe 측정값) — 프레임 정렬 오차 없음.
+    """
+    top_bar_h      = int(1920 * TOP_BAR_RATIO)
+    bot_bar_h      = int(1920 * BOT_BAR_RATIO)
+    content_h      = 1920 - top_bar_h - bot_bar_h
+    content_center = top_bar_h + content_h // 2
 
     lines = [
-        "[Script Info]",
-        "ScriptType: v4.00+",
-        "PlayResX: 1080",
-        "PlayResY: 1920",
-        "Collisions: Normal",
-        "",
+        "[Script Info]", "ScriptType: v4.00+", "PlayResX: 1080", "PlayResY: 1920",
+        "Collisions: Normal", "",
         "[V4+ Styles]",
-        "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-        f"Style: Hook,NotoSansCJK-Bold,80,&H0000AAFF,&H000000FF,&H00000000,&HAA000000,-1,0,0,0,100,100,2,0,3,4,2,5,60,60,{content_center_y - 80},1",
-        f"Style: Main,NotoSansCJK-Bold,68,&H00FFFFFF,&H000000FF,&H00000000,&HAA000000,-1,0,0,0,100,100,2,0,3,3,2,5,60,60,{content_center_y - 68},1",
-        f"Style: Save,NotoSansCJK-Bold,64,&H0000FFFF,&H000000FF,&H00000000,&HAA000000,-1,0,0,0,100,100,2,0,3,3,2,5,60,60,{content_center_y - 64},1",
-        f"Style: Loop,NotoSansCJK-Bold,60,&H00FFFF00,&H000000FF,&H00000000,&HAA000000,-1,0,0,0,100,100,2,0,3,3,2,2,60,60,80,1",
-        "",
-        "[Events]",
+        "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
+        "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
+        "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+        f"Style: Hook,NotoSansCJK-Bold,80,&H0000AAFF,&H000000FF,&H00000000,&HAA000000,"
+        f"-1,0,0,0,100,100,2,0,3,4,2,5,60,60,{content_center - 80},1",
+        f"Style: Main,NotoSansCJK-Bold,68,&H00FFFFFF,&H000000FF,&H00000000,&HAA000000,"
+        f"-1,0,0,0,100,100,2,0,3,3,2,5,60,60,{content_center - 68},1",
+        f"Style: Save,NotoSansCJK-Bold,64,&H0000FFFF,&H000000FF,&H00000000,&HAA000000,"
+        f"-1,0,0,0,100,100,2,0,3,3,2,5,60,60,{content_center - 64},1",
+        f"Style: Loop,NotoSansCJK-Bold,60,&H00FFFF00,&H000000FF,&H00000000,&HAA000000,"
+        f"-1,0,0,0,100,100,2,0,3,3,2,2,60,60,80,1",
+        "", "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ]
 
     current = 0.0
     for i, (scene, dur) in enumerate(zip(scenes, durations)):
-        start = _ts(current)
-        end = _ts(current + dur - 0.05)
+        start   = _ts(current)
+        end     = _ts(current + dur - 0.05)
         caption = scene.get("caption", "").replace("\n", "\\N")
 
         if i == 0:
@@ -179,52 +160,12 @@ def build_ass(scenes: list, ep_dir: Path, font_path: str, durations: list) -> Pa
     return ass_file
 
 
-def _ts(sec: float) -> str:
-    h = int(sec // 3600)
-    m = int((sec % 3600) // 60)
-    s = sec % 60
-    return f"{h}:{m:02d}:{s:05.2f}"
-
-
-def make_ken_burns_clip(img_path: Path, duration: float, index: int, out_path: Path) -> float:
-    """v1 동일 Ken Burns: 짝수=줌인, 홀수=줌아웃
-    Returns: 실제 생성된 클립 길이(초). 실패 시 0.0.
-    """
-    frames = int(duration * 25)
-    if frames < 1:
-        frames = 1
-    if index % 2 == 0:
-        zoom_expr = "min(zoom+0.0008,1.3)"
-    else:
-        zoom_expr = "if(eq(on,1),1.3,max(zoom-0.0008,1.0))"
-
-    ok = run_cmd([
-        "ffmpeg", "-y",
-        "-loop", "1", "-i", str(img_path),
-        "-t", str(duration),
-        "-vf",
-        # 1) 세로형 강제: 가로 이미지도 1080x1920 portrait로 cover → center crop
-        f"scale=1080:1920:force_original_aspect_ratio=increase,"
-        f"crop=1080:1920,"
-        # 2) Ken Burns zoompan을 위해 확대
-        f"scale=8000:-1,"
-        f"zoompan=z='{zoom_expr}':d={frames}:"
-        f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920,"
-        f"eq=contrast=1.05:saturation=1.0:brightness=-0.02,fps=25",
-        "-c:v", "libx264", "-crf", "18", "-preset", "medium",
-        "-pix_fmt", "yuv420p", str(out_path)
-    ], f"ken_burns_{index}")
-
-    if not ok:
-        return 0.0
-    return get_duration(str(out_path))   # 실제 클립 길이 반환
-
-
 def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: bool = True) -> Path:
-    scenes = script["scenes"]
+    scenes    = script["scenes"]
     font_path = get_font()
-    hook = script.get("hook", script.get("title", ""))
+    hook      = script.get("hook", script.get("title", ""))
 
+    # 제목 2줄 분리 (중간 공백 기준)
     mid = len(hook) // 2
     for i in range(mid, len(hook)):
         if hook[i] == " ":
@@ -233,89 +174,73 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
     t1 = hook[:mid].strip()
     t2 = hook[mid:].strip() if mid < len(hook) else ""
 
+    # ── [1/6] TTS ─────────────────────────────────────────────────────────
     print(f"\n[1/6] 🎙️ TTS 생성...")
     voice_file = ep_dir / "voice_ko.mp3"
     if generate_tts and not voice_file.exists():
         voice_file, actual_durations = generate_scene_tts(scenes, ep_dir)
     elif voice_file.exists():
-        # 이미 생성된 경우 — scene별 파일에서 실제 길이 복원
         actual_durations = []
         for i, scene in enumerate(scenes):
             tts_file = ep_dir / f"tts_scene{i+1}.mp3"
-            if tts_file.exists():
-                actual_durations.append(get_duration(str(tts_file)))
-            else:
-                actual_durations.append(float(scene["duration"]))
+            actual_durations.append(
+                get_duration(str(tts_file)) if tts_file.exists() else float(scene["duration"])
+            )
     else:
         actual_durations = [float(s["duration"]) for s in scenes]
         make_silence(str(voice_file), sum(actual_durations))
 
-    total_dur = sum(actual_durations)
-    print(f"  총 길이: {total_dur:.2f}초")
+    voice_dur  = get_duration(str(voice_file))
+    total_dur  = sum(actual_durations)
+    print(f"  음성 길이: {voice_dur:.2f}초")
     if total_dur > 30:
-        print(f"  ⚠️ 영상 {total_dur:.1f}초 — 30초 초과, 완시율 하락 위험. 나레이션 단축 권장")
+        print(f"  ⚠️ {total_dur:.1f}초 — 30초 초과, 완시율 하락 위험")
     elif total_dur < 18:
-        print(f"  ⚠️ 영상 {total_dur:.1f}초 — 18초 미만, 정보량 부족 위험")
+        print(f"  ⚠️ {total_dur:.1f}초 — 18초 미만, 정보량 부족")
 
+    # ── [2/6] Ken Burns ───────────────────────────────────────────────────
     print(f"\n[2/6] 🎨 Ken Burns 이미지 클립 생성...")
-    clip_files = []
-    actual_clip_durations = []   # ffprobe로 측정한 실제 클립 길이 (자막 타이밍 기준)
+    clip_files           = []
+    actual_clip_durations = []
     for i, (scene, dur) in enumerate(zip(scenes, actual_durations)):
-        img = ep_dir / f"bg{i+1}.jpg"
+        img      = ep_dir / f"bg{i+1}.jpg"
         if not img.exists():
-            img = ep_dir / "bg1.jpg"
+            img  = ep_dir / "bg1.jpg"
         clip_out = ep_dir / f"clip{i+1}.mp4"
-        clip_dur = make_ken_burns_clip(img, dur, i, clip_out)
+        clip_dur = make_ken_burns_clip(img, dur, i, clip_out, portrait_safe=True)
         if clip_dur > 0:
             clip_files.append(clip_out)
             actual_clip_durations.append(clip_dur)
             print(f"  ✅ clip{i+1} ({clip_dur:.2f}초, {'줌인' if i%2==0 else '줌아웃'})")
 
+    # ── [3/6] Concat ──────────────────────────────────────────────────────
     print(f"\n[3/6] 🔗 클립 연결...")
-    concat_list = ep_dir / "concat.txt"
-    concat_list.write_text("\n".join(f"file '{c}'" for c in clip_files), encoding="utf-8")
     concat_out = ep_dir / "video_only.mp4"
-    run_cmd(["ffmpeg", "-y", "-f", "concat", "-safe", "0",
-             "-i", str(concat_list), "-c", "copy", str(concat_out)], "concat")
+    concat_clips(clip_files, concat_out)
 
-    voice_dur = get_duration(str(voice_file))  # 실제 음성 길이 — 영상 길이 기준
-
+    # ── [4/6] BGM 믹싱 ────────────────────────────────────────────────────
     print(f"\n[4/6] 🎵 BGM 믹싱...")
-    base_mp4 = ep_dir / "base.mp4"
+    voice_bgm = ep_dir / "voice_bgm.mp3"
     if bgm_path and Path(bgm_path).exists():
-        run_cmd([
-            "ffmpeg", "-y",
-            "-i", str(concat_out), "-i", str(voice_file), "-i", bgm_path,
-            "-filter_complex",
-            "[1:a]volume=1.0[v];[2:a]volume=0.18[b];[v][b]amix=inputs=2:duration=first[aout]",
-            "-map", "0:v", "-map", "[aout]",
-            "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2",
-            "-t", str(voice_dur),  # BGM이 voice보다 길어도 잘라냄
-            str(base_mp4)
-        ], "bgm_mix")
+        mix_bgm(voice_file, Path(bgm_path), voice_bgm, voice_dur)
         print("  ✅ BGM 믹싱 완료")
     else:
-        run_cmd([
-            "ffmpeg", "-y",
-            "-i", str(concat_out), "-i", str(voice_file),
-            "-map", "0:v", "-map", "1:a",
-            "-c:v", "copy", "-c:a", "aac",
-            "-t", str(voice_dur),
-            str(base_mp4)
-        ], "audio_mix")
+        shutil.copy(str(voice_file), str(voice_bgm))
 
+    # ── [5/6] 자막 ────────────────────────────────────────────────────────
     print(f"\n[5/6] 📝 자막 생성...")
-    # 자막 타이밍은 실제 클립 길이 기준 (TTS 길이 아님 — 프레임 정렬 오차 제거)
+    # 자막 타이밍 = 실제 클립 길이 기준 (프레임 정렬 오차 제거)
     ass_file = build_ass(scenes, ep_dir, font_path, actual_clip_durations)
-    print(f"  ✅ 자막 완료: {ass_file}")
+    print(f"  ✅ 자막 완료: {ass_file.name}")
 
+    # ── [6/6] 최종 출력 ───────────────────────────────────────────────────
     print(f"\n[6/6] 🎬 최종 출력 (상하 바 + 브랜딩 + 자막)...")
-    top_bar_h = int(1920 * TOP_BAR_RATIO)
-    bot_bar_h = int(1920 * BOT_BAR_RATIO)
-    title_y1 = int(1920 * 0.07)
-    title_y2 = title_y1 + 85
+    top_bar_h   = int(1920 * TOP_BAR_RATIO)
+    bot_bar_h   = int(1920 * BOT_BAR_RATIO)
+    title_y1    = int(1920 * 0.07)
+    title_y2    = title_y1 + 85
     watermark_y = int(1920 - bot_bar_h + bot_bar_h * 0.20)
-    slogan_y = watermark_y + 45
+    slogan_y    = watermark_y + 45
 
     vf = (
         f"drawbox=x=0:y=0:w=iw:h={top_bar_h}:color=black@1.0:t=fill,"
@@ -332,31 +257,16 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
     )
 
     output = ep_dir / "output_final.mp4"
-    ok = run_cmd([
-        "ffmpeg", "-y", "-i", str(base_mp4),
-        "-vf", vf,
-        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
-        "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "192k",  # copy 대신 재인코딩 → -t로 정확히 자름
-        "-t", str(voice_dur),            # 음성 길이 기준 하드컷 (BGM 여분 제거)
-        str(output)
-    ], "final")
-
-    if ok:
-        actual_out_dur = get_duration(str(output))
-        print(f"\n✅ 완성: {output}")
-        print(f"   실제 길이: {actual_out_dur:.1f}초 (음성 기준: {voice_dur:.1f}초)")
-    else:
-        print("❌ 최종 출력 실패")
+    assemble_video(concat_out, voice_bgm, vf, output, voice_dur)
     return output
 
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ep", required=True)
+    parser.add_argument("--ep",     required=True)
     parser.add_argument("--script", required=True)
-    parser.add_argument("--bgm", default="/root/content/runtime/health/bgm/bgm_dramatic_ambient.mp3")
+    parser.add_argument("--bgm",    default="/root/content/runtime/health/bgm/bgm_dramatic_ambient.mp3")
     args = parser.parse_args()
 
     ep_dir = Path(args.ep)
