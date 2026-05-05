@@ -77,7 +77,7 @@
       "position": [1340, 300],
       "parameters": {
         "resource": "command",
-        "command": "={{ 'cd /root/claude-code/content-production/content-mindset && python3 generate_infographic.py --data ' + $('Parse Infographic Topic').item.json.data_file + ' --video --duration 7 2>&1' }}"
+        "command": "={{ 'cd /root/claude-code/content-production/content-mindset && python3 generate_infographic.py --data ' + $('Parse Infographic Topic').item.json.data_file + ' --video --duration 7 --bgm /root/content/runtime/mindset/bgm/bgm_infographic.mp3 2>&1' }}"
       },
       "credentials": {
         "sshPassword": {
