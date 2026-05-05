@@ -45,6 +45,17 @@ claude-code/
 
 ---
 
+## 공통 인프라 문서 (infra/)
+
+| 파일 | 내용 |
+|------|------|
+| `infra/n8n_requirements.md` | 서버 환경, n8n Docker 명령어, API Keys, Google Console 설정 |
+| `infra/n8n_pipeline_guide.md` | n8n 워크플로우 흐름, 노드별 상세, 서버 최초 세팅 |
+
+> 양쪽 서버(192.168.0.21 / 7.7.7.254) Docker 명령어 모두 포함.
+
+---
+
 ## 신규 채널 추가 체크리스트
 
 - [ ] `content-{name}/` 폴더 생성

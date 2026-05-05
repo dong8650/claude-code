@@ -341,6 +341,14 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 
 ---
 
+## 인프라 문서
+
+> n8n Docker 설치/설정, 서버 환경, API Keys 등 공통 인프라 문서는 아래 위치에 있음:
+> `content-pipeline-core/infra/n8n_requirements.md` — 서버 환경 + Docker 명령어
+> `content-pipeline-core/infra/n8n_pipeline_guide.md` — n8n 워크플로우 흐름 상세
+
+---
+
 ## n8n 자동화 워크플로우
 
 ### 워크플로우 파일 목록

@@ -7,17 +7,34 @@
 
 ## 서버 환경
 
+### zbx-proxy-dc1 (메인 — Active)
+
 | 항목 | 내용 |
 |------|------|
-| 메인 서버 IP | 192.168.0.21 |
+| IP | 192.168.0.21 |
 | OS | Ubuntu 24.04 aarch64 (ARM) |
-| 작업 디렉토리 | `/root/auto_pipeline/` |
+| 작업 디렉토리 (mindset) | `/root/auto_pipeline/` |
+| 작업 디렉토리 (health) | `/root/auto_pipeline_v2/` |
 | Python | 3.10 |
 | 폰트 | NotoSansCJK-Bold.ttc (`/usr/share/fonts/opentype/noto/`) |
 
+### arkime-dc2 (백업 — Standby)
+
+| 항목 | 내용 |
+|------|------|
+| IP | 7.7.7.254 |
+| OS | Ubuntu 22.04 aarch64 (ARM) |
+| 도메인 | tossdata.fortiddns.com (DDNS, 외부 8084 → 내부 8080) |
+| 작업 디렉토리 (mindset) | `/root/auto_pipeline/` |
+| 작업 디렉토리 (health) | `/root/auto_pipeline_v2/` |
+| Python | 3.10 |
+| 폰트 | NotoSansCJK-Bold.ttc (`/usr/share/fonts/opentype/noto/`) |
+
+> **백업 서버 운영 원칙**: 메인(192.168.0.21) 장애 시에만 Active ON. 평시 n8n 비활성화.
+
 ### 서버 필수 패키지
 ```bash
-pip install anthropic openai requests pillow elevenlabs
+pip install anthropic openai requests pillow elevenlabs edge-tts
 apt install ffmpeg
 ```
 
@@ -29,12 +46,14 @@ apt install ffmpeg
 |------|------|
 | 버전 | 2.10.3 |
 | 설치 방식 | Docker |
-| 접속 URL | http://toss.fortiddns.com:8084 |
-| 외부 접속 URL | http://kdclab.kr:8084 |
-| Instance ID | fa16be5da17e330f0aa1b69589bacc58b212188d69021f2f9b3d4dee548c7a94 |
-| OAuth Callback URL | http://toss.fortiddns.com:8084/rest/oauth2-credential/callback |
+| 접속 URL (메인) | http://kdclab.kr:8084 |
+| 접속 URL (백업) | http://tossdata.fortiddns.com:8084 |
+| 외부 접속 URL (메인) | http://kdclab.kr:8084 |
+| Instance ID (메인) | fa16be5da17e330f0aa1b69589bacc58b212188d69021f2f9b3d4dee548c7a94 |
+| OAuth Callback URL (메인) | http://kdclab.kr:8084/rest/oauth2-credential/callback |
+| OAuth Callback URL (백업) | http://tossdata.fortiddns.com:8084/rest/oauth2-credential/callback |
 
-### n8n Docker 실행 명령어 (최종 확정)
+### n8n Docker 실행 명령어 — zbx-proxy-dc1 (192.168.0.21)
 
 ```bash
 docker run -d \
@@ -47,6 +66,28 @@ docker run -d \
   -e N8N_HOST=kdclab.kr \
   -e N8N_PROTOCOL=http \
   -e WEBHOOK_URL=http://kdclab.kr:8084/ \
+  -e GENERIC_TIMEZONE=Asia/Seoul \
+  -e TZ=Asia/Seoul \
+  -e N8N_RESTRICT_FILE_ACCESS_TO=/root \
+  -v /root/.n8n:/root/.n8n \
+  -v /root/auto_pipeline:/root/auto_pipeline \
+  --restart always \
+  n8nio/n8n
+```
+
+### n8n Docker 실행 명령어 — arkime-dc2 (7.7.7.254)
+
+```bash
+docker run -d \
+  --name n8n \
+  --privileged \
+  --user root \
+  -p 8080:8080 \
+  -e N8N_PORT=8080 \
+  -e N8N_SECURE_COOKIE=false \
+  -e N8N_HOST=tossdata.fortiddns.com \
+  -e N8N_PROTOCOL=http \
+  -e WEBHOOK_URL=http://tossdata.fortiddns.com:8084/ \
   -e GENERIC_TIMEZONE=Asia/Seoul \
   -e TZ=Asia/Seoul \
   -e N8N_RESTRICT_FILE_ACCESS_TO=/root \
