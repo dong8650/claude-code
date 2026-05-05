@@ -1,7 +1,7 @@
 # 컨텐츠 자동화 파이프라인 — 환경 요구사항
 
 > 이 파일을 읽으면 로컬/서버 환경을 즉시 파악 가능.
-> 마지막 업데이트: 2026-05-03
+> 마지막 업데이트: 2026-05-06
 
 ---
 
@@ -69,6 +69,9 @@ docker run -d \
   -e GENERIC_TIMEZONE=Asia/Seoul \
   -e TZ=Asia/Seoul \
   -e N8N_RESTRICT_FILE_ACCESS_TO=/root \
+  -e EXECUTIONS_DATA_PRUNE=true \
+  -e EXECUTIONS_DATA_MAX_AGE=3 \
+  -e EXECUTIONS_DATA_PRUNE_MAX_COUNT=50 \
   -v /root/.n8n:/root/.n8n \
   -v /root/content:/root/content \
   -v /root/claude-code:/root/claude-code \
@@ -92,6 +95,9 @@ docker run -d \
   -e GENERIC_TIMEZONE=Asia/Seoul \
   -e TZ=Asia/Seoul \
   -e N8N_RESTRICT_FILE_ACCESS_TO=/root \
+  -e EXECUTIONS_DATA_PRUNE=true \
+  -e EXECUTIONS_DATA_MAX_AGE=3 \
+  -e EXECUTIONS_DATA_PRUNE_MAX_COUNT=50 \
   -v /root/.n8n:/root/.n8n \
   -v /root/content:/root/content \
   -v /root/claude-code:/root/claude-code \
