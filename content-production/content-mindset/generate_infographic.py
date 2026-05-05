@@ -153,8 +153,8 @@ def _draw_ranking(data: dict) -> Image.Image:
     subtitle = data.get("subtitle", "")
     items    = data.get("items", [])
     hi_top   = data.get("highlight_top", 3)
-    f_title   = _font(66)
-    f_sub     = _font(36)
+    f_title   = _font(76)
+    f_sub     = _font(38)
     f_rank    = _font(38)
     f_rank_hi = _font(44)
     f_label   = _font(38)
@@ -162,38 +162,37 @@ def _draw_ranking(data: dict) -> Image.Image:
     f_desc    = _font(28)
     f_mark    = _font(26)
 
-    y  = 72
-    tx = PAD + 26
+    HEADER_H = int(H * 0.30)   # 576px 고정 — 상단 30% 전체가 제목 구역
+    tx       = PAD + 26
 
-    # 제목 줄 수 사전 계산 → 헤더 배경 높이 결정
-    title_lines = _wrap(draw, title, f_title, W - tx - PAD)
-    header_h = len(title_lines) * 76 + 80  # 제목 + 부제목 + 여백
+    # 헤더 배경 (상단 30% 전체)
+    draw.rectangle([(0, 0), (W, HEADER_H)], fill=(18, 7, 0))
 
-    # 헤더 배경 (아주 어두운 앰버 톤 — 다크 배경과 구분)
-    draw.rectangle([(0, 0), (W, y + header_h)], fill=(18, 7, 0))
+    # 오렌지 액센트 바 (헤더 전체 높이)
+    draw.rectangle([(PAD, 32), (PAD + 12, HEADER_H - 32)], fill=D_ORANGE)
 
-    # 상단 오렌지 액센트 바 (두꺼워짐: 12px)
-    draw.rectangle([(PAD, y), (PAD + 12, y + header_h - 24)], fill=D_ORANGE)
+    # 제목 + 부제목 세로 가운데 정렬
+    title_lines  = _wrap(draw, title, f_title, W - tx - PAD)
+    LINE_H       = 84
+    content_h    = len(title_lines) * LINE_H + 12 + 50  # 제목 + gap + 부제목
+    y            = max(36, (HEADER_H - content_h) // 2)
 
-    # 제목 (아웃라인 효과로 가독성 강화)
     for line in title_lines:
         _text_outlined(draw, (tx, y), line, f_title,
                        fill=D_WHITE, outline_color=(60, 24, 0), width=3)
-        y += 76
-    y += 8
+        y += LINE_H
+    y += 12
 
-    # 부제목 (오렌지, 아웃라인)
     _text_outlined(draw, (tx, y), subtitle, f_sub,
                    fill=D_ORANGE, outline_color=(0, 0, 0), width=2)
-    y += 54
 
-    # 구분선
-    draw.line([(PAD, y), (W - PAD, y)], fill=D_DIVIDER, width=2)
-    y += 20
+    # 헤더 하단 구분선 + 아이템 시작
+    draw.line([(0, HEADER_H), (W, HEADER_H)], fill=D_ORANGE, width=3)
+    y = HEADER_H + 16
 
     # 아이템 영역
     n     = len(items)
-    avail = H - y - 80
+    avail = H - y - 72
     row_h = max(80, min(220, avail // max(n, 1)))
 
     for item in items:
@@ -261,7 +260,7 @@ def _draw_table(data: dict) -> Image.Image:
     columns = data.get("columns", [])
     rows    = data.get("rows", [])
     footer  = data.get("footer", "")
-    f_title = _font(64)
+    f_title = _font(74)
     f_sub   = _font(38)
     f_note  = _font(26)
     f_hdr   = _font(34)
@@ -269,32 +268,33 @@ def _draw_table(data: dict) -> Image.Image:
     f_foot  = _font(27)
     f_mark  = _font(25)
 
-    y  = 72
-    tx = PAD + 26
+    HEADER_H = int(H * 0.30)
+    tx       = PAD + 26
 
-    # 제목 줄 수 사전 계산 → 헤더 배경 높이 결정
+    # 헤더 배경 (상단 30%)
+    draw.rectangle([(0, 0), (W, HEADER_H)], fill=(18, 7, 0))
+
+    # 오렌지 액센트 바
+    draw.rectangle([(PAD, 32), (PAD + 12, HEADER_H - 32)], fill=D_ORANGE)
+
+    # 제목 + 부제목 세로 가운데 정렬
     title_lines = _wrap(draw, title, f_title, W - tx - PAD)
-    header_h = len(title_lines) * 70 + 80
+    LINE_H      = 80
+    note_extra  = 56 if note else 0
+    content_h   = len(title_lines) * LINE_H + 12 + 50 + note_extra
+    y           = max(36, (HEADER_H - content_h) // 2)
 
-    # 헤더 배경 (아주 어두운 앰버 톤)
-    draw.rectangle([(0, 0), (W, y + header_h)], fill=(18, 7, 0))
-
-    # 상단 오렌지 액센트 바 (12px)
-    draw.rectangle([(PAD, y), (PAD + 12, y + header_h - 24)], fill=D_ORANGE)
-
-    # 제목 (아웃라인 효과)
     for line in title_lines:
         _text_outlined(draw, (tx, y), line, f_title,
                        fill=D_WHITE, outline_color=(60, 24, 0), width=3)
-        y += 70
-    y += 4
+        y += LINE_H
+    y += 12
 
-    # 부제목 (오렌지, 아웃라인)
     _text_outlined(draw, (tx, y), subtitle, f_sub,
                    fill=D_ORANGE, outline_color=(0, 0, 0), width=2)
     y += 54
 
-    # 노트 박스
+    # 노트 박스 (헤더 안에 포함)
     if note:
         nw = _tw(draw, note, f_note) + 32
         nx = PAD
@@ -302,11 +302,13 @@ def _draw_table(data: dict) -> Image.Image:
         draw.text((nx + 16, y + 10), note, font=f_note, fill=D_NOTE_TXT)
         y += 58
 
-    y += 10
+    # 헤더 하단 구분선 + 테이블 시작
+    draw.line([(0, HEADER_H), (W, HEADER_H)], fill=D_ORANGE, width=3)
+    y = HEADER_H + 14
 
     # 테이블 레이아웃
     n_col  = len(columns)
-    avail  = H - y - 130
+    avail  = H - y - 80
     n_rows = len(rows)
     hdr_h  = 58
     row_h  = max(54, min(160, (avail - hdr_h) // max(n_rows, 1)))
