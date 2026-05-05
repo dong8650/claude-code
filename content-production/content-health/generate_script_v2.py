@@ -126,22 +126,22 @@ def _build_prompt(topic: dict, retry_feedback: str = "") -> str:
 금지 Hook: "~하면 일어나는 일" / "~의 효과" / "~알고 계셨나요?"
 
 ━━━ 장면 구조 (총 7장면, duration은 TTS 예상 기준) ━━━
-0. Hook (duration ~3): 위 3대 공식 중 하나. 2줄 이내.
-1. 과학설명1 (duration ~5): 핵심 메커니즘 + 수치. "→" 기호 활용.
-2. 과학설명2 (duration ~5): 추가 효과/연구. 이모지 + 수치.
-3. 잘못된상식 반전 (duration ~5): "근데 대부분은..." 공감 유발.
-4. 감정충격 (duration ~3): "매일 이렇게 {'{'}행동{'}'}했던 당신..." 😱 짧고 강하게.
-5. 좋아요+저장유도 (duration ~2): "공감됐으면 좋아요 누르고 저장해둬 💾👍" — 좋아요+저장 동시 촉구.
-6. 루프트리거 (duration ~1): Hook의 구체적 복선 언급. "첫 장면에서 {'{'}복선 내용{'}'} 이미 말했음 👀"
+0. Hook (duration ~5): 위 3대 공식 중 하나. 2줄 이내.
+1. 과학설명1 (duration ~8): 핵심 메커니즘 + 수치. "→" 기호 활용.
+2. 과학설명2 (duration ~8): 추가 효과/연구. 이모지 + 수치.
+3. 잘못된상식 반전 (duration ~8): "근데 대부분은..." 공감 유발.
+4. 감정충격 (duration ~5): "매일 이렇게 {'{'}행동{'}'}했던 당신..." 😱 짧고 강하게.
+5. 좋아요+저장유도 (duration ~4): "공감됐으면 좋아요 누르고 저장해둬 💾👍" — 좋아요+저장 동시 촉구.
+6. 루프트리거 (duration ~3): Hook의 구체적 복선 언급. "첫 장면에서 {'{'}복선 내용{'}'} 이미 말했음 👀"
 
 ━━━ narration 글자수 규칙 (핵심, 반드시 준수) ━━━
 한국어 TTS 발화 속도 = 약 5자/초. duration에 비례한 글자수를 엄수.
-  duration ~1  → narration 6자 이내
-  duration ~2  → narration 12자 이내
-  duration ~3  → narration 18자 이내
-  duration ~5  → narration 28자 이내
-전체 7씬 narration 합계: 90자 이내 (영상 22~26초 목표)
-narration은 caption 핵심 1문장만. 추가 설명 금지.
+  duration ~3  → narration 15자 이내
+  duration ~4  → narration 20자 이내
+  duration ~5  → narration 25자 이내
+  duration ~8  → narration 40자 이내
+전체 7씬 narration 합계: 165자 이내 (영상 35~50초 목표)
+narration은 caption 핵심 1~2문장. 불필요한 부연 설명 금지.
 
 ━━━ 루프트리거 핵심 규칙 ━━━
 - "처음부터 보면 복선 있음" 금지 — 너무 추상적
@@ -188,15 +188,15 @@ JSON만 출력 (마크다운/설명 없이):
   "hook": "Hook 문장 (15자 이내)",
   "hook_type": "identity_attack | expert_reversal | myth_direct",
   "scenes": [
-    {{"duration": 3, "caption": "Hook 자막\\n두 줄 이내", "narration": "18자 이내. 핵심 1문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
-    {{"duration": 5, "caption": "과학설명1\\n→ 수치", "narration": "28자 이내. 핵심 1문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
-    {{"duration": 5, "caption": "과학설명2\\n이모지 + 수치", "narration": "28자 이내. 핵심 1문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
-    {{"duration": 5, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "28자 이내. 핵심 1문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
-    {{"duration": 3, "caption": "감정충격 😱", "narration": "18자 이내. 핵심 1문장.", "image_style": "object", "image_prompt": "cinematic still life of [주제 관련 오브젝트], dark moody atmosphere, dramatic spotlight, no people, no text, 9:16 vertical portrait"}},
-    {{"duration": 2, "caption": "좋아요+저장유도 💾👍", "narration": "12자 이내. 핵심 1문장.", "image_style": "photo|digital|object 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
-    {{"duration": 1, "caption": "루프트리거 👀", "narration": "6자 이내.", "image_style": "scene1과 동일한 스타일", "image_prompt": "scene1 Hook 장면을 재소환하는 이미지 — 뒷모습/실루엣/개념 재현, mysterious atmosphere, no text, 9:16 vertical portrait"}}
+    {{"duration": 5, "caption": "Hook 자막\\n두 줄 이내", "narration": "25자 이내. 핵심 1문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
+    {{"duration": 8, "caption": "과학설명1\\n→ 수치", "narration": "40자 이내. 핵심 1~2문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
+    {{"duration": 8, "caption": "과학설명2\\n이모지 + 수치", "narration": "40자 이내. 핵심 1~2문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
+    {{"duration": 8, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "40자 이내. 핵심 1~2문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
+    {{"duration": 5, "caption": "감정충격 😱", "narration": "25자 이내. 핵심 1문장.", "image_style": "object", "image_prompt": "cinematic still life of [주제 관련 오브젝트], dark moody atmosphere, dramatic spotlight, no people, no text, 9:16 vertical portrait"}},
+    {{"duration": 4, "caption": "좋아요+저장유도 💾👍", "narration": "20자 이내. 핵심 1문장.", "image_style": "photo|digital|object 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
+    {{"duration": 3, "caption": "루프트리거 👀", "narration": "15자 이내. Hook 복선 언급.", "image_style": "scene1과 동일한 스타일", "image_prompt": "scene1 Hook 장면을 재소환하는 이미지 — 뒷모습/실루엣/개념 재현, mysterious atmosphere, no text, 9:16 vertical portrait"}}
   ],
-  "total_duration": 24,
+  "total_duration": 41,
   "save_trigger": "저장유도 문장",
   "loop_trigger": "루프트리거 문장 (Hook 복선 구체적 언급)",
   "tags_ko": ["건강상식연구소", "건강", "쇼츠", "건강습관", "주제태그"],

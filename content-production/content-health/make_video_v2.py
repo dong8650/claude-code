@@ -206,10 +206,10 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
     voice_dur  = get_duration(str(voice_file))
     total_dur  = sum(actual_durations)
     print(f"  음성 길이: {voice_dur:.2f}초")
-    if total_dur > 30:
-        print(f"  ⚠️ {total_dur:.1f}초 — 30초 초과, 완시율 하락 위험")
-    elif total_dur < 18:
-        print(f"  ⚠️ {total_dur:.1f}초 — 18초 미만, 정보량 부족")
+    if total_dur > 55:
+        print(f"  ⚠️ {total_dur:.1f}초 — 55초 초과, 완시율 하락 위험")
+    elif total_dur < 30:
+        print(f"  ⚠️ {total_dur:.1f}초 — 30초 미만, 정보량 부족")
 
     # ── [2/6] Ken Burns ───────────────────────────────────────────────────
     print(f"\n[2/6] 🎨 Ken Burns 이미지 클립 생성...")
