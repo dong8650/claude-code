@@ -45,6 +45,12 @@ def _build_prompt(topic: dict) -> str:
 - 자연스러운 대화체
 - caption 내용 빠짐없이 포함
 - 씬당 1~2문장 (duration에 맞게)
+- 큰따옴표(") 사용 금지 — 작은따옴표(') 또는 다른 표현으로 대체
+
+━━━ JSON 출력 규칙 (필수) ━━━
+- 문자열 내 줄바꿈은 반드시 \\n 으로 표현 (리터럴 줄바꿈 금지)
+- 문자열 내 큰따옴표 사용 금지
+- 이모지 사용 금지 (텍스트만)
 
 ━━━ image_style 규칙 (쇼츠와 동일) ━━━
 "photo"   — 현실에서 찍을 수 있는 장면 (운동, 생활, 행동). 사람은 뒷모습·실루엣만.
@@ -79,14 +85,21 @@ def generate_longform_script(topic: dict) -> dict:
     print(f"  📝 롱폼 대본 생성 중... (목표 15~20씬, 2~5분)")
     msg = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=4096,
+        max_tokens=8192,
         messages=[{"role": "user", "content": prompt}],
     )
 
     text = msg.content[0].text.strip()
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
-    script = json.loads(text.strip())
+    text = text.strip()
+
+    try:
+        script = json.loads(text)
+    except json.JSONDecodeError:
+        # 문자열 내 이스케이프 안 된 줄바꿈 수정 후 재시도
+        cleaned = re.sub(r'(?<=["\w])\n(?=[^{}\[\]]*["\w])', r'\\n', text)
+        script = json.loads(cleaned)
 
     n_scenes = len(script.get("scenes", []))
     total    = script.get("total_duration", 0)
