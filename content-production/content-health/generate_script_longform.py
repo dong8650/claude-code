@@ -19,8 +19,8 @@ def _build_prompt(topic: dict) -> str:
     theme = topic.get("theme", "")
     myth  = topic.get("myth", "")
 
-    return f"""너는 유튜브 건강 교육 전문가. 시청자가 처음부터 끝까지 보는 정보 밀도 높은 세로형 롱폼 영상 대본 작성.
-모바일 세로 영상 (9:16), 총 길이 2~5분 목표.
+    return f"""너는 유튜브 건강 교육 전문가. 시청자가 처음부터 끝까지 보는 정보 밀도 높은 가로형 롱폼 영상 대본 작성.
+유튜브 가로 영상 (16:9 1920x1080), 총 길이 2~5분 목표.
 
 주제: {title}
 테마: {theme}
@@ -52,11 +52,10 @@ def _build_prompt(topic: dict) -> str:
 - 문자열 내 큰따옴표 사용 금지
 - 이모지 사용 금지 (텍스트만)
 
-━━━ image_style 규칙 (쇼츠와 동일) ━━━
-"photo"   — 현실에서 찍을 수 있는 장면 (운동, 생활, 행동). 사람은 뒷모습·실루엣만.
-"digital" — 눈에 보이지 않는 내부 메커니즘 (뇌·세포·신호·장기·화학물질). neon glow 스타일.
-"object"  — 사람 없이 오브젝트로 상황 암시. 감정충격·부정씬 필수.
-공통: DALL-E 3 영문 프롬프트, 9:16 portrait, NO text in image, NO real human faces
+━━━ pexels_query 규칙 ━━━
+- 2~3개 영어 키워드 (단순 명사 위주)
+- 가로형(landscape) 사진 검색용 — 실내/야외 공간, 사람, 의학 이미지 등
+- 예: "sleep circadian rhythm", "brain neurons", "sugar addiction", "healthy food"
 
 JSON만 출력 (마크다운/설명 없이):
 {{

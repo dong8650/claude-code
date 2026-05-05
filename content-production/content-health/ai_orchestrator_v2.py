@@ -187,7 +187,7 @@ def run_episode_both(topic_id: str = None, auto: bool = False) -> dict:
 
     logger.info(f"[{lf_ep_name}] 롱폼 영상 합성 중...")
     try:
-        lf_output = make_video(lf_ep_dir, lf_script, bgm, generate_tts=True)
+        lf_output = make_video(lf_ep_dir, lf_script, bgm, generate_tts=True, landscape=True)
     except Exception as e:
         logger.error(f"[{lf_ep_name}] 롱폼 영상 합성 실패: {e}")
         return {"longform": {"error": str(e)}, "shortform": {"error": "longform failed"}}

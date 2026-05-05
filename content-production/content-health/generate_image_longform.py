@@ -17,7 +17,7 @@ def _fetch_photo_url(query: str, api_key: str) -> str:
     import requests
     headers = {"Authorization": api_key}
     for q in [query, "health wellness"]:
-        params = {"query": q, "orientation": "portrait", "size": "large", "per_page": 10}
+        params = {"query": q, "orientation": "landscape", "size": "large", "per_page": 10}
         resp = requests.get(
             "https://api.pexels.com/v1/search",
             headers=headers, params=params, timeout=10

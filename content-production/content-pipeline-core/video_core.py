@@ -16,6 +16,7 @@ def make_ken_burns_clip(
     index: int,
     out_path: Path,
     portrait_safe: bool = True,
+    size: str = "1080x1920",
     contrast: float = 1.05,
     saturation: float = 1.0,
     brightness: float = -0.02,
@@ -24,7 +25,8 @@ def make_ken_burns_clip(
     Ken Burns zoompan 클립 생성.
     - 짝수 index: 줌인 (1.0 → 1.3)
     - 홀수 index: 줌아웃 (1.3 → 1.0)
-    - portrait_safe=True: 가로/정방형 이미지도 1080x1920으로 강제 변환 후 Ken Burns 적용
+    - portrait_safe=True: 이미지를 size 비율로 강제 변환 후 Ken Burns 적용
+    - size: 출력 해상도 ("1080x1920" portrait / "1920x1080" landscape)
     Returns: 실제 생성된 클립 길이(초). 실패 시 0.0.
     """
     frames = max(int(duration * 25), 1)
@@ -32,18 +34,19 @@ def make_ken_burns_clip(
         "min(zoom+0.0008,1.3)" if index % 2 == 0
         else "if(eq(on,1),1.3,max(zoom-0.0008,1.0))"
     )
+    W, H = size.split("x")
 
-    # portrait_safe: 어떤 방향의 이미지든 1080x1920으로 변환 (crop center)
-    portrait_pre = (
-        "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
+    # portrait_safe: 어떤 방향의 이미지든 size 비율로 변환 (crop center)
+    pre = (
+        f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
         if portrait_safe else ""
     )
 
     vf = (
-        f"{portrait_pre}"
+        f"{pre}"
         f"scale=8000:-1,"
         f"zoompan=z='{zoom_expr}':d={frames}:"
-        f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920,"
+        f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W}x{H},"
         f"eq=contrast={contrast}:saturation={saturation}:brightness={brightness},fps=25"
     )
 
