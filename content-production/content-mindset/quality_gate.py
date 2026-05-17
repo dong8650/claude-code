@@ -250,16 +250,41 @@ def _soft_check(script: dict, client: anthropic.Anthropic) -> dict:
     )
     msg = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=768,
+        max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
     )
     raw = msg.content[0].text.strip()
+    return _parse_soft_json(raw, client)
+
+
+def _parse_soft_json(raw: str, client: anthropic.Anthropic) -> dict:
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
             raw = raw[4:]
         raw = raw.strip()
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        repair_prompt = f"""아래 응답은 JSON 파싱에 실패했습니다.
+내용을 바꾸지 말고, 유효한 JSON 객체만 다시 출력하세요.
+마크다운/코드블록/설명 금지.
+
+[깨진 응답]
+{raw}
+"""
+        msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": repair_prompt}],
+        )
+        fixed = msg.content[0].text.strip()
+        if fixed.startswith("```"):
+            fixed = fixed.split("```")[1]
+            if fixed.startswith("json"):
+                fixed = fixed[4:]
+            fixed = fixed.strip()
+        return json.loads(fixed)
 
 
 def _save(result: GateResult, ep_dir: str | None) -> None:
