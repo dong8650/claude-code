@@ -53,19 +53,29 @@ def _kf_line(text: str, dur_cs: int) -> str:
     return " ".join(f"{{\\kf{per_word}}}{w}" for w in words)
 
 
-def _chunk_quote(text: str, max_chars: int = 15) -> list:
-    """명언을 노래방 자막 줄 단위로 분할 (구두점 우선, 글자수 보조)."""
+def _chunk_quote(text: str, max_chars: int = 22) -> list:
+    """명언을 자막 줄 단위로 분할 — 문장 경계 우선, 글자수 보조."""
+    import re
+    # 1단계: 문장 단위 분리 (마침표/느낌표/물음표 뒤)
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    sentences = [s.strip() for s in sentences if s.strip()]
+
     chunks = []
-    while len(text) > max_chars:
-        split_at = max_chars
-        for i in range(min(max_chars + 5, len(text)) - 1, max_chars // 2, -1):
-            if text[i] in ',. 。、，':
-                split_at = i + 1
-                break
-        chunks.append(text[:split_at].strip())
-        text = text[split_at:].strip()
-    if text:
-        chunks.append(text)
+    for sentence in sentences:
+        if len(sentence) <= max_chars:
+            chunks.append(sentence)
+        else:
+            # 2단계: 긴 문장은 공백 기준으로 추가 분할
+            while len(sentence) > max_chars:
+                split_at = max_chars
+                for i in range(min(max_chars + 5, len(sentence)) - 1, max_chars // 2, -1):
+                    if sentence[i] == ' ':
+                        split_at = i
+                        break
+                chunks.append(sentence[:split_at].strip())
+                sentence = sentence[split_at:].strip()
+            if sentence:
+                chunks.append(sentence)
     return [c for c in chunks if c]
 
 
@@ -111,8 +121,8 @@ def build_ass(script: dict, ep_dir: Path, durations: dict) -> Path:
         # Intro — 크림색, 하단
         f"Style: Intro,NotoSansCJK-Bold,{fs_intro},&H00C8E6F5,&H000000FF,&H00000000,&HAA000000,"
         f"-1,0,0,0,100,100,2,0,3,3,2,2,60,60,{bot_bar_h + 40},1",
-        # Quote — 카라오케(노란색→흰색), 하단 배치 (alignment=2)
-        f"Style: Quote,NotoSansCJK-Bold,{fs_quote},&H0000FFFF,&H99FFFFFF,&H00000000,&HAA000000,"
+        # Quote — 흰색, 하단 배치 (alignment=2)
+        f"Style: Quote,NotoSansCJK-Bold,{fs_quote},&H00FFFFFF,&H000000FF,&H00000000,&HAA000000,"
         f"-1,0,0,0,100,100,1,0,3,3,2,2,80,80,{bot_bar_h + 40},1",
         # Echo — 오렌지, 하단
         f"Style: Echo,NotoSansCJK-Bold,{fs_echo},&H00008CFF,&H000000FF,&H00000000,&HAA000000,"
@@ -123,16 +133,14 @@ def build_ass(script: dict, ep_dir: Path, durations: dict) -> Path:
         f"Dialogue: 0,{_ts(t0_intro)},{_ts(t0_quote - 0.05)},Intro,,0,0,0,,{intro_text}",
     ]
 
-    # Quote — 카라오케: 줄 단위 순차 표시 + 단어별 \kf 채우기
+    # Quote — 문장 단위 순차 표시 (흰색 일반 자막)
     quote_chunks = _chunk_quote(quote_text)
     n = max(1, len(quote_chunks))
     chunk_dur = quote_dur / n
     for j, chunk in enumerate(quote_chunks):
-        t_start  = t0_quote + j * chunk_dur
-        t_end    = t0_quote + (j + 1) * chunk_dur - 0.05
-        dur_cs   = int((t_end - t_start) * 100)
-        kf_chunk = _kf_line(chunk, dur_cs)
-        lines.append(f"Dialogue: 0,{_ts(t_start)},{_ts(t_end)},Quote,,0,0,0,,{kf_chunk}")
+        t_start = t0_quote + j * chunk_dur
+        t_end   = t0_quote + (j + 1) * chunk_dur - 0.05
+        lines.append(f"Dialogue: 0,{_ts(t_start)},{_ts(t_end)},Quote,,0,0,0,,{chunk}")
 
     lines += [
         f"Dialogue: 0,{_ts(t0_echo)},{_ts(t0_echo + echo_dur - 0.05)},Echo,,0,0,0,,{echo_text}",
