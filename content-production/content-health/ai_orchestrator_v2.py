@@ -99,7 +99,7 @@ def run_episode(topic_id: str = None, auto: bool = False, channel: str = "health
     logger.info(f"[{ep_name}] Flux 이미지 생성 중... ({len(script['scenes'])}장)")
     try:
         from generate_image_v2 import generate_all_images
-        generate_all_images(script["scenes"], ep_dir)
+        generate_all_images(script, ep_dir)
     except Exception as e:
         logger.error(f"[{ep_name}] 이미지 생성 실패: {e}")
         return {"error": str(e), "ep_dir": str(ep_dir)}
@@ -291,7 +291,7 @@ def run_episode_both(topic_id: str = None, auto: bool = False) -> dict:
     logger.info(f"[{sf_ep_name}] Flux 이미지 생성 중... ({len(sf_script['scenes'])}장)")
     try:
         from generate_image_v2 import generate_all_images
-        generate_all_images(sf_script["scenes"], sf_ep_dir)
+        generate_all_images(sf_script, sf_ep_dir)
     except Exception as e:
         logger.error(f"[{sf_ep_name}] 숏폼 이미지 실패: {e}")
         return {

@@ -37,6 +37,29 @@ _SAFE_FALLBACK = (
     "dramatic spotlight, no people, no text, 9:16 vertical portrait"
 )
 
+_EDITORIAL_SUFFIX = (
+    ", editorially selected scene, not a generic AI health illustration, "
+    "show why this exact everyday body signal matters, concrete lived-in details"
+)
+
+
+def _augment_prompt(prompt: str, script_context: dict | None, scene_index: int) -> str:
+    if not script_context:
+        return prompt
+    real_scene = script_context.get("real_scene", "")
+    visual_intention = script_context.get("visual_intention", "")
+    one_argument = script_context.get("one_argument", "")
+
+    parts = [prompt]
+    if scene_index in (0, 3, 4) and real_scene:
+        parts.append(f"Concrete everyday body scene to reflect: {real_scene}.")
+    if visual_intention:
+        parts.append(f"Visual intention: {visual_intention}.")
+    if one_argument:
+        parts.append(f"Single editorial argument: {one_argument}.")
+    parts.append(_EDITORIAL_SUFFIX)
+    return " ".join(parts)
+
 
 def _call_flux(prompt: str, api_key: str) -> bytes:
     """fal.ai Flux.1 Dev 호출 → 이미지 bytes 반환."""
@@ -93,13 +116,21 @@ def generate_health_image(
     raise RuntimeError(f"이미지 생성 실패 (safety + fallback 모두 차단): {out_path.name}")
 
 
-def generate_all_images(scenes: list, ep_dir: Path) -> list:
+def generate_all_images(scenes_or_script, ep_dir: Path) -> list:
+    if isinstance(scenes_or_script, dict):
+        script_context = scenes_or_script
+        scenes = scenes_or_script.get("scenes", [])
+    else:
+        script_context = None
+        scenes = scenes_or_script
+
     image_paths = []
     for i, scene in enumerate(scenes):
         prompt = scene.get(
             "image_prompt",
             "cinematic health concept, dramatic lighting, 9:16 vertical portrait",
         )
+        prompt = _augment_prompt(prompt, script_context, i)
         style   = scene.get("image_style", "photo")
         out_path = ep_dir / f"bg{i+1}.jpg"
         if out_path.exists():

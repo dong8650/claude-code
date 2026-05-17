@@ -1223,6 +1223,18 @@ AI 자동 생성 영상처럼 보이는 이유:
 - `analyze_competitor.py`: `identity_attack` 분류를 `recovery_design` 중심으로 정리
 - 운영 기준: 자동 비공개 업로드는 유지하되 공개 전 사람이 최종 판단
 
+2026-05-17 — Codex 편집자 필드 downstream 연결
+
+- `real_scene`, `visual_intention`, `one_argument`이 이미지 생성 프롬프트에 직접 반영되도록 연결
+- `content-mindset/generate_image.py`: DALL-E 프롬프트에 편집 의도와 현실 장면을 주입
+- `content-mindset/generate_stock_clips.py`: Pexels 검색어도 첫 장면에 현실 장면/편집 의도를 반영
+- `content-mindset/generate_tts.py`: `human_pause`를 hook 뒤 0.4초 이하의 짧은 편집 호흡으로 반영
+- `content-health/generate_image_v2.py`: Flux 이미지 프롬프트에 편집 의도와 몸의 현실 장면 반영
+- `content-health/make_video_v2.py`: `human_pause`를 장면별 TTS/자막/클립 길이에 실제 반영
+- `content-health/generate_script_v2.py`: 7씬 41초 목표를 6씬 28~38초 목표로 축소
+- 건강 쇼츠 Quality Gate에 `scenes == 6`, `total_duration 28~38초` 검증 추가
+- 목표 기준: 조회수 1만 이상을 노리되, 영상 길이는 Shorts에 맞게 30초대 중심 유지
+
 2026-05-17 — Codex 전략 재정리
 
 - 외부 피드백 이후 중단된 이유 분석

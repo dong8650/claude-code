@@ -379,6 +379,13 @@ _SUFFIX = {
 - get_episode_info_v2.py: `save_trigger` 대신 `design_principle` 중심 설명란 사용.
 - analyze_competitor.py: `identity_attack` 분류 제거, `recovery_design` 중심으로 변경.
 
+2026-05-17 — v4.2 편집자 필드 downstream 연결 + Shorts 길이 재조정
+- generate_image_v2.py: `real_scene`, `visual_intention`, `one_argument`을 Flux 이미지 프롬프트에 직접 주입.
+- make_video_v2.py: `human_pause`를 장면별 TTS/자막/클립 길이에 실제 반영.
+- generate_script_v2.py: 7씬 41초 목표 → 6씬 28~38초 목표로 축소.
+- Quality Gate: 6씬 구조와 `total_duration 28~38초` 검증 추가.
+- 목표: 조회수 1만 이상을 노리되, Shorts 완시율을 위해 30초대 중심 유지.
+
 2026-05-17 — v4.0 현실 설계형 전환 (identity_attack 완전 제거)
 - Hook 순환: myth_direct → identity_attack → expert_reversal → **myth_direct → recovery_design → expert_reversal**
 - recovery_design 11종 추가: 몸의 신호/회복 설계 중심 표현

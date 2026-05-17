@@ -33,6 +33,7 @@ SLOGAN        = "매일 하나씩, 건강 상식을 쌓자"
 from channel_branding import CHANNEL_NAME, WATERMARK
 TOP_BAR_RATIO = 0.20
 BOT_BAR_RATIO = 0.18
+SHORTS_TOTAL_TARGET_MAX = 38.0
 
 # 장면별 TTS 속도: Hook 느리게(강조), 감정충격 느리게(여운), 루프트리거 빠르게(긴박감)
 SCENE_TTS_RATES = ["-5%", "+8%", "+5%", "+0%", "-8%", "+5%", "+12%"]
@@ -101,6 +102,14 @@ def generate_scene_tts(scenes: list, ep_dir: Path, voice: str = "ko-KR-SunHiNeur
         scene_audio_files.append(str(scene_audio))
         actual_durations.append(dur)
 
+        pause_after = float(scene.get("pause_after", 0) or 0)
+        if pause_after > 0:
+            silence_file = ep_dir / f"tts_scene{i+1}_pause.mp3"
+            make_silence(str(silence_file), pause_after)
+            scene_audio_files.append(str(silence_file))
+            actual_durations[-1] += pause_after
+            print(f"    scene{i+1}: +{pause_after:.2f}초 (editorial pause)")
+
     voice_file  = ep_dir / "voice_ko.mp3"
     concat_list = ep_dir / "tts_full_concat.txt"
     concat_list.write_text("\n".join(f"file '{f}'" for f in scene_audio_files), encoding="utf-8")
@@ -113,6 +122,13 @@ def generate_scene_tts(scenes: list, ep_dir: Path, voice: str = "ko-KR-SunHiNeur
     total = get_duration(str(voice_file))
     print(f"  ✅ TTS 완료: {voice_file.name} ({total:.2f}초, {len(scenes)}장면)")
     return voice_file, actual_durations
+
+
+def _apply_editorial_pause(script: dict) -> list:
+    scenes = [dict(s) for s in script["scenes"]]
+    if str(script.get("human_pause", "")).strip() and scenes:
+        scenes[0]["pause_after"] = min(float(scenes[0].get("pause_after", 0) or 0) + 0.35, 0.5)
+    return scenes
 
 
 def _ts(sec: float) -> str:
@@ -183,7 +199,7 @@ def build_ass(scenes: list, ep_dir: Path, font_path: str, durations: list, lands
 
 
 def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: bool = True, landscape: bool = False) -> Path:
-    scenes    = script["scenes"]
+    scenes    = _apply_editorial_pause(script)
     font_path = get_font()
     hook      = _strip_emoji(script.get("hook", script.get("title", "")))
 
@@ -216,8 +232,8 @@ def make_video(ep_dir: Path, script: dict, bgm_path: str = None, generate_tts: b
     total_dur  = sum(actual_durations)
     print(f"  음성 길이: {voice_dur:.2f}초")
     if not landscape:
-        if total_dur > 55:
-            print(f"  ⚠️ {total_dur:.1f}초 — 55초 초과, 완시율 하락 위험")
+        if voice_dur > SHORTS_TOTAL_TARGET_MAX:
+            print(f"  ⚠️ {voice_dur:.1f}초 — 1만뷰 목표 쇼츠 기준으로 김. 다음 생성에서 28~38초로 축소 권장")
         elif total_dur < 30:
             print(f"  ⚠️ {total_dur:.1f}초 — 30초 미만, 정보량 부족")
 

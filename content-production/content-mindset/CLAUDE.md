@@ -563,6 +563,12 @@ scp ~/Downloads/youtube_client_secret.json root@192.168.0.21:/root/content/runti
 - ai_orchestrator.py: CLI 선택지에 `work`, `money`와 신규 persona 3종 반영.
 - n8n 설명란: 좋아요/알림 CTA 문구를 제거하고 설계 기록형 설명으로 변경.
 
+2026-05-17 — v4.4 편집자 필드 downstream 연결
+- generate_image.py: `real_scene`, `visual_intention`, `one_argument`을 DALL-E 프롬프트에 직접 주입.
+- generate_stock_clips.py: Pexels 검색어 첫 장면에 현실 장면/편집 의도 반영.
+- generate_tts.py: `human_pause`를 hook 뒤 0.4초 이하의 짧은 편집 호흡으로 반영.
+- 쇼츠 길이 기준: 음성 34초, 총 길이 38초 초과 시 경고.
+
 2026-05-05 — v4.2 좋아요 설계 전략 적용
 - make_video.py, make_video_stock.py: CTA 오버레이 추가 — 마지막 1.2초 "공감됐으면 좋아요  저장해두세요" (`#FFD700`, 36px, drawtext `enable='between(t,{cta_start},{N_main})'`)
 - generate_script.py: Closing 4패턴 강제 (공감형/저장형/승리감형/공유형), 최대 15자→20자

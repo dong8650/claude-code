@@ -23,6 +23,8 @@ VOICE_MAP = {
 }
 
 INTRO_DURATION = 1.5
+SHORTS_VOICE_TARGET_MAX = 34.0
+SHORTS_TOTAL_TARGET_MAX = 38.0
 
 def get_duration(path: str) -> float:
     r = subprocess.run([
@@ -42,6 +44,13 @@ def make_silence(path: str, duration: float):
         "-t", str(duration), "-q:a", "9",
         "-acodec", "libmp3lame", path
     ], capture_output=True)
+
+def _editorial_pause_seconds(script: dict) -> float:
+    """human_pause를 실제 호흡으로 반영하되 쇼츠 길이를 늘리지 않도록 짧게 제한."""
+    pause = str(script.get("human_pause", "")).strip()
+    if not pause:
+        return 0.0
+    return 0.4
 
 def split_script(script: dict) -> dict:
     """
@@ -146,7 +155,10 @@ def generate_tts(text_or_script, output_path: str, voice=None, style="default"):
     body_path    = os.path.join(output_dir, "tts_body.mp3")
     closing_path = os.path.join(output_dir, "tts_closing.mp3")
 
+    editorial_pause = _editorial_pause_seconds(script)
     print("  🎙️ TTS 3분할 생성 중... (원문: script_ko 기준)")
+    if editorial_pause:
+        print(f"  ✂️ 편집 호흡 반영: hook 뒤 {editorial_pause:.1f}초")
     if selected_voice == "elevenlabs":
         print("  🎤 ElevenLabs Seulki 음성 사용")
         _tts_elevenlabs(parts["hook"],    hook_path)
@@ -171,7 +183,7 @@ def generate_tts(text_or_script, output_path: str, voice=None, style="default"):
     s02 = os.path.join(output_dir, "sil_02.mp3")
     s03 = os.path.join(output_dir, "sil_03.mp3")
     make_silence(s02, 0.2)
-    make_silence(s03, 0.3)
+    make_silence(s03, 0.3 + editorial_pause)
 
     concat = os.path.join(output_dir, "tts_concat.txt")
     with open(concat, "w") as f:
@@ -187,6 +199,10 @@ def generate_tts(text_or_script, output_path: str, voice=None, style="default"):
     ], capture_output=True)
 
     total_dur = get_duration(output_path)
+    if total_dur > SHORTS_VOICE_TARGET_MAX:
+        print(f"  ⚠️ 음성 {total_dur:.2f}초 — 1만뷰 목표 쇼츠 기준으로 다소 김")
+    if total_dur + INTRO_DURATION > SHORTS_TOTAL_TARGET_MAX:
+        print(f"  ⚠️ 총 길이 예상 {total_dur + INTRO_DURATION:.2f}초 — 다음 생성에서 문장 축소 권장")
     print(f"✅ TTS 완료: {output_path} ({total_dur:.2f}초)")
 
     # 4. 자막 생성 (글자 수 비례 + 단어별 kf)
@@ -213,7 +229,7 @@ def generate_tts(text_or_script, output_path: str, voice=None, style="default"):
         return cur
 
     cursor = add_lines(hook_lines,    hook_durs,    cursor)
-    cursor += 0.3
+    cursor += 0.3 + editorial_pause
     cursor = add_lines(body_lines,    body_durs,    cursor)
     cursor += 0.2
     cursor = add_lines(closing_lines, closing_durs, cursor)
@@ -232,6 +248,8 @@ def generate_tts(text_or_script, output_path: str, voice=None, style="default"):
             "intro_duration": INTRO_DURATION,
             "total_duration": total_dur + INTRO_DURATION,
             "voice_duration": total_dur,
+            "editorial_pause": editorial_pause,
+            "shorts_voice_target_max": SHORTS_VOICE_TARGET_MAX,
         }, f, ensure_ascii=False, indent=2)
 
     return ass_path

@@ -362,7 +362,9 @@ def run_episode(
             from generate_image import generate_images
             raw_scenes = script.get("scenes", [])
             scenes = [s if isinstance(s, dict) else {"image_prompt": s} for s in raw_scenes]
-            generate_images(scenes, str(ep_dir))
+            script_for_images = dict(script)
+            script_for_images["scenes"] = scenes
+            generate_images(script_for_images, str(ep_dir))
 
         # ⑤ TTS + 자막
         log.info("[%s] TTS + 자막", ep_id)

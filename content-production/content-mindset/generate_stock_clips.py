@@ -34,6 +34,14 @@ FALLBACK_KEYWORDS = [
 ]
 
 
+def _scene_keyword(scene) -> str:
+    if isinstance(scene, dict):
+        source = scene.get("search_query") or scene.get("image_prompt") or scene.get("prompt") or ""
+    else:
+        source = str(scene)
+    return " ".join(source.split()[:8])
+
+
 def _search_pexels(keyword: str) -> str | None:
     """portrait 우선, landscape fallback으로 Pexels 영상 URL 반환."""
     for orient in ("portrait", "landscape"):
@@ -94,13 +102,22 @@ def generate_stock_clips(ep_dir: str, clip_duration: float = 5.0) -> int:
         script = json.load(f)
 
     scenes = list(script.get("scenes", []))
+    real_scene = script.get("real_scene", "")
+    visual_intention = script.get("visual_intention", "")
+    if scenes and real_scene:
+        scenes[0] = {
+            "image_prompt": (
+                f"{_scene_keyword(scenes[0])} {real_scene} {visual_intention} "
+                "Korean office life everyday documentary"
+            )
+        }
     while len(scenes) < 8:
         scenes.append(FALLBACK_KEYWORDS[len(scenes) % len(FALLBACK_KEYWORDS)])
 
     print(f"🎬 스톡 영상 다운로드 ({ep_dir})")
     success = 0
     for i, scene in enumerate(scenes[:8], start=1):
-        keyword  = " ".join(scene.split()[:5])
+        keyword  = _scene_keyword(scene)
         out_path = str(Path(ep_dir) / f"bg{i}.mp4")
         print(f"  [{i}/8] {keyword}")
 

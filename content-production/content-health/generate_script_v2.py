@@ -26,6 +26,8 @@ SCORE_PASS        = 6   # scroll_stop_power 최소 기준
 RESONANCE_PASS    = 6   # body_signal_resonance 최소 기준
 LOOP_PASS         = 6   # loop_value 최소 기준
 EDITORIAL_PASS    = 6   # editor_intent_score 최소 기준
+SHORTS_MIN_SEC    = 28
+SHORTS_MAX_SEC    = 38
 MAX_RETRY         = 2
 HOOK_HISTORY_FILE = RUNTIME_DIR / "hook_history.json"
 HOOK_HISTORY_MAX  = 6   # 최근 N개 hook_type 기록
@@ -266,26 +268,26 @@ AI가 건강 정보를 자동 요약한 영상처럼 보이면 실패다.
 
 금지 Hook: "~하면 일어나는 일" / "~의 효과" / "~알고 계셨나요?" / "매일 ~했던 당신"
 
-━━━ 장면 구조 (총 7장면, duration은 TTS 예상 기준) ━━━
-0. Hook (duration ~5): 위 3대 공식 중 하나. 2줄 이내.
-1. 과학설명1 (duration ~8): 핵심 메커니즘 + 수치. "→" 기호 활용.
-2. 과학설명2 (duration ~8): 추가 효과/연구. 이모지 + 수치.
-3. 잘못된상식 반전 (duration ~8): "근데 대부분은..." 공감 유발.
-4. 몸의 공감 (duration ~5): 일상 장면 속 이 신호를 가볍게 공감. 짧고 구체적으로.
+━━━ 장면 구조 (총 6장면, Shorts 28~38초 목표) ━━━
+0. Hook (duration ~4): 위 3대 공식 중 하나. 2줄 이내.
+1. 핵심 원리 (duration ~7): 핵심 메커니즘 + 수치. "→" 기호 활용.
+2. 잘못된상식 반전 (duration ~7): "근데 대부분은..." 공감 유발.
+3. 몸의 공감 (duration ~6): 일상 장면 속 이 신호를 가볍게 공감. 짧고 구체적으로.
    예: "아침에 물 안 마시고 커피부터 찾았다면, 몸이 이미 말하고 있던 거예요"
    금지: "매일 이렇게 했던 당신" / "당신의 ~는" 류 정체성 공격
-5. 몸의 설계 원칙 (duration ~4): 오늘 바로 적용할 1가지. 24자 이내. 실천 원칙으로 끝맺음.
+4. 몸의 설계 원칙 (duration ~5): 오늘 바로 적용할 1가지. 24자 이내. 실천 원칙으로 끝맺음.
    예: "기상 후 30분 안에 물 한 잔이면 충분합니다"
    금지: "저장해두세요" / "좋아요 누르세요" / "퍼뜨려야 함" 류 CTA
-6. 루프트리거 (duration ~3): Hook의 구체적 복선 언급. "첫 장면에서 {'{'}복선 내용{'}'} 이미 말했음 👀"
+5. 루프트리거 (duration ~3): Hook의 구체적 복선 언급. "첫 장면에서 {'{'}복선 내용{'}'} 이미 말했음 👀"
 
 ━━━ narration 글자수 규칙 (핵심, 반드시 준수) ━━━
 한국어 TTS 발화 속도 = 약 5자/초. duration에 비례한 글자수를 엄수.
   duration ~3  → narration 15자 이내
   duration ~4  → narration 24자 이내
   duration ~5  → narration 25자 이내
-  duration ~8  → narration 40자 이내
-전체 7씬 narration 합계: 165자 이내 (영상 35~50초 목표)
+  duration ~6  → narration 30자 이내
+  duration ~7  → narration 35자 이내
+전체 6씬 narration 합계: 145자 이내 (영상 28~38초 목표)
 narration은 caption 핵심 1~2문장. 불필요한 부연 설명 금지.
 
 ━━━ 루프트리거 핵심 규칙 ━━━
@@ -339,15 +341,14 @@ JSON만 출력 (마크다운/설명 없이):
   "hook": "Hook 문장 (15자 이내)",
   "hook_type": "myth_direct | recovery_design | expert_reversal",
   "scenes": [
-    {{"duration": 5, "caption": "Hook 자막\\n두 줄 이내", "narration": "25자 이내. 핵심 1문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
-    {{"duration": 8, "caption": "과학설명1\\n→ 수치", "narration": "40자 이내. 핵심 1~2문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
-    {{"duration": 8, "caption": "과학설명2\\n이모지 + 수치", "narration": "40자 이내. 핵심 1~2문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
-    {{"duration": 8, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "40자 이내. 핵심 1~2문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
-    {{"duration": 5, "caption": "몸의 공감 — 익숙한 신호", "narration": "25자 이내. 일상 장면 공감 1문장.", "image_style": "object", "image_prompt": "cinematic still life of [주제 관련 오브젝트], warm soft light, calm atmosphere, no people, no text, 9:16 vertical portrait"}},
-    {{"duration": 4, "caption": "몸의 설계 원칙 📌", "narration": "24자 이내. 오늘 바로 적용할 1가지 원칙.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
+    {{"duration": 4, "caption": "Hook 자막\\n두 줄 이내", "narration": "20자 이내. 핵심 1문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
+    {{"duration": 7, "caption": "핵심 원리\\n→ 수치", "narration": "35자 이내. 핵심 1문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
+    {{"duration": 7, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "35자 이내. 핵심 1문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
+    {{"duration": 6, "caption": "몸의 공감 — 익숙한 신호", "narration": "30자 이내. 일상 장면 공감 1문장.", "image_style": "object", "image_prompt": "cinematic still life of [주제 관련 오브젝트], warm soft light, calm atmosphere, no people, no text, 9:16 vertical portrait"}},
+    {{"duration": 5, "caption": "몸의 설계 원칙 📌", "narration": "24자 이내. 오늘 바로 적용할 1가지 원칙.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
     {{"duration": 3, "caption": "루프트리거 👀", "narration": "15자 이내. Hook 복선 언급.", "image_style": "scene1과 동일한 스타일", "image_prompt": "scene1 Hook 장면을 재소환하는 이미지 — 뒷모습/실루엣/개념 재현, mysterious atmosphere, no text, 9:16 vertical portrait"}}
   ],
-  "total_duration": 41,
+  "total_duration": 32,
   "design_principle": "몸의 설계 원칙 문장 (24자 이내)",
   "loop_trigger": "루프트리거 문장 (Hook 복선 구체적 언급)",
   "tags_ko": ["매일의설계", "건강", "쇼츠", "건강습관", "주제태그"],
@@ -372,6 +373,8 @@ def _quality_check(script: dict) -> tuple[bool, str]:
     lv        = script.get("loop_value", 0)
     eis       = script.get("editor_intent_score", 0)
     hook_type = script.get("hook_type", "")
+    scenes    = script.get("scenes", [])
+    total_duration = script.get("total_duration") or sum(float(s.get("duration", 0) or 0) for s in scenes)
 
     issues = []
     if ssp < SCORE_PASS:
@@ -384,6 +387,10 @@ def _quality_check(script: dict) -> tuple[bool, str]:
         issues.append(f"editor_intent_score={eis} (목표 {EDITORIAL_PASS}+) — 사람이 주제와 장면을 고른 편집 의도가 약함")
     if not hook_type or hook_type not in ("myth_direct", "recovery_design", "expert_reversal"):
         issues.append(f"hook_type='{hook_type}' — 3대 공식(myth_direct/recovery_design/expert_reversal) 중 하나여야 함")
+    if len(scenes) != 6:
+        issues.append(f"scenes={len(scenes)} — 1만뷰 목표 쇼츠는 6씬 구조로 고정")
+    if total_duration < SHORTS_MIN_SEC or total_duration > SHORTS_MAX_SEC:
+        issues.append(f"total_duration={total_duration}초 — 목표 {SHORTS_MIN_SEC}~{SHORTS_MAX_SEC}초")
     for field in ("editor_point_of_view", "one_argument", "real_scene", "visual_intention", "human_pause"):
         if not str(script.get(field, "")).strip():
             issues.append(f"{field} 비어 있음 — 편집자 개입 흔적 필수")

@@ -21,6 +21,12 @@ FALLBACK_PROMPTS = [
     "wide shot of abandoned stone corridor, dim end light, silence, rule of thirds, cinematic, ultra detailed, 9:16",
 ]
 
+EDITORIAL_SUFFIX = (
+    " Editorially selected everyday scene, not a generic stock illustration. "
+    "Show the concrete situation and the reason this scene matters. "
+    "Korean 30s or 40s work-life context, lived-in details, no text in image."
+)
+
 def sanitize_prompt(prompt: str) -> str:
     p = prompt
     for word in BANNED_WORDS:
@@ -28,10 +34,40 @@ def sanitize_prompt(prompt: str) -> str:
     p += " Safe content. No violence. No people. No faces. Cinematic art."
     return p.strip()
 
-def generate_images(scenes: list, output_dir: str):
+def _editorial_context(script_or_scenes) -> dict:
+    if isinstance(script_or_scenes, dict):
+        return {
+            "scenes": script_or_scenes.get("scenes", []),
+            "real_scene": script_or_scenes.get("real_scene", ""),
+            "visual_intention": script_or_scenes.get("visual_intention", ""),
+            "one_argument": script_or_scenes.get("one_argument", ""),
+        }
+    return {"scenes": script_or_scenes, "real_scene": "", "visual_intention": "", "one_argument": ""}
+
+
+def _with_editorial_intent(raw_prompt: str, context: dict, scene_index: int) -> str:
+    real_scene = context.get("real_scene", "")
+    visual_intention = context.get("visual_intention", "")
+    one_argument = context.get("one_argument", "")
+
+    additions = [raw_prompt]
+    if scene_index in (0, 1, 2) and real_scene:
+        additions.append(f"Concrete real scene to reflect: {real_scene}.")
+    if visual_intention:
+        additions.append(f"Visual intention: {visual_intention}.")
+    if one_argument:
+        additions.append(f"Single editorial argument: {one_argument}.")
+    additions.append(EDITORIAL_SUFFIX)
+    return " ".join(additions)
+
+
+def generate_images(script_or_scenes, output_dir: str):
     os.makedirs(output_dir, exist_ok=True)
+    context = _editorial_context(script_or_scenes)
+    scenes = context["scenes"]
     for i, scene in enumerate(scenes):
         raw_prompt = scene.get("image_prompt", "dark cinematic moody atmosphere, no humans, vertical portrait")
+        raw_prompt = _with_editorial_intent(raw_prompt, context, i)
         prompt = sanitize_prompt(raw_prompt)
         print(f"  🎨 DALL-E 이미지 생성 중 ({i+1}/{len(scenes)})...")
         success = False
