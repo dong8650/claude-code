@@ -121,7 +121,7 @@ def _analyze_with_claude(videos: list) -> dict:
 이 데이터를 분석해서 아래 JSON 형식으로 반환해줘.
 
 분류 기준:
-- identity_attack: "매일 이렇게 했던 당신..." 등 시청자 행동 공격
+- recovery_design: "반복되는 피로의 신호" 등 몸의 회복 구조 제시
 - expert_reversal: "의사가 말 안 해주는..." 등 전문가 정보 격차
 - myth_direct: "사실 반대임", "알고 있었나요" 등 잘못된 상식 직격
 - curiosity_gap: "이것만 알면..." 등 정보 격차 유발
@@ -131,7 +131,7 @@ def _analyze_with_claude(videos: list) -> dict:
 JSON만 출력 (마크다운 없이):
 {{
   "hook_type_stats": {{
-    "identity_attack":  {{"count": 0, "avg_views": 0, "max_views": 0, "best_title": ""}},
+    "recovery_design": {{"count": 0, "avg_views": 0, "max_views": 0, "best_title": ""}},
     "expert_reversal":  {{"count": 0, "avg_views": 0, "max_views": 0, "best_title": ""}},
     "myth_direct":      {{"count": 0, "avg_views": 0, "max_views": 0, "best_title": ""}},
     "curiosity_gap":    {{"count": 0, "avg_views": 0, "max_views": 0, "best_title": ""}},

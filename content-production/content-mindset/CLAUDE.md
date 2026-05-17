@@ -556,6 +556,13 @@ scp ~/Downloads/youtube_client_secret.json root@192.168.0.21:/root/content/runti
 
 ## 마지막 업데이트
 
+2026-05-17 — v4.3 편집자 개입 시스템 적용
+- generate_script.py: `editor_point_of_view`, `one_argument`, `real_scene`, `visual_intention`, `human_pause` 필수 출력 추가.
+- quality_gate.py: `editorial_pass` 추가 — AI 자동 요약이 아니라 사람이 주제와 장면을 고른 흔적이 있는지 검수.
+- make_video.py, make_video_stock.py: 마지막 CTA 오버레이 제거. 영상 안에서는 좋아요/저장 유도 대신 채널 슬로건만 유지.
+- ai_orchestrator.py: CLI 선택지에 `work`, `money`와 신규 persona 3종 반영.
+- n8n 설명란: 좋아요/알림 CTA 문구를 제거하고 설계 기록형 설명으로 변경.
+
 2026-05-05 — v4.2 좋아요 설계 전략 적용
 - make_video.py, make_video_stock.py: CTA 오버레이 추가 — 마지막 1.2초 "공감됐으면 좋아요  저장해두세요" (`#FFD700`, 36px, drawtext `enable='between(t,{cta_start},{N_main})'`)
 - generate_script.py: Closing 4패턴 강제 (공감형/저장형/승리감형/공유형), 최대 15자→20자

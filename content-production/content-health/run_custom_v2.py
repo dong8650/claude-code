@@ -18,8 +18,13 @@ sys.path.insert(0, str(BASE_DIR))
 SCRIPT = {
     "title": "달리기 후 뇌 변화",
     "content_type": "건강상식",
-    "hook": "매일 달리기 했던 당신, 뇌에서 일어난 일 알고 있었나",
-    "hook_type": "identity_attack",
+    "editor_point_of_view": "운동 효과 전체가 아니라, 달리기 뒤 몸이 보내는 회복 신호만 보려는 편집입니다",
+    "one_argument": "달리기는 의지보다 회복 구조를 먼저 봐야 오래 갑니다",
+    "real_scene": "퇴근 후 운동화를 신었다가 다시 벗어두는 현관 앞",
+    "visual_intention": "사람 얼굴보다 운동화와 현관 장면으로 망설임을 보여줍니다",
+    "human_pause": "첫 장면 뒤 0.4초 멈춤",
+    "hook": "달리기 뒤 몸의 신호",
+    "hook_type": "recovery_design",
     "scenes": [
         {
             "duration": 3,
@@ -58,8 +63,8 @@ SCRIPT = {
         },
         {
             "duration": 2,
-            "caption": "공감됐으면 좋아요 누르고\n저장해둬 💾👍",
-            "narration": "공감됐으면 좋아요 누르고 저장해둬",
+            "caption": "몸이 먼저 버틸 구조를\n만들어야 합니다 📌",
+            "narration": "몸이 먼저 버틸 구조를 만들어야 합니다",
             "image_style": "object",
             "image_prompt": "cinematic close-up of worn running shoes being tied on a starting line, golden morning light, motivational atmosphere, no people, no text, 9:16 vertical portrait"
         },
@@ -72,7 +77,7 @@ SCRIPT = {
         }
     ],
     "total_duration": 25,
-    "save_trigger": "공감됐으면 좋아요 누르고 저장해둬 💾👍",
+    "design_principle": "몸이 먼저 버틸 구조를 만들어야 합니다",
     "loop_trigger": "첫 장면 달리는 이유 다시 보면 힌트 있음 👀",
     "tags_ko": ["건강상식연구소", "달리기", "뇌과학", "운동효과", "쇼츠"]
 }

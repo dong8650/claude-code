@@ -76,7 +76,7 @@ episodes_v2/                   # 서버 고유 — git 미포함
 | 하단 검은 바 | 22% + 워터마크 | ✅ 18% + `WATERMARK`(© 2026 매일의 설계) + `SLOGAN`(매일 하나씩, 건강 상식을 쌓자) |
 | 자막 스타일 | ASS Karaoke (노래방 효과) | ✅ ASS 장면별 (Hook=오렌지, Main=흰색, Save=노랑, Loop=시안) |
 | BGM 믹싱 | voice 1.0 + bgm 0.18 | ✅ 동일 |
-| CTA 오버레이 | — | ✅ 마지막 1.2초 "공감됐으면 좋아요  저장해두세요" (`#FFD700`, 36px, borderw=2) |
+| CTA 오버레이 | — | ❌ 현재 제거됨 — 영상 안에서는 좋아요/저장 유도 대신 몸의 설계 원칙으로 마무리 |
 | TTS | 3분할 (hook/body/closing) | ✅ 장면별 실제 TTS 길이 기준 + 장면별 속도 차별화 |
 | 자막 싱크 | TTS 예상 길이 기준 | ✅ 실제 클립 길이(ffprobe) 기준 — 프레임 정렬 오차 제거 |
 | 이미지 방향 | 가로 이미지 오류 가능 | ✅ force_original_aspect_ratio=increase → crop 강제 (portrait/landscape 모두 지원) |
@@ -371,6 +371,13 @@ _SUFFIX = {
 ---
 
 ## 마지막 업데이트
+
+2026-05-17 — v4.1 편집자 개입 시스템 적용
+- generate_script_v2.py: `editor_point_of_view`, `one_argument`, `real_scene`, `visual_intention`, `human_pause` 필수 출력 추가.
+- Quality Gate: `editor_intent_score` 추가 — 사람이 건강 주제와 장면을 고른 편집 판단이 보이는지 검수.
+- make_video_v2.py, test_run_stock.py: 마지막 CTA 오버레이 제거.
+- get_episode_info_v2.py: `save_trigger` 대신 `design_principle` 중심 설명란 사용.
+- analyze_competitor.py: `identity_attack` 분류 제거, `recovery_design` 중심으로 변경.
 
 2026-05-17 — v4.0 현실 설계형 전환 (identity_attack 완전 제거)
 - Hook 순환: myth_direct → identity_attack → expert_reversal → **myth_direct → recovery_design → expert_reversal**

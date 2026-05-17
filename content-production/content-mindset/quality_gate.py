@@ -1,13 +1,13 @@
 """
 quality_gate.py — Script Quality Gate v4
 =========================================
-목표: "매일의 설계 채널답고, 신뢰할 수 있고, 실용 가치 있는 대본만 통과"
+목표: "매일의 설계 채널답고, 신뢰할 수 있고, 사람이 편집한 흔적이 있는 대본만 통과"
 
 v4 변경 (v3 → v4):
   - scroll_stop_power: 공격형 기준 → 현실 직격형 기준 (최솟값 6으로 낮춤)
   - emotional_attack → practical_value: 감정 공격 → 보고 나서 정리되는가
   - repeat_value → identity_fit: 저장 유도 → 채널 정체성 + 구독 이유
-  - SOFT GATE: identity_fit, trust_score, practical_value, human_feel 추가
+  - SOFT GATE: identity_fit, trust_score, practical_value, human_feel, editorial_intent 추가
   - CTA/협박형 closing → 설계 원칙형으로 평가 기준 변경
 
 HARD GATE : 수치 기반 즉시 FAIL
@@ -62,6 +62,7 @@ class GateResult:
     flow_pass:            bool = False
     trust_pass:           bool = False   # v4 신규
     human_feel_pass:      bool = False   # v4 신규
+    editorial_pass:       bool = False   # v4.1 신규
     viewability_pass:     bool = False
     final_status:         str  = "FAIL"
     fail_reason:          str  = ""
@@ -79,6 +80,11 @@ content_type : {content_type}
 hook         : {hook}
 body         : {body}
 closing      : {closing}
+editor_point_of_view : {editor_point_of_view}
+one_argument         : {one_argument}
+real_scene           : {real_scene}
+visual_intention     : {visual_intention}
+human_pause          : {human_pause}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [A] 채널 정체성 + 사람 냄새 평가
@@ -110,6 +116,14 @@ closing      : {closing}
          ③ 직접 경험/관찰한 것처럼 쓰여짐
          ④ 완전히 해결된 척 안 함 (답을 강요하지 않음)
    FAIL: 모든 문장이 같은 길이 / 전형적인 AI 패턴 ("~합니다. ~합니다. ~합니다.")
+
+6. editorial_pass (신규 v4.1 — 편집자 개입 흔적)
+   PASS: 아래 4개 모두 충족
+         ① editor_point_of_view가 "왜 이 주제를 골랐는지"를 말함
+         ② one_argument가 하나의 주장으로 좁혀져 있음
+         ③ real_scene이 실제 사람이 고른 구체 장면임
+         ④ visual_intention이 대표 이미지가 아니라 편집 의도를 설명함
+   FAIL: 빈 값 / 일반론 / 자동 생성 메타 설명 / "좋은 영상 만들기" 같은 추상 표현
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [B] content_type 규칙 검증
@@ -146,6 +160,8 @@ JSON으로만 응답 (마크다운 없이):
   "trust_reason":         "한 줄",
   "human_feel_pass":      true,
   "human_feel_reason":    "한 줄",
+  "editorial_pass":       true,
+  "editorial_reason":     "한 줄",
   "type_rule_pass":       true,
   "type_rule_reason":     "한 줄",
   "view_score":           8,
@@ -226,6 +242,11 @@ def _soft_check(script: dict, client: anthropic.Anthropic) -> dict:
         hook         = script.get("hook", ""),
         body         = script.get("script_ko", ""),
         closing      = script.get("closing_ko", ""),
+        editor_point_of_view = script.get("editor_point_of_view", ""),
+        one_argument         = script.get("one_argument", ""),
+        real_scene           = script.get("real_scene", ""),
+        visual_intention     = script.get("visual_intention", ""),
+        human_pause          = script.get("human_pause", ""),
     )
     msg = client.messages.create(
         model="claude-sonnet-4-6",
@@ -245,7 +266,7 @@ def _save(result: GateResult, ep_dir: str | None) -> None:
     log.info(
         "[QGate] %s | type=%-8s | hook=%s script=%s sent=%s closing=%s "
         "ssp=%s pv=%s ifit=%s view=%s | "
-        "hook=%s body=%s flow=%s trust=%s feel=%s view=%s",
+        "hook=%s body=%s flow=%s trust=%s feel=%s edit=%s view=%s",
         result.final_status, result.content_type,
         result.hook_length, result.script_length,
         result.sentence_count, result.closing_length,
@@ -253,7 +274,8 @@ def _save(result: GateResult, ep_dir: str | None) -> None:
         result.identity_fit, result.view_score,
         result.semantic_hook_pass, result.semantic_body_pass,
         result.flow_pass, result.trust_pass,
-        result.human_feel_pass, result.viewability_pass,
+        result.human_feel_pass, result.editorial_pass,
+        result.viewability_pass,
     )
     if result.final_status == "FAIL":
         log.warning("[QGate] 실패: %s", result.fail_reason)
@@ -300,6 +322,7 @@ def run_gate(
     r.flow_pass          = soft.get("flow_pass",          False)
     r.trust_pass         = soft.get("trust_pass",         True)   # 기본 PASS (보수적 운영)
     r.human_feel_pass    = soft.get("human_feel_pass",    False)
+    r.editorial_pass     = soft.get("editorial_pass",     False)
     r.view_score         = soft.get("view_score",         0)
     r.viewability_pass   = soft.get("viewability_pass",   False)
 
@@ -314,6 +337,8 @@ def run_gate(
         fails.append(f"[TRUST] {soft.get('trust_reason', '')}")
     if not r.human_feel_pass:
         fails.append(f"[HUMAN] {soft.get('human_feel_reason', '')}")
+    if not r.editorial_pass:
+        fails.append(f"[EDITORIAL] {soft.get('editorial_reason', '')}")
     if not soft.get("type_rule_pass", False):
         fails.append(f"[TYPE:{r.content_type}] {soft.get('type_rule_reason', '')}")
     if not r.viewability_pass:

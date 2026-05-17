@@ -8,6 +8,7 @@ v4.0 변경사항:
 - 현실 설계형 대본: persona(3종) + structure_type(5종) + scene_hint 주입
 - 감정충격 → 몸의 공감 (공격형 제거, 회복 신호 공감으로 전환)
 - 저장유도 → 몸의 설계 원칙 (CTA 제거, 24자 이내 실천 원칙)
+- 편집자 개입 필드 추가: 사람이 고른 주제/장면/편집 의도처럼 보이게 고정
 - Quality Gate: emotional_attack → body_signal_resonance (≥6)
 """
 import json
@@ -24,6 +25,7 @@ INSIGHTS_FILE = RUNTIME_DIR / "competitor_insights.json"
 SCORE_PASS        = 6   # scroll_stop_power 최소 기준
 RESONANCE_PASS    = 6   # body_signal_resonance 최소 기준
 LOOP_PASS         = 6   # loop_value 최소 기준
+EDITORIAL_PASS    = 6   # editor_intent_score 최소 기준
 MAX_RETRY         = 2
 HOOK_HISTORY_FILE = RUNTIME_DIR / "hook_history.json"
 HOOK_HISTORY_MAX  = 6   # 최근 N개 hook_type 기록
@@ -241,6 +243,17 @@ def _build_prompt(
 금지: "너는/당신은 이런 사람", 저장 강요, 구독 촉구, 가짜 통계(출처 없는 수치는 "연구에 따르면" 표현 금지)
 허용: 구체적 일상 장면 묘사, "~하더라고요" 관찰 표현, 실제 메커니즘 수치
 
+━━━ 편집자 개입 시스템 ━━━
+AI가 건강 정보를 자동 요약한 영상처럼 보이면 실패다.
+사람이 이 주제를 왜 골랐고, 어떤 장면을 왜 보여주는지 판단한 흔적을 남겨라.
+
+반드시 아래 5개를 먼저 설계하고 JSON에 포함:
+- editor_point_of_view: 이 건강 주제를 지금 다루는 편집자 관점 1문장
+- one_argument: 이번 영상에서 딱 하나만 말할 주장 1문장
+- real_scene: 시청자가 실제로 겪는 몸의 장면 1개
+- visual_intention: 왜 이 이미지를 보여주는지 편집 의도 1문장
+- human_pause: 자막/내레이션에서 일부러 한 박자 쉬는 위치 1개
+
 ━━━ Hook 규칙 (설명형/정보형 절대 금지) ━━━
 위 🔒 강제 지정이 있으면 반드시 그 타입·표현 사용. 없으면 아래 3대 공식 중 1개 선택.
 
@@ -312,11 +325,17 @@ narration은 caption 핵심 1~2문장. 불필요한 부연 설명 금지.
 - scroll_stop_power (1~10): Hook이 피드에서 스크롤을 멈추게 하는 힘
 - body_signal_resonance (1~10): 몸의 공감 장면이 실제 일상 경험과 얼마나 공명하는가
 - loop_value (1~10): 루프트리거가 실제로 다시 보게 만드는 힘
+- editor_intent_score (1~10): 사람이 주제와 장면을 고른 편집 판단이 보이는가
 
 JSON만 출력 (마크다운/설명 없이):
 {{
   "title": "{title}",
   "content_type": "건강상식",
+  "editor_point_of_view": "편집자가 이 주제를 고른 이유와 관점 1문장",
+  "one_argument": "이번 영상에서 딱 하나만 말할 주장 1문장",
+  "real_scene": "실제 몸의 신호가 나타나는 일상 장면 1개",
+  "visual_intention": "왜 이 장면/이미지를 보여주는지 편집 의도 1문장",
+  "human_pause": "자막/내레이션에서 일부러 쉬어갈 위치 1개",
   "hook": "Hook 문장 (15자 이내)",
   "hook_type": "myth_direct | recovery_design | expert_reversal",
   "scenes": [
@@ -334,7 +353,8 @@ JSON만 출력 (마크다운/설명 없이):
   "tags_ko": ["매일의설계", "건강", "쇼츠", "건강습관", "주제태그"],
   "scroll_stop_power": 8,
   "body_signal_resonance": 7,
-  "loop_value": 7
+  "loop_value": 7,
+  "editor_intent_score": 7
 }}"""
 
 
@@ -350,6 +370,7 @@ def _quality_check(script: dict) -> tuple[bool, str]:
     ssp       = script.get("scroll_stop_power", 0)
     bsr       = script.get("body_signal_resonance", 0)
     lv        = script.get("loop_value", 0)
+    eis       = script.get("editor_intent_score", 0)
     hook_type = script.get("hook_type", "")
 
     issues = []
@@ -359,8 +380,13 @@ def _quality_check(script: dict) -> tuple[bool, str]:
         issues.append(f"body_signal_resonance={bsr} (목표 {RESONANCE_PASS}+) — 몸의 공감 장면이 약함. 일상 속 구체적 신호 장면으로 재작성 필요")
     if lv < LOOP_PASS:
         issues.append(f"loop_value={lv} (목표 {LOOP_PASS}+) — 루프트리거가 '처음부터 보면 복선 있음' 류. Hook 복선 구체적으로 명시 필요")
+    if eis < EDITORIAL_PASS:
+        issues.append(f"editor_intent_score={eis} (목표 {EDITORIAL_PASS}+) — 사람이 주제와 장면을 고른 편집 의도가 약함")
     if not hook_type or hook_type not in ("myth_direct", "recovery_design", "expert_reversal"):
         issues.append(f"hook_type='{hook_type}' — 3대 공식(myth_direct/recovery_design/expert_reversal) 중 하나여야 함")
+    for field in ("editor_point_of_view", "one_argument", "real_scene", "visual_intention", "human_pause"):
+        if not str(script.get(field, "")).strip():
+            issues.append(f"{field} 비어 있음 — 편집자 개입 흔적 필수")
 
     if issues:
         return False, "\n".join(f"- {i}" for i in issues)
@@ -402,9 +428,10 @@ def generate_script(topic: dict) -> dict:
         ssp       = script.get("scroll_stop_power", "?")
         bsr       = script.get("body_signal_resonance", "?")
         lv        = script.get("loop_value", "?")
+        eis       = script.get("editor_intent_score", "?")
         hook_type = script.get("hook_type", "?")
 
-        print(f"  📊 품질 점수 (시도 {attempt+1}): scroll_stop={ssp}, body_signal={bsr}, loop={lv}, hook_type={hook_type}")
+        print(f"  📊 품질 점수 (시도 {attempt+1}): scroll_stop={ssp}, body_signal={bsr}, loop={lv}, editorial={eis}, hook_type={hook_type}")
 
         if passed:
             print(f"  ✅ Quality Gate 통과")

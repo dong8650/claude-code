@@ -1,7 +1,7 @@
 """
 ai_orchestrator.py
 ==================
-콘텐츠 자동화 파이프라인 오케스트레이터 v3.1 — Seed Topic Pool 기반
+콘텐츠 자동화 파이프라인 오케스트레이터 v4.1 — Seed Topic Pool 기반
 
 Flow per episode:
   ① topics.json에서 content_type 비율에 맞게 topic_seed 선택
@@ -10,17 +10,17 @@ Flow per episode:
   ④ generate_images / generate_tts / make_video (PASS 시만 진행)
 
 실행 방법:
-  # 배치 (emotion 30% / ranking 30% / money 20% / quote 20%)
+  # 배치 (work 50% / money 50%)
   python ai_orchestrator.py --batch --count 10
 
   # 배치 대본만
   python ai_orchestrator.py --batch --count 10 --script-only
 
   # 특정 topic 지정 단일 실행
-  python ai_orchestrator.py --ep 20260501_001 --topic-id emotion_001
+  python ai_orchestrator.py --ep 20260501_001 --topic-id work_001
 
   # content-type만 지정 (pool에서 자동 선택)
-  python ai_orchestrator.py --ep 20260501_001 --content-type ranking
+  python ai_orchestrator.py --ep 20260501_001 --content-type work
 """
 
 import argparse
@@ -233,10 +233,18 @@ def _print_script(script: dict) -> None:
     print(f"  패턴         : {script.get('pattern_type', '-')}")
     print(
         f"  품질         : scroll_stop={scores.get('scroll_stop_power', '-')} "
-        f"emotional={scores.get('emotional_attack', '-')} "
-        f"repeat={scores.get('repeat_value', '-')} "
+        f"practical={scores.get('practical_value', '-')} "
+        f"identity_fit={scores.get('identity_fit', '-')} "
         f"view={script.get('view_score', meta.get('view_score', '-'))}"
     )
+    editorial = meta.get("editorial", {})
+    pov = script.get("editor_point_of_view") or editorial.get("editor_point_of_view")
+    one = script.get("one_argument") or editorial.get("one_argument")
+    scene = script.get("real_scene") or editorial.get("real_scene")
+    if pov or one or scene:
+        print(f"  편집 관점    : {pov or '-'}")
+        print(f"  한 가지 주장 : {one or '-'}")
+        print(f"  현실 장면    : {scene or '-'}")
     print(f"  제목         : {script.get('t1', '')} / {script.get('t2', '')}")
     print("─" * 55)
     print(f"hook    : {script.get('hook', '')}")
@@ -525,10 +533,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--ep",            default=None,         help="단일 에피소드 ID")
     p.add_argument("--topic-id",      default=None,         help="topics.json의 id (단일 실행용)")
     p.add_argument("--content-type",  default=None,
-                   choices=["emotion", "ranking", "money", "quote", "hybrid"],
+                   choices=["work", "money", "emotion", "ranking", "quote", "hybrid"],
                    help="topic-id 없을 때 pool에서 자동 선택")
     p.add_argument("--style",         default=None,
-                   choices=["docsul", "janas", "list", "seulki"])
+                   choices=["senior_colleague", "honest_observer", "same_boat",
+                            "docsul", "janas", "list", "seulki"])
     p.add_argument("--auto",          action="store_true",  help="대본 확인 없이 자동 진행")
     p.add_argument("--video-type",    default="narration",
                    choices=["narration", "docu"],

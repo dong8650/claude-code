@@ -22,7 +22,7 @@ def _build_info(ep_dir: Path, video_type: str) -> dict:
     script       = json.loads(script_file.read_text(encoding="utf-8"))
     title_topic  = script.get("title", "")
     hook         = script.get("hook", "")
-    save_trigger = script.get("save_trigger", "")
+    design_principle = script.get("design_principle") or script.get("save_trigger", "")
     tags_ko      = script.get("tags_ko", ["건강상식연구소", "건강상식"])
 
     title = f"[상세] {title_topic} | {hook}" if video_type == "longform" else f"{title_topic} | {hook}"
@@ -31,11 +31,14 @@ def _build_info(ep_dir: Path, video_type: str) -> dict:
     desc_lines = [
         f"🔬 {title_topic}",
         "",
-        save_trigger,
+        design_principle,
+        "",
+        script.get("editor_point_of_view", ""),
+        script.get("one_argument", ""),
         "",
         "─────────────────────────",
-        "📌 건강 상식 연구소 | 매일 하나씩, 건강 상식을 쌓자",
-        "구독 · 좋아요 · 알림 설정으로 매일 건강 정보를 받아보세요.",
+        "📌 매일의설계 | 몸의 설계 기록",
+        "오늘의 몸 신호를 하나씩 정리합니다.",
         "",
         tags_line,
     ]
@@ -48,6 +51,11 @@ def _build_info(ep_dir: Path, video_type: str) -> dict:
         "video_path":       str(video_file),
         "total_duration":   script.get("total_duration", 0),
         "video_type":       video_type,
+        "design_principle": design_principle,
+        "editor_point_of_view": script.get("editor_point_of_view", ""),
+        "one_argument": script.get("one_argument", ""),
+        "real_scene": script.get("real_scene", ""),
+        "visual_intention": script.get("visual_intention", ""),
         "privacy":          "private",
     }
 

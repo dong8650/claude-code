@@ -52,6 +52,10 @@ def main():
         "title":      title,
         "script_ko":  script.get("script_ko", ""),
         "closing_ko": script.get("closing_ko", ""),
+        "editor_point_of_view": script.get("editor_point_of_view", ""),
+        "one_argument": script.get("one_argument", ""),
+        "real_scene": script.get("real_scene", ""),
+        "visual_intention": script.get("visual_intention", ""),
         "tags_ko":    script.get("tags_ko") or DEFAULT_TAGS,
         "style":      script.get("style", "docsul"),
     }, ensure_ascii=False))
