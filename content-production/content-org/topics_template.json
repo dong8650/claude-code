@@ -1,0 +1,35 @@
+[
+  {
+    "_comment": "이 파일을 topics_{CHANNEL_ID}.json 으로 복사 후 실제 내용으로 채운다",
+    "id": "subject_001",
+    "subject": "주제 분류명",
+    "subject_en": "Subject Category (영어 — 이미지 프롬프트용)",
+    "title": "콘텐츠 제목 (한국어)",
+    "title_en": "Content Title (영어 — 이미지 프롬프트용)",
+    "original": "원문 또는 핵심 메시지 (번역/재창작 기반)",
+    "theme": "핵심 테마 (단어 1개 — 이미지 테마 매핑용)",
+    "image_set": "subject"
+  },
+  {
+    "_comment": "id 형식: {분류}_{번호} — 예: nietzsche_001, stoic_001, history_001",
+    "id": "subject_002",
+    "subject": "주제 분류명",
+    "subject_en": "Subject Category",
+    "title": "콘텐츠 제목 (한국어)",
+    "title_en": "Content Title",
+    "original": "원문 또는 핵심 메시지",
+    "theme": "핵심 테마",
+    "image_set": "subject"
+  },
+  {
+    "_comment": "실제 운영 시 _comment 필드 제거, 최소 20개 이상 항목 권장",
+    "id": "subject_003",
+    "subject": "주제 분류명",
+    "subject_en": "Subject Category",
+    "title": "콘텐츠 제목 (한국어)",
+    "title_en": "Content Title",
+    "original": "원문 또는 핵심 메시지",
+    "theme": "핵심 테마",
+    "image_set": "subject"
+  }
+]

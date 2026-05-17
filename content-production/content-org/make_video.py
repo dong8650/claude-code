@@ -1,0 +1,235 @@
+"""
+make_video.py
+=============
+content-org 영상 합성 템플릿
+pipeline-core 공통 모듈 사용 (video_core / audio_core / ffmpeg_utils)
+
+① pipeline-core 공통 모듈
+② portrait_safe Ken Burns (3클립)
+③ 상단 바 22% — subject(흰색 64px) + title(오렌지 76px)
+④ 하단 바 22% — WATERMARK + SLOGAN
+⑤ 자막 3종 — Intro(크림) / Quote(카라오케 노란→흰) / Echo(오렌지)
+⑥ TTS skip (voice_ko.mp3 있으면 재생성 안 함)
+⑦ BGM 페이드아웃 (끝 2초 전 자동)
+
+TODO: CHANNEL_ID, SLOGAN 채널에 맞게 수정
+"""
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+# ① pipeline-core 공통 모듈
+_CORE = Path(__file__).parent.parent / "content-pipeline-core"
+sys.path.insert(0, str(_CORE))
+from ffmpeg_utils import get_duration, run_cmd
+from video_core import make_ken_burns_clip, concat_clips, assemble_video
+from channel_branding import WATERMARK
+
+# TODO: 채널명으로 변경
+CHANNEL_ID = "org"
+
+sys.path.insert(0, f"/root/content/runtime/{CHANNEL_ID}")
+from config import BGM_PATH, FONT_PATH
+
+# TODO: 채널 슬로건으로 변경
+SLOGAN = "매일, 설계가 말을 걸다"
+
+# mindset 기준 레이아웃 — 변경 불필요
+TOP_BAR_RATIO = 0.22
+BOT_BAR_RATIO = 0.22
+
+W, H = 1080, 1920
+
+
+def _strip_emoji(text: str) -> str:
+    return re.sub(
+        r'[^가-힣ᄀ-ᇿa-zA-Z0-9\s←-⇿!?.,\'"·/():~%\+\-\*\^]',
+        '', text
+    ).strip()
+
+
+def _kf_line(text: str, dur_cs: int) -> str:
+    """단어별 \kf 카라오케 태그 삽입."""
+    words = text.split()
+    if not words:
+        return text
+    per_word = max(10, dur_cs // len(words))
+    return " ".join(f"{{\\kf{per_word}}}{w}" for w in words)
+
+
+def _chunk_quote(text: str, max_chars: int = 15) -> list:
+    """핵심 내용을 노래방 자막 줄 단위로 분할."""
+    chunks = []
+    while len(text) > max_chars:
+        split_at = max_chars
+        for i in range(min(max_chars + 5, len(text)) - 1, max_chars // 2, -1):
+            if text[i] in ',. 。、，':
+                split_at = i + 1
+                break
+        chunks.append(text[:split_at].strip())
+        text = text[split_at:].strip()
+    if text:
+        chunks.append(text)
+    return [c for c in chunks if c]
+
+
+def _ts(sec: float) -> str:
+    h = int(sec // 3600)
+    m = int((sec % 3600) // 60)
+    s = sec % 60
+    return f"{h}:{m:02d}:{s:05.2f}"
+
+
+def build_ass(script: dict, ep_dir: Path, durations: dict) -> Path:
+    top_bar_h = int(H * TOP_BAR_RATIO)
+    bot_bar_h = int(H * BOT_BAR_RATIO)
+
+    fs_intro, fs_quote, fs_echo = 56, 64, 58
+
+    intro_dur = durations["intro_dur"] + 0.5
+    quote_dur = durations["quote_dur"]
+    echo_dur  = durations["echo_dur"]
+
+    t0_intro = 0.0
+    t0_quote = intro_dur
+    t0_echo  = t0_quote + quote_dur
+
+    intro_text = _strip_emoji(script["intro_ko"])
+    quote_text = _strip_emoji(script["quote_ko"])
+    echo_text  = _strip_emoji(script["echo_ko"])
+
+    lines = [
+        "[Script Info]",
+        "ScriptType: v4.00+",
+        f"PlayResX: {W}",
+        f"PlayResY: {H}",
+        "Collisions: Normal",
+        "",
+        "[V4+ Styles]",
+        "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
+        "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
+        "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+        # Intro — 크림색
+        f"Style: Intro,NotoSansCJK-Bold,{fs_intro},&H00C8E6F5,&H000000FF,&H00000000,&HAA000000,"
+        f"-1,0,0,0,100,100,2,0,3,3,2,2,60,60,{bot_bar_h + 40},1",
+        # Quote — 카라오케(노란→흰), alignment=2 하단
+        f"Style: Quote,NotoSansCJK-Bold,{fs_quote},&H0000FFFF,&H99FFFFFF,&H00000000,&HAA000000,"
+        f"-1,0,0,0,100,100,1,0,3,3,2,2,80,80,{bot_bar_h + 40},1",
+        # Echo — 오렌지
+        f"Style: Echo,NotoSansCJK-Bold,{fs_echo},&H00008CFF,&H000000FF,&H00000000,&HAA000000,"
+        f"-1,0,0,0,100,100,2,0,3,3,2,2,60,60,{bot_bar_h + 40},1",
+        "",
+        "[Events]",
+        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+        f"Dialogue: 0,{_ts(t0_intro)},{_ts(t0_quote - 0.05)},Intro,,0,0,0,,{intro_text}",
+    ]
+
+    # Quote — 카라오케: 줄 단위 + 단어별 \kf
+    quote_chunks = _chunk_quote(quote_text)
+    n = max(1, len(quote_chunks))
+    chunk_dur = quote_dur / n
+    for j, chunk in enumerate(quote_chunks):
+        t_start  = t0_quote + j * chunk_dur
+        t_end    = t0_quote + (j + 1) * chunk_dur - 0.05
+        dur_cs   = int((t_end - t_start) * 100)
+        kf_chunk = _kf_line(chunk, dur_cs)
+        lines.append(f"Dialogue: 0,{_ts(t_start)},{_ts(t_end)},Quote,,0,0,0,,{kf_chunk}")
+
+    lines += [
+        f"Dialogue: 0,{_ts(t0_echo)},{_ts(t0_echo + echo_dur - 0.05)},Echo,,0,0,0,,{echo_text}",
+    ]
+
+    ass_path = ep_dir / "subtitles.ass"
+    ass_path.write_text("\n".join(lines), encoding="utf-8")
+    return ass_path
+
+
+def make_video(script: dict, ep_dir: str, durations: dict) -> str:
+    ep        = Path(ep_dir)
+    voice_dur = durations["total_dur"]
+
+    # 상단 바: subject(흰색) + title(오렌지)
+    subject = script.get("subject", "")
+    title   = script.get("title", "")
+
+    top_bar_h  = int(H * TOP_BAR_RATIO)
+    bot_bar_h  = int(H * BOT_BAR_RATIO)
+    title_y1   = int(H * 0.09)        # subject 위치
+    title_y2   = title_y1 + 90        # title 위치
+    title_fs1  = 64                    # subject 폰트 (흰색)
+    title_fs2  = 76                    # title 폰트 (오렌지)
+    wm_y       = int(H - bot_bar_h + bot_bar_h * 0.20)
+    sl_y       = wm_y + 42
+
+    intro_dur = durations["intro_dur"] + 0.5
+    quote_dur = durations["quote_dur"]
+    echo_dur  = durations["echo_dur"]
+
+    print(f"나레이션: {voice_dur:.2f}초 | {subject} — {title[:20]}")
+
+    # ── [1/5] Ken Burns 클립 ──────────────────────────────
+    print("[1/5] 이미지 클립 생성...")
+    clip_files, clip_durations = [], []
+    for i, dur in enumerate([intro_dur, quote_dur, echo_dur]):
+        img = ep / f"bg{i+1}.jpg"
+        if not img.exists():
+            img = ep / "bg1.jpg"
+        out = ep / f"clip{i+1}.mp4"
+        clip_dur = make_ken_burns_clip(img, dur, i, out, portrait_safe=True)
+        if clip_dur > 0:
+            clip_files.append(out)
+            clip_durations.append(clip_dur)
+            print(f"  ✅ clip{i+1}.mp4 ({clip_dur:.1f}초)")
+
+    # ── [2/5] 클립 연결 ───────────────────────────────────
+    print("[2/5] 클립 연결...")
+    video_only = ep / "video_only.mp4"
+    concat_clips(clip_files, video_only)
+
+    # ── [3/5] BGM 믹싱 + 페이드아웃 ─────────────────────
+    print("[3/5] BGM 믹싱...")
+    voice_file = ep / "voice_ko.mp3"
+    bgm_mixed  = ep / "voice_with_bgm.mp3"
+    fade_start = max(0.0, voice_dur - 2.0)
+
+    run_cmd([
+        "ffmpeg", "-y",
+        "-i", str(voice_file),
+        "-stream_loop", "-1", "-i", BGM_PATH,
+        "-filter_complex",
+        f"[0:a]volume=1.0[v];"
+        f"[1:a]volume=0.10,afade=t=out:st={fade_start}:d=2[b];"
+        f"[v][b]amix=inputs=2:duration=first[aout]",
+        "-map", "[aout]",
+        "-ar", "44100", "-ac", "2",
+        "-t", str(voice_dur),
+        str(bgm_mixed)
+    ], "bgm_mix")
+    print("  ✅ BGM 완료 (페이드아웃 적용)")
+
+    # ── [4/5] 자막 ───────────────────────────────────────
+    print("[4/5] 자막 생성...")
+    ass_path = build_ass(script, ep, durations)
+
+    # ── [5/5] 최종 합성 ──────────────────────────────────
+    print("[5/5] 최종 출력...")
+    font = FONT_PATH
+
+    vf = (
+        f"drawbox=x=0:y=0:w={W}:h={top_bar_h}:color=black@1.0:t=fill,"
+        f"drawbox=x=0:y={H-bot_bar_h}:w={W}:h={bot_bar_h}:color=black@1.0:t=fill,"
+        f"ass='{ass_path}',"
+        f"drawtext=fontfile={font}:text='{subject}':fontsize={title_fs1}:"
+        f"fontcolor=white@0.90:x=(w-text_w)/2:y={title_y1}:borderw=2:bordercolor=black@0.6,"
+        f"drawtext=fontfile={font}:text='{title}':fontsize={title_fs2}:"
+        f"fontcolor=#FF8C00:x=(w-text_w)/2:y={title_y2}:borderw=2:bordercolor=black@0.6,"
+        f"drawtext=fontfile={font}:text='{WATERMARK}':fontsize=26:"
+        f"fontcolor=white@0.45:x=(w-text_w)/2:y={wm_y}:borderw=1:bordercolor=black@0.3,"
+        f"drawtext=fontfile={font}:text='{SLOGAN}':fontsize=24:"
+        f"fontcolor=white@0.65:x=(w-text_w)/2:y={sl_y}:borderw=1:bordercolor=black@0.3"
+    )
+
+    output = ep / "output_final.mp4"
+    assemble_video(video_only, bgm_mixed, vf, output, voice_dur)
+    return str(output)
