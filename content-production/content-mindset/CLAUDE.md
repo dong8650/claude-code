@@ -328,7 +328,7 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 |------|------|
 | 대본 생성 | GPT-4o (각색) + Claude Sonnet (검수/교정) |
 | 품질 게이트 | Quality Gate v3 (Hard + Drop + Soft) |
-| 이미지 생성 | DALL-E 3 HD (8장, 9:16) — 내레이션형 |
+| 이미지 생성 | **fal.ai Flux.1 Dev** ($0.025/장, 9:16 portrait_16_9) — 내레이션형 |
 | 스톡 영상 | Pexels API (무료, 상업 사용 가능) — 다큐형 |
 | 인포그래픽 | PIL (Python) — 인포그래픽형 |
 | 음성 합성 | Edge TTS (HyunsuNeural/SunHiNeural) + ElevenLabs API |
@@ -344,7 +344,7 @@ generate_image or generate_stock_clips → generate_tts → make_video or make_v
 
 | 스타일 | 비용 |
 |--------|------|
-| 내레이션형 | ~$0.775/편 (DALL-E 8장 $0.64 포함) |
+| 내레이션형 | ~$0.335/편 (fal.ai Flux 8장 $0.20 포함) |
 | 다큐형 | ~$0.135/편 (Pexels 무료, TTS+API만) |
 | 인포그래픽형 | ~$0/편 (API 미사용) |
 
@@ -562,6 +562,12 @@ scp ~/Downloads/youtube_client_secret.json root@192.168.0.21:/root/content/runti
 - make_video.py, make_video_stock.py: 마지막 CTA 오버레이 제거. 영상 안에서는 좋아요/저장 유도 대신 채널 슬로건만 유지.
 - ai_orchestrator.py: CLI 선택지에 `work`, `money`와 신규 persona 3종 반영.
 - n8n 설명란: 좋아요/알림 CTA 문구를 제거하고 설계 기록형 설명으로 변경.
+
+2026-05-18 — v4.5 이미지 생성 fal.ai Flux.1 Dev 전환
+- generate_image.py: DALL-E 3 / gpt-image-1 → **fal.ai Flux.1 Dev** 전환 ($0.64 → $0.20/에피소드, 69% 절감).
+- config.py (서버): FAL_API_KEY 추가 (/root/content/runtime/mindset/).
+- editorial intent 주입 유지: real_scene (scene 0-2), visual_intention, one_argument 그대로 Flux 프롬프트에 반영.
+- photo suffix + object fallback 2단계 구조 (content_policy 차단 시 자동 전환).
 
 2026-05-17 — v4.4 편집자 필드 downstream 연결
 - generate_image.py: `real_scene`, `visual_intention`, `one_argument`을 DALL-E 프롬프트에 직접 주입.

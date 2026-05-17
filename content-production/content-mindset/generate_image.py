@@ -1,15 +1,17 @@
+"""
+generate_image.py
+=================
+매일의 설계 (일/돈 설계편) — 숏폼 이미지 생성
+fal.ai Flux.1 Dev ($0.025/장, 9:16 portrait_16_9)
+editorial intent 필드를 Flux 프롬프트에 직접 주입
+"""
 import os
 import sys
-import base64
+import time
 import requests
-from openai import OpenAI
-sys.path.insert(0, "/root/content/runtime/mindset")
-from config import OPENAI_API_KEY
 
-client = OpenAI(api_key=OPENAI_API_KEY)
-IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1")
-IMAGE_SIZE = os.getenv("OPENAI_IMAGE_SIZE", "1024x1536")
-IMAGE_QUALITY = os.getenv("OPENAI_IMAGE_QUALITY", "medium")
+sys.path.insert(0, "/root/content/runtime/mindset")
+from config import FAL_API_KEY
 
 BANNED_WORDS = [
     "self-harm", "suicide", "manipulation", "abuse", "violence",
@@ -18,12 +20,25 @@ BANNED_WORDS = [
 ]
 
 FALLBACK_PROMPTS = [
-    "close-up shot of old pocket watch on wooden desk, warm side lighting, melancholy, rule of thirds, cinematic, ultra detailed, 9:16",
-    "wide shot of foggy empty road at dawn, soft diffused light, solitude, rule of thirds, cinematic, ultra detailed, 9:16",
-    "close-up shot of cracked dry earth, harsh sunlight, desolation, rule of thirds, cinematic, ultra detailed, 9:16",
-    "low angle shot of single streetlamp in rain, cold blue light, loneliness, rule of thirds, cinematic, ultra detailed, 9:16",
-    "wide shot of abandoned stone corridor, dim end light, silence, rule of thirds, cinematic, ultra detailed, 9:16",
+    "close-up shot of old pocket watch on wooden desk, warm side lighting, melancholy, rule of thirds, cinematic, ultra detailed",
+    "wide shot of foggy empty road at dawn, soft diffused light, solitude, rule of thirds, cinematic, ultra detailed",
+    "close-up shot of cracked dry earth, harsh sunlight, desolation, rule of thirds, cinematic, ultra detailed",
+    "low angle shot of single streetlamp in rain, cold blue light, loneliness, rule of thirds, cinematic, ultra detailed",
+    "wide shot of abandoned stone corridor, dim end light, silence, rule of thirds, cinematic, ultra detailed",
 ]
+
+_PHOTO_SUFFIX = (
+    ", TALL VERTICAL 9:16 PORTRAIT composition, single main subject centered vertically, "
+    "NO horizontal layout, NO text in image, NO real human faces, "
+    "cinematic photography, photorealistic, dramatic professional lighting, "
+    "person shown from behind or as silhouette only if present"
+)
+
+_OBJECT_SUFFIX = (
+    ", TALL VERTICAL 9:16 PORTRAIT composition, single main subject centered vertically, "
+    "NO horizontal layout, NO text in image, absolutely NO people, "
+    "cinematic still life photography, dramatic spotlight, dark moody atmosphere"
+)
 
 EDITORIAL_SUFFIX = (
     " Editorially selected everyday scene, not a generic stock illustration. "
@@ -31,12 +46,14 @@ EDITORIAL_SUFFIX = (
     "Korean 30s or 40s work-life context, lived-in details, no text in image."
 )
 
+
 def sanitize_prompt(prompt: str) -> str:
     p = prompt
     for word in BANNED_WORDS:
         p = p.replace(word, "")
     p += " Safe content. No violence. No people. No faces. Cinematic art."
     return p.strip()
+
 
 def _editorial_context(script_or_scenes) -> dict:
     if isinstance(script_or_scenes, dict):
@@ -65,49 +82,71 @@ def _with_editorial_intent(raw_prompt: str, context: dict, scene_index: int) -> 
     return " ".join(additions)
 
 
-def _generate_image_bytes(prompt: str) -> bytes:
-    response = client.images.generate(
-        model=IMAGE_MODEL,
-        prompt=prompt,
-        size=IMAGE_SIZE,
-        quality=IMAGE_QUALITY,
-        n=1,
+def _call_flux(prompt: str) -> bytes:
+    """fal.ai Flux.1 Dev 호출 → 이미지 bytes 반환."""
+    import fal_client
+
+    os.environ["FAL_KEY"] = FAL_API_KEY
+
+    result = fal_client.subscribe(
+        "fal-ai/flux/dev",
+        arguments={
+            "prompt":                prompt,
+            "image_size":            "portrait_16_9",
+            "num_inference_steps":   28,
+            "guidance_scale":        3.5,
+            "num_images":            1,
+            "enable_safety_checker": True,
+            "output_format":         "jpeg",
+        },
     )
-    item = response.data[0]
-    if getattr(item, "b64_json", None):
-        return base64.b64decode(item.b64_json)
-    if getattr(item, "url", None):
-        return requests.get(item.url, timeout=30).content
-    raise RuntimeError("이미지 응답에 b64_json/url 없음")
+    image_url = result["images"][0]["url"]
+    resp = requests.get(image_url, timeout=30)
+    resp.raise_for_status()
+    return resp.content
 
 
 def generate_images(script_or_scenes, output_dir: str):
     os.makedirs(output_dir, exist_ok=True)
     context = _editorial_context(script_or_scenes)
     scenes = context["scenes"]
+
     for i, scene in enumerate(scenes):
         raw_prompt = scene.get("image_prompt", "dark cinematic moody atmosphere, no humans, vertical portrait")
         raw_prompt = _with_editorial_intent(raw_prompt, context, i)
-        prompt = sanitize_prompt(raw_prompt)
-        print(f"  🎨 DALL-E 이미지 생성 중 ({i+1}/{len(scenes)})...")
+        prompt = sanitize_prompt(raw_prompt) + _PHOTO_SUFFIX
+        out_path = os.path.join(output_dir, f"bg{i+1}.jpg")
+
+        print(f"  🎨 Flux 이미지 생성 중 ({i+1}/{len(scenes)})...")
         success = False
 
-        try:
-            img_data = _generate_image_bytes(prompt)
-            with open(os.path.join(output_dir, f"bg{i+1}.jpg"), "wb") as f:
-                f.write(img_data)
-            print(f"  ✅ bg{i+1}.jpg 완료")
-            success = True
-        except Exception as e:
-            print(f"  ⚠️ 1차 실패: {e}")
+        for attempt in range(3):
+            try:
+                img_data = _call_flux(prompt)
+                with open(out_path, "wb") as f:
+                    f.write(img_data)
+                print(f"  ✅ bg{i+1}.jpg 완료")
+                success = True
+                break
+            except Exception as e:
+                err = str(e).lower()
+                if any(k in err for k in ("safety", "content", "blocked", "policy")):
+                    print(f"  ⚠️ content policy — object fallback 전환")
+                    break
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+                else:
+                    print(f"  ⚠️ 실패: {e}")
 
         if not success:
-            print(f"  🔄 fallback 재시도...")
+            fallback = FALLBACK_PROMPTS[i % len(FALLBACK_PROMPTS)] + _OBJECT_SUFFIX
+            print(f"  🔄 object fallback 재시도...")
             try:
-                fallback = FALLBACK_PROMPTS[i % len(FALLBACK_PROMPTS)]
-                img_data = _generate_image_bytes(fallback)
-                with open(os.path.join(output_dir, f"bg{i+1}.jpg"), "wb") as f:
+                img_data = _call_flux(fallback)
+                with open(out_path, "wb") as f:
                     f.write(img_data)
                 print(f"  ✅ bg{i+1}.jpg fallback 완료")
             except Exception as e2:
                 print(f"  ❌ fallback도 실패: {e2}")
+
+        time.sleep(0.5)
