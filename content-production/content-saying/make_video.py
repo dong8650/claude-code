@@ -12,6 +12,7 @@ pipeline-core 공통 모듈 사용 (video_core / audio_core / ffmpeg_utils)
 ⑥ TTS skip (voice_ko.mp3 있으면 재생성 안 함 — generate_tts.py 처리)
 ⑦ 이모지 제거 (generate_tts.py 처리)
 ⑧ BGM 페이드아웃 (끝 2초 전 자동)
+⑨ 자막 싱크: sentence_durs 기반 문장별 비례 배분
 """
 import re
 import subprocess
@@ -133,14 +134,40 @@ def build_ass(script: dict, ep_dir: Path, durations: dict) -> Path:
         f"Dialogue: 0,{_ts(t0_intro)},{_ts(t0_quote - 0.05)},Intro,,0,0,0,,{intro_text}",
     ]
 
-    # Quote — 문장 단위 순차 표시 (흰색 일반 자막)
+    # Quote — 문장 단위 순차 표시 (흰색, ⑨ sentence_durs 기반 싱크)
     quote_chunks = _chunk_quote(quote_text)
     n = max(1, len(quote_chunks))
-    chunk_dur = quote_dur / n
-    for j, chunk in enumerate(quote_chunks):
-        t_start = t0_quote + j * chunk_dur
-        t_end   = t0_quote + (j + 1) * chunk_dur - 0.05
-        lines.append(f"Dialogue: 0,{_ts(t_start)},{_ts(t_end)},Quote,,0,0,0,,{chunk}")
+    sentence_durs = durations.get("sentence_durs")
+
+    if sentence_durs:
+        # 문장별 실제 TTS 길이로 각 chunk 표시 시간 배분
+        sentences_raw = [s.strip() for s in re.split(r'(?<=[.!?])\s+', quote_text) if s.strip()]
+        if not sentences_raw:
+            sentences_raw = [quote_text]
+        chunk_durs = []
+        sent_idx, chars_accum = 0, 0
+        for chunk in quote_chunks:
+            if sent_idx >= len(sentences_raw):
+                sent_idx = len(sentences_raw) - 1
+            sent = sentences_raw[sent_idx]
+            sent_dur = sentence_durs[sent_idx] if sent_idx < len(sentence_durs) else quote_dur / n
+            sent_chars = max(1, len(sent))
+            chunk_durs.append(sent_dur * (len(chunk) / sent_chars))
+            chars_accum += len(chunk)
+            if chars_accum >= sent_chars * 0.85 and sent_idx < len(sentences_raw) - 1:
+                sent_idx += 1
+                chars_accum = 0
+        t_cur = t0_quote
+        for chunk, dur in zip(quote_chunks, chunk_durs):
+            lines.append(f"Dialogue: 0,{_ts(t_cur)},{_ts(t_cur + dur - 0.05)},Quote,,0,0,0,,{chunk}")
+            t_cur += dur
+    else:
+        # fallback: 균등 분배
+        chunk_dur = quote_dur / n
+        for j, chunk in enumerate(quote_chunks):
+            t_start = t0_quote + j * chunk_dur
+            t_end   = t0_quote + (j + 1) * chunk_dur - 0.05
+            lines.append(f"Dialogue: 0,{_ts(t_start)},{_ts(t_end)},Quote,,0,0,0,,{chunk}")
 
     lines += [
         f"Dialogue: 0,{_ts(t0_echo)},{_ts(t0_echo + echo_dur - 0.05)},Echo,,0,0,0,,{echo_text}",

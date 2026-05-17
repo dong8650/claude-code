@@ -25,7 +25,7 @@
 
 ```
 clip1  인트로   (~3s)   "니체가 말했다"           — zoom-in
-clip2  명언     (~18s)  quote_ko 낭독 (-15% 속도) — zoom-out
+clip2  명언     (~18s)  quote_ko 낭독 (-25% 속도) — zoom-out
 clip3  여운     (~5s)   echo_ko 한마디             — zoom-in
 ```
 
@@ -45,8 +45,11 @@ clip3  여운     (~5s)   echo_ko 한마디             — zoom-in
 | 스타일 | 색상 | 효과 |
 |--------|------|------|
 | Intro | 크림 `&H00C8E6F5` | 단순 표시 |
-| Quote | **카라오케** 노란→흰 | 단어별 `\kf` 좌→우 채우기 |
+| Quote | 흰색 `&H00FFFFFF` | 문장 단위 순차 표시 (sentence_durs 싱크) |
 | Echo | 오렌지 `&H00008CFF` | 단순 표시 |
+
+- Quote 자막 타이밍: 문장별 TTS를 개별 생성 → 실제 음성 길이(`sentence_durs`) 비례 배분
+- `_chunk_quote()`: 문장 경계 우선 분할 → 22자 초과 시 공백 기준 추가 분할
 
 - BGM: `bgm_dark_cinematic.mp3` volume 0.10, 끝 2초 페이드아웃
 
@@ -61,8 +64,8 @@ content-saying/
 ├── config_template.py          # 서버 config.py 템플릿
 ├── generate_script.py          # 명언 선택 + AI 재창작 + echo 생성
 ├── generate_image.py           # fal.ai Flux — Dark Academia 스타일 가중치
-├── generate_tts.py             # Edge TTS 3분할 (intro/quote/echo)
-├── make_video.py               # Ken Burns + 카라오케 자막 + BGM 합성
+├── generate_tts.py             # Edge TTS 3분할 (intro/quote/echo) + 문장별 sentence_durs
+├── make_video.py               # Ken Burns + 자막 싱크 + BGM 합성
 └── ai_orchestrator.py          # 파이프라인 CLI
 ```
 
@@ -76,12 +79,12 @@ content-saying/
 - 기존 한국어 출판 번역본은 저작권 있음 → **절대 미사용**
 - 매 에피소드마다 Claude Haiku가 원문에서 직접 재창작
 
-### Dark Academia 재창작 스타일 (`_MAIN_PROMPT`)
+### Dark Academia 재창작 스타일 (`_TRANSLATE_PROMPT`)
 
 - 웅장하고 선언적인 문장
 - 직접적·능동형·2인칭("당신은") 선호
 - 번역체·수동형 금지
-- 40자 이내, 영상 자막으로 충격이 있을 것
+- **2~3문장, 80자 이내** (영상 20~30초 확보)
 
 ### Echo 바이럴 3패턴 (`_ECHO_PROMPT`)
 
@@ -201,6 +204,15 @@ scp root@192.168.0.21:$RUNTIME/episodes/YYYYMMDD_NNN/output_final.mp4 ~/Download
 ---
 
 ## 마지막 업데이트
+
+2026-05-18 — v1.4 자막 싱크 수정
+
+- `generate_tts.py`: quote를 문장별 개별 TTS 생성 → `sentence_durs` 반환 + `tts_sentence_durs.json` 저장
+- `generate_tts.py`: TTS skip 시 `tts_sentence_durs.json` 읽어 `sentence_durs` 복원
+- `make_video.py`: `build_ass()` — `sentence_durs` 있으면 문장별 실제 길이 비례로 자막 타이밍 배분
+- `make_video.py`: Quote 스타일 카라오케(노란) → 흰색 단순 표시 (집중력 방해 제거)
+- `make_video.py`: `_chunk_quote()` 문장 경계 우선 분할 (문장 끝 단어가 다음 줄로 넘어가는 문제 해결)
+- quote TTS 속도 -15% → -25% (영상 길이 14초 → 26초)
 
 2026-05-18 — v1.3 Dark Academia 강화
 
