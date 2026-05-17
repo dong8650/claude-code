@@ -63,6 +63,11 @@ _THEME_VISUAL = {
     "자기기만": "distorted reflection in dark water, candlelight trembling",
     "희망":    "single window in dark stone wall, light breaking through storm outside",
     "탐험":    "old map unrolled on dark table, compass and candle",
+    "도전":    "lone figure on cliff edge facing vast dark storm, back to camera, dramatic scale",
+    "변화":    "burning book transforming into rising ash and sparks, dark background, dramatic light",
+    "인식":    "cracked gilded mirror revealing raw stone wall behind, single candle reflection",
+    "선택":    "ancient forked road at dusk, one path lit, one in shadow, no people",
+    "자존감":  "single weathered chair facing dark window, rain outside, warm inner glow",
 }
 
 _DEFAULT_VISUAL = "ancient philosophical study, candles and shadows, dramatic atmosphere"
@@ -106,8 +111,11 @@ _STYLE_SUFFIXES = [
      " melancholic emotional"),
 ]
 
+# Dark Academia 핵심 3종(cinematic/woodcut/ink)에 가중치 3, 나머지 1~2
+_STYLE_WEIGHTS = [3, 2, 3, 1, 3, 2, 1, 2]
+
 def _pick_style() -> str:
-    return random.choice(_STYLE_SUFFIXES) + _PORTRAIT
+    return random.choices(_STYLE_SUFFIXES, weights=_STYLE_WEIGHTS, k=1)[0] + _PORTRAIT
 
 _FALLBACK_BASE = (
     "old philosopher's desk, stack of ancient books, single candle flame, "
