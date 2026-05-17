@@ -1,227 +1,199 @@
 """
 make_video.py
 =============
-철학자 사진(공개 도메인) + Ken Burns + 명언 자막 + BGM
-3클립: intro / quote / echo
-해상도: 1080×1920 (9:16 Shorts)
+content-saying 영상 합성
+pipeline-core 공통 모듈 사용 (video_core / audio_core / ffmpeg_utils)
+
+① pipeline-core 공통 모듈
+② portrait_safe Ken Burns
+③ 상단 바 2줄 (철학자 흰색 / 책 오렌지)
+④ 하단 바 2줄 (WATERMARK + SLOGAN)
+⑤ 자막 3종 스타일 (Intro 크림 / Quote 흰색 대형 / Echo 오렌지)
+⑥ TTS skip (voice_ko.mp3 있으면 재생성 안 함 — generate_tts.py 처리)
+⑦ 이모지 제거 (generate_tts.py 처리)
+⑧ BGM 페이드아웃 (끝 2초 전 자동)
 """
-import json
-import os
-import random
+import re
 import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, "/root/content/runtime/saying")
-from config import RUNTIME_DIR, BGM_PATH, FONT_PATH, WATERMARK
+# ① pipeline-core 공통 모듈
+_CORE = Path(__file__).parent.parent / "content-pipeline-core"
+sys.path.insert(0, str(_CORE))
+from ffmpeg_utils import get_duration, run_cmd
+from video_core import make_ken_burns_clip, concat_clips, assemble_video
+from channel_branding import WATERMARK
+
+import sys as _sys
+_sys.path.insert(0, "/root/content/runtime/saying")
+from config import BGM_PATH, FONT_PATH
+
+SLOGAN        = "매일, 철학이 말을 걸다"
+TOP_BAR_RATIO = 0.14
+BOT_BAR_RATIO = 0.10
 
 W, H = 1080, 1920
-FPS  = 25
-CRF  = 18
-
-IMAGE_DIR = Path(RUNTIME_DIR) / "images"
-
-# ── 비주얼 상수 ──────────────────────────────────────────────
-TOP_BAR_H    = int(H * 0.14)   # 14% — 책 이름
-BOT_BAR_H    = int(H * 0.10)   # 10% — 워터마크
-VIGNETTE_OPT = "vignette=PI/4"
-
-# 자막 영역: 화면 하단 40% 중앙
-SUB_Y        = int(H * 0.62)
-SUB_FONT_SIZE = 52
-ECHO_FONT_SIZE = 46
-
-# 색상
-COL_WHITE  = "white"
-COL_ORANGE = "#FF8C00"
-COL_CREAM  = "#F5E6C8"
-COL_BLACK  = "black"
-
-# 어두운 오버레이 — 사진 위에 반투명 검정
-DARK_OVERLAY = "colorize=hue=0:saturation=0:lightness=-0.35"
 
 
-def _get_images(image_set: str, n: int = 3) -> list:
-    folder = IMAGE_DIR / image_set
-    imgs   = sorted(folder.glob("*.jpg"))
-    if not imgs:
-        raise FileNotFoundError(f"이미지 없음: {folder}. setup_images.py 먼저 실행하세요.")
-    # 3장 랜덤 선택 (중복 없이, 가능하면)
-    if len(imgs) >= n:
-        return random.sample(imgs, n)
-    return [random.choice(imgs) for _ in range(n)]
+# ⑦ 이모지 제거 (자막용)
+def _strip_emoji(text: str) -> str:
+    return re.sub(
+        r'[^가-힣ᄀ-ᇿa-zA-Z0-9\s←-⇿!?.,\'"·/():~%\+\-\*\^]',
+        '', text
+    ).strip()
 
 
-def _ken_burns(img: str, duration: float, zoom_in: bool = True) -> str:
-    """Ken Burns 필터 문자열 반환 (zoompan + crop → vignette + 다크 오버레이)."""
-    frames   = int(duration * FPS)
-    z_start  = 1.05 if zoom_in else 1.15
-    z_end    = 1.15 if zoom_in else 1.05
-    z_step   = (z_end - z_start) / max(frames - 1, 1)
-
-    return (
-        f"scale={W*2}:{H*2}:force_original_aspect_ratio=increase,"
-        f"crop={W*2}:{H*2},"
-        f"zoompan=z='if(lte(on,1),{z_start},min(zoom+{z_step:.6f},{z_end}))':"
-        f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={W}x{H}:fps={FPS},"
-        f"eq=brightness=-0.25:saturation=0.8,"
-        f"{VIGNETTE_OPT}"
-    )
+def _ts(sec: float) -> str:
+    h = int(sec // 3600)
+    m = int((sec % 3600) // 60)
+    s = sec % 60
+    return f"{h}:{m:02d}:{s:05.2f}"
 
 
-def _make_clip(img: str, duration: float, out: str, zoom_in: bool = True):
-    vf = _ken_burns(img, duration, zoom_in)
-    subprocess.run([
-        "ffmpeg", "-y", "-loop", "1", "-i", img,
-        "-vf", vf,
-        "-t", str(duration), "-r", str(FPS),
-        "-pix_fmt", "yuv420p", "-c:v", "libx264",
-        "-preset", "fast", "-crf", str(CRF), "-an", out
-    ], capture_output=True, check=True)
+# ⑤ 자막 3종 스타일
+def build_ass(script: dict, ep_dir: Path, durations: dict) -> Path:
+    top_bar_h = int(H * TOP_BAR_RATIO)
+    bot_bar_h = int(H * BOT_BAR_RATIO)
+    content_h = H - top_bar_h - bot_bar_h
+    mid_y     = top_bar_h + content_h // 2
 
+    fs_intro, fs_quote, fs_echo = 48, 60, 50
 
-def _build_ass(script: dict, durations: dict) -> str:
-    """ASS 자막 파일 생성 — 파일 경로 반환."""
-    intro_dur = durations["intro_dur"] + 0.5  # 무음 포함
+    intro_dur = durations["intro_dur"] + 0.5
     quote_dur = durations["quote_dur"]
     echo_dur  = durations["echo_dur"]
 
-    def ts(sec: float) -> str:
-        h  = int(sec // 3600)
-        m  = int((sec % 3600) // 60)
-        s  = sec % 60
-        return f"{h}:{m:02d}:{s:05.2f}"
-
     t0_intro = 0.0
-    t1_intro = intro_dur
-    t0_quote = t1_intro
-    t1_quote = t0_quote + quote_dur
-    t0_echo  = t1_quote
-    t1_echo  = t0_echo + echo_dur
+    t0_quote = intro_dur
+    t0_echo  = t0_quote + quote_dur
+
+    intro_text = _strip_emoji(script["intro_ko"])
+    quote_text = _strip_emoji(script["quote_ko"])
+    echo_text  = _strip_emoji(script["echo_ko"])
 
     lines = [
         "[Script Info]",
         "ScriptType: v4.00+",
-        "PlayResX: 1080",
-        "PlayResY: 1920",
-        "WrapStyle: 1",
+        f"PlayResX: {W}",
+        f"PlayResY: {H}",
+        "Collisions: Normal",
         "",
         "[V4+ Styles]",
-        "Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,"
-        "Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,"
-        "Alignment,MarginL,MarginR,MarginV,Encoding",
-        # intro: 철학자 이름 — 중앙 하단
-        f"Style: Intro,{FONT_PATH},{ECHO_FONT_SIZE},&H00F5E6C8,&H000000FF,&H00000000,&H80000000,"
-        f"-1,0,0,0,100,100,2,0,1,2,1,2,60,60,200,1",
-        # quote: 명언 본문 — 중앙
-        f"Style: Quote,{FONT_PATH},{SUB_FONT_SIZE},&H00FFFFFF,&H000000FF,&H00000000,&H80000000,"
-        f"-1,0,0,0,100,100,1,0,1,2,1,5,80,80,{H//3},1",
-        # echo: 여운 — 중앙 하단
-        f"Style: Echo,{FONT_PATH},{ECHO_FONT_SIZE},&H00FF8C00,&H000000FF,&H00000000,&H80000000,"
-        f"-1,0,0,0,100,100,2,0,1,2,1,2,60,60,220,1",
+        "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
+        "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
+        "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+        # Intro — 크림색, 하단
+        f"Style: Intro,NotoSansCJK-Bold,{fs_intro},&H00C8E6F5,&H000000FF,&H00000000,&HAA000000,"
+        f"-1,0,0,0,100,100,2,0,3,3,2,2,60,60,160,1",
+        # Quote — 흰색 대형, 중앙 (alignment=5)
+        f"Style: Quote,NotoSansCJK-Bold,{fs_quote},&H00FFFFFF,&H000000FF,&H00000000,&HAA000000,"
+        f"-1,0,0,0,100,100,1,0,3,3,2,5,80,80,0,1",
+        # Echo — 오렌지, 하단
+        f"Style: Echo,NotoSansCJK-Bold,{fs_echo},&H00008CFF,&H000000FF,&H00000000,&HAA000000,"
+        f"-1,0,0,0,100,100,2,0,3,3,2,2,60,60,160,1",
         "",
         "[Events]",
-        "Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text",
-        f"Dialogue: 0,{ts(t0_intro)},{ts(t1_intro)},Intro,,0,0,0,,{script['intro_ko']}",
-        f"Dialogue: 0,{ts(t0_quote)},{ts(t1_quote)},Quote,,0,0,0,,{script['quote_ko']}",
-        f"Dialogue: 0,{ts(t0_echo)},{ts(t1_echo)},Echo,,0,0,0,,{script['echo_ko']}",
+        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+        f"Dialogue: 0,{_ts(t0_intro)},{_ts(t0_quote - 0.05)},Intro,,0,0,0,,{intro_text}",
+        f"Dialogue: 0,{_ts(t0_quote)},{_ts(t0_echo - 0.05)},Quote,,0,0,0,,{quote_text}",
+        f"Dialogue: 0,{_ts(t0_echo)},{_ts(t0_echo + echo_dur - 0.05)},Echo,,0,0,0,,{echo_text}",
     ]
-    return "\n".join(lines)
+
+    ass_path = ep_dir / "subtitles.ass"
+    ass_path.write_text("\n".join(lines), encoding="utf-8")
+    return ass_path
 
 
-def make_video(script: dict, ep_dir: str, durations: dict):
-    ep   = Path(ep_dir)
-    imgs = _get_images(script["image_set"])
+def make_video(script: dict, ep_dir: str, durations: dict) -> str:
+    ep        = Path(ep_dir)
+    voice_dur = durations["total_dur"]
+    philosopher = script.get("philosopher", "")
+    book        = script.get("book", "")
 
-    intro_dur  = durations["intro_dur"] + 0.5
-    quote_dur  = durations["quote_dur"]
-    echo_dur   = durations["echo_dur"]
-    total_dur  = intro_dur + quote_dur + echo_dur
+    # ③ 상단 바 2줄 — 철학자(흰색 작게) / 책 이름(오렌지 크게)
+    top_bar_h  = int(H * TOP_BAR_RATIO)
+    bot_bar_h  = int(H * BOT_BAR_RATIO)
+    title_y1   = int(H * 0.032)
+    title_y2   = title_y1 + 58
+    title_fs1  = 42   # 철학자 이름
+    title_fs2  = 38   # 책 이름 (길 수 있어 작게)
+    wm_y       = int(H - bot_bar_h + bot_bar_h * 0.20)
+    sl_y       = wm_y + 42
 
-    print(f"나레이션: {total_dur:.2f}초")
+    intro_dur = durations["intro_dur"] + 0.5
+    quote_dur = durations["quote_dur"]
+    echo_dur  = durations["echo_dur"]
 
-    # ── 클립 생성 ──────────────────────────────────────────────
+    print(f"나레이션: {voice_dur:.2f}초 | {philosopher} — {book[:20]}")
+
+    # ── [1/5] Ken Burns 클립 (3개) ─────────────────────────────
     print("[1/5] 이미지 클립 생성...")
-    clips = []
-    for i, (img, dur, zoom_in) in enumerate(zip(
-        imgs, [intro_dur, quote_dur, echo_dur], [True, False, True]
-    )):
-        out = str(ep / f"clip{i+1}.mp4")
-        _make_clip(str(img), dur, out, zoom_in)
-        print(f"  ✅ clip{i+1}.mp4 ({dur:.1f}초)")
-        clips.append(out)
+    clip_files     = []
+    clip_durations = []
+    for i, dur in enumerate([intro_dur, quote_dur, echo_dur]):
+        img = ep / f"bg{i+1}.jpg"
+        if not img.exists():
+            img = ep / "bg1.jpg"
+        out = ep / f"clip{i+1}.mp4"
+        # ② portrait_safe=True — 가로 이미지도 9:16으로 강제 변환
+        clip_dur = make_ken_burns_clip(img, dur, i, out, portrait_safe=True)
+        if clip_dur > 0:
+            clip_files.append(out)
+            clip_durations.append(clip_dur)
+            print(f"  ✅ clip{i+1}.mp4 ({clip_dur:.1f}초, {'줌인' if i%2==0 else '줌아웃'})")
 
-    # ── 클립 연결 ──────────────────────────────────────────────
+    # ── [2/5] 클립 연결 ────────────────────────────────────────
     print("[2/5] 클립 연결...")
-    list_file = str(ep / "clips.txt")
-    with open(list_file, "w") as f:
-        for c in clips:
-            f.write(f"file '{c}'\n")
-    video_only = str(ep / "video_only.mp4")
-    subprocess.run([
-        "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-        "-i", list_file, "-c", "copy", video_only
-    ], capture_output=True, check=True)
+    video_only = ep / "video_only.mp4"
+    concat_clips(clip_files, video_only)
     print("  ✅ 클립 연결 완료")
 
-    # ── BGM 믹싱 ──────────────────────────────────────────────
+    # ── [3/5] BGM 믹싱 + ⑧ 페이드아웃 ─────────────────────────
     print("[3/5] BGM 믹싱...")
-    voice_path = str(ep / "voice_ko.mp3")
-    bgm_mixed  = str(ep / "voice_with_bgm.mp3")
-    subprocess.run([
+    voice_file = ep / "voice_ko.mp3"
+    bgm_mixed  = ep / "voice_with_bgm.mp3"
+    fade_start = max(0.0, voice_dur - 2.0)
+
+    run_cmd([
         "ffmpeg", "-y",
-        "-i", voice_path,
-        "-i", BGM_PATH,
+        "-i", str(voice_file),
+        "-stream_loop", "-1", "-i", BGM_PATH,
         "-filter_complex",
-        f"[0:a]volume=1.0[v];[1:a]volume=0.10,afade=t=out:st={total_dur-2}:d=2[b];[v][b]amix=inputs=2:duration=first[out]",
-        "-map", "[out]", "-acodec", "libmp3lame", bgm_mixed
-    ], capture_output=True, check=True)
-    print("  ✅ BGM 완료")
+        f"[0:a]volume=1.0[v];"
+        f"[1:a]volume=0.10,afade=t=out:st={fade_start}:d=2[b];"
+        f"[v][b]amix=inputs=2:duration=first[aout]",
+        "-map", "[aout]",
+        "-ar", "44100", "-ac", "2",
+        "-t", str(voice_dur),
+        str(bgm_mixed)
+    ], "bgm_mix")
+    print("  ✅ BGM 완료 (페이드아웃 적용)")
 
-    # ── 자막 생성 ──────────────────────────────────────────────
+    # ── [4/5] 자막 ────────────────────────────────────────────
     print("[4/5] 자막 생성...")
-    ass_content = _build_ass(script, durations)
-    ass_path    = str(ep / "subtitles.ass")
-    Path(ass_path).write_text(ass_content, encoding="utf-8")
+    ass_path = build_ass(script, ep, durations)
+    print(f"  ✅ 자막 완료")
 
-    # 상단 바 텍스트: 철학자 이름 | 책 이름
-    top_text   = f"{script['philosopher']}  |  {script['book']}"
-    # 하단 워터마크
-    watermark  = WATERMARK
-
-    # ── 최종 합성 ──────────────────────────────────────────────
+    # ── [5/5] 최종 합성 ───────────────────────────────────────
     print("[5/5] 최종 출력...")
-    output = str(ep / "output_final.mp4")
+    font = FONT_PATH
 
-    drawtext_top = (
-        f"drawtext=fontfile={FONT_PATH}:text='{top_text}':"
-        f"fontcolor=white:fontsize=34:x=(w-text_w)/2:y={TOP_BAR_H//2 - 17}:"
-        f"box=1:boxcolor=black@0.7:boxborderw=12"
-    )
-    drawtext_wm = (
-        f"drawtext=fontfile={FONT_PATH}:text='{watermark}':"
-        f"fontcolor=white@0.6:fontsize=26:x=(w-text_w)/2:y={H - BOT_BAR_H//2 - 13}"
-    )
-
-    vf_final = (
-        f"drawbox=x=0:y=0:w={W}:h={TOP_BAR_H}:color=black@0.75:t=fill,"
-        f"drawbox=x=0:y={H - BOT_BAR_H}:w={W}:h={BOT_BAR_H}:color=black@0.75:t=fill,"
-        f"subtitles='{ass_path}',"
-        f"{drawtext_top},"
-        f"{drawtext_wm}"
+    # ③④ 상하 바 + 브랜딩
+    vf = (
+        f"drawbox=x=0:y=0:w={W}:h={top_bar_h}:color=black@1.0:t=fill,"
+        f"drawbox=x=0:y={H-bot_bar_h}:w={W}:h={bot_bar_h}:color=black@1.0:t=fill,"
+        f"ass='{ass_path}',"
+        f"drawtext=fontfile={font}:text='{philosopher}':fontsize={title_fs1}:"
+        f"fontcolor=white@0.90:x=(w-text_w)/2:y={title_y1}:borderw=2:bordercolor=black@0.6,"
+        f"drawtext=fontfile={font}:text='{book}':fontsize={title_fs2}:"
+        f"fontcolor=#FF8C00:x=(w-text_w)/2:y={title_y2}:borderw=2:bordercolor=black@0.6,"
+        f"drawtext=fontfile={font}:text='{WATERMARK}':fontsize=26:"
+        f"fontcolor=white@0.45:x=(w-text_w)/2:y={wm_y}:borderw=1:bordercolor=black@0.3,"
+        f"drawtext=fontfile={font}:text='{SLOGAN}':fontsize=24:"
+        f"fontcolor=white@0.65:x=(w-text_w)/2:y={sl_y}:borderw=1:bordercolor=black@0.3"
     )
 
-    subprocess.run([
-        "ffmpeg", "-y",
-        "-i", video_only,
-        "-i", bgm_mixed,
-        "-vf", vf_final,
-        "-c:v", "libx264", "-preset", "fast", "-crf", str(CRF),
-        "-c:a", "aac", "-b:a", "128k",
-        "-shortest", "-pix_fmt", "yuv420p",
-        output
-    ], check=True, capture_output=True)
-
-    size_mb = Path(output).stat().st_size / 1024 / 1024
-    print(f"✅ 완성: {output} ({size_mb:.1f}MB, {total_dur:.1f}초)")
-    return output
+    output = ep / "output_final.mp4"
+    assemble_video(video_only, bgm_mixed, vf, output, voice_dur)
+    return str(output)

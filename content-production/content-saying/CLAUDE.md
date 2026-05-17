@@ -1,7 +1,7 @@
 # content-saying — 매일의 설계 명언편
 
 > 니체·쇼펜하우어 공개 도메인 명언 × Ken Burns × Edge TTS docsul
-> 이미지: Wikimedia Commons 공개 도메인 사진 (저작권 없음)
+> 이미지: fal.ai Flux.1 Dev — 에피소드별 철학자 분위기 3장 생성
 > 번역: 원문(독일어)에서 직접 의역 — 출판사 번역본 미사용
 
 ---
@@ -14,7 +14,7 @@
 | 콘셉트 | 철학자의 말, 오늘 하루에 대입 |
 | 대상 | 30~40대 — 지치고 회의적인 직장인 |
 | 길이 | 22~30초 목표 |
-| 이미지 | Wikimedia 공개 도메인 사진 (비용 0) |
+| 이미지 | fal.ai Flux.1 Dev ($0.025/장 × 3 = $0.075/편) |
 | TTS | Edge TTS ko-KR-HyunsuNeural (docsul, 비용 0) |
 | 번역 | Claude API — 원문 의역 (에피소드당 ~$0.001) |
 
@@ -66,9 +66,10 @@ cp /root/claude-code/content-production/content-saying/topics_saying.json \
 
 # 4. BGM은 mindset 것 공유 사용 (별도 설치 불필요)
 
-# 5. Wikimedia 사진 다운로드
-cd /root/claude-code/content-production/content-saying
-python3 setup_images.py
+# 5. fal-client 설치
+pip3 install fal-client requests
+
+# 6. config.py에 FAL_API_KEY 추가 (config_template.py 참고)
 ```
 
 ---
@@ -105,10 +106,10 @@ scp root@192.168.0.21:$RUNTIME/episodes/YYYYMMDD_NNN/output_final.mp4 ~/Download
 
 | 항목 | 비용 |
 |------|------|
-| 이미지 | $0 (Wikimedia 공개 도메인) |
+| 이미지 | ~$0.075 (fal.ai Flux.1 Dev × 3장) |
 | TTS | $0 (Edge TTS 무료) |
 | echo 생성 (Claude) | ~$0.001 |
-| **총합** | **~$0.001/편** |
+| **총합** | **~$0.076/편** |
 
 ---
 
@@ -125,8 +126,18 @@ scp root@192.168.0.21:$RUNTIME/episodes/YYYYMMDD_NNN/output_final.mp4 ~/Download
 
 ## 마지막 업데이트
 
+2026-05-18 — v1.1 8 features + fal.ai Flux 이미지
+- fal.ai Flux.1 Dev: 에피소드별 철학자 분위기 3장 생성
+- pipeline-core 공통 모듈: make_ken_burns_clip (portrait_safe) / concat_clips / assemble_video
+- BGM 페이드아웃 (끝 2초 전 자동)
+- TTS skip 로직 (기존 파일 있으면 재생성 안 함)
+- 이모지 제거 (_strip_emoji)
+- 상단 바 2줄: 철학자(흰색) + 책 이름(오렌지)
+- 하단 바: WATERMARK + SLOGAN "매일, 철학이 말을 걸다"
+- 자막 3종 스타일: Intro(크림) / Quote(흰색 대형) / Echo(오렌지)
+
 2026-05-18 — v1.0 초기 파이프라인 구축
 - topics_saying.json: 니체 20개 + 쇼펜하우어 20개
-- 공개 도메인 사진 + Ken Burns 3클립 구조
+- Ken Burns 3클립 구조
 - Edge TTS docsul (무료), 명언 파트 -15% 속도
 - Claude API echo 생성 (에피소드당 ~$0.001)

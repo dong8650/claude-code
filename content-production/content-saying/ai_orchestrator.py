@@ -4,13 +4,8 @@ ai_orchestrator.py
 content-saying 파이프라인 오케스트레이터
 
 실행:
-  # 랜덤 철학자
   python3 ai_orchestrator.py --batch --count 1 --auto
-
-  # 니체만
   python3 ai_orchestrator.py --batch --count 1 --auto --philosopher 니체
-
-  # 백그라운드 (n8n용)
   setsid python3 -u ai_orchestrator.py --batch --count 1 --auto \
     > $RUNTIME/daily_gen.log 2>&1 </dev/null &
 """
@@ -35,9 +30,9 @@ EP_DIR = Path(RUNTIME_DIR) / "episodes"
 
 
 def _next_ep_id() -> str:
-    today = datetime.now().strftime("%Y%m%d")
+    today    = datetime.now().strftime("%Y%m%d")
     existing = sorted(EP_DIR.glob(f"{today}_*"))
-    seq = len(existing) + 1
+    seq      = len(existing) + 1
     return f"{today}_{seq:03d}"
 
 
@@ -51,12 +46,17 @@ def run_episode(philosopher: str = None) -> dict:
     from generate_script import generate_script
     script = generate_script(philosopher=philosopher, ep_dir=ep_dir)
 
-    # ② TTS 생성
+    # ② 이미지 생성 (fal.ai Flux — 에피소드별 3장)
+    log.info("[%s] 이미지 생성 (Flux)", ep_id)
+    from generate_image import generate_images
+    generate_images(script, ep_dir)
+
+    # ③ TTS 생성
     log.info("[%s] TTS 생성", ep_id)
     from generate_tts import generate_tts
     durations = generate_tts(script, ep_dir)
 
-    # ③ 영상 합성
+    # ④ 영상 합성
     log.info("[%s] 영상 합성", ep_id)
     from make_video import make_video
     output = make_video(script, ep_dir, durations)
@@ -76,7 +76,7 @@ def main():
     EP_DIR.mkdir(parents=True, exist_ok=True)
 
     if args.batch:
-        for i in range(args.count):
+        for _ in range(args.count):
             try:
                 result = run_episode(philosopher=args.philosopher)
                 print(json.dumps(result["script"], ensure_ascii=False, indent=2))
