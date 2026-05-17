@@ -1,11 +1,15 @@
 import os
 import sys
+import base64
 import requests
 from openai import OpenAI
 sys.path.insert(0, "/root/content/runtime/mindset")
 from config import OPENAI_API_KEY
 
 client = OpenAI(api_key=OPENAI_API_KEY)
+IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1")
+IMAGE_SIZE = os.getenv("OPENAI_IMAGE_SIZE", "1024x1536")
+IMAGE_QUALITY = os.getenv("OPENAI_IMAGE_QUALITY", "medium")
 
 BANNED_WORDS = [
     "self-harm", "suicide", "manipulation", "abuse", "violence",
@@ -61,6 +65,22 @@ def _with_editorial_intent(raw_prompt: str, context: dict, scene_index: int) -> 
     return " ".join(additions)
 
 
+def _generate_image_bytes(prompt: str) -> bytes:
+    response = client.images.generate(
+        model=IMAGE_MODEL,
+        prompt=prompt,
+        size=IMAGE_SIZE,
+        quality=IMAGE_QUALITY,
+        n=1,
+    )
+    item = response.data[0]
+    if getattr(item, "b64_json", None):
+        return base64.b64decode(item.b64_json)
+    if getattr(item, "url", None):
+        return requests.get(item.url, timeout=30).content
+    raise RuntimeError("이미지 응답에 b64_json/url 없음")
+
+
 def generate_images(script_or_scenes, output_dir: str):
     os.makedirs(output_dir, exist_ok=True)
     context = _editorial_context(script_or_scenes)
@@ -73,11 +93,7 @@ def generate_images(script_or_scenes, output_dir: str):
         success = False
 
         try:
-            response = client.images.generate(
-                model="dall-e-3", prompt=prompt,
-                size="1024x1792", quality="hd", n=1,
-            )
-            img_data = requests.get(response.data[0].url, timeout=30).content
+            img_data = _generate_image_bytes(prompt)
             with open(os.path.join(output_dir, f"bg{i+1}.jpg"), "wb") as f:
                 f.write(img_data)
             print(f"  ✅ bg{i+1}.jpg 완료")
@@ -89,11 +105,7 @@ def generate_images(script_or_scenes, output_dir: str):
             print(f"  🔄 fallback 재시도...")
             try:
                 fallback = FALLBACK_PROMPTS[i % len(FALLBACK_PROMPTS)]
-                response = client.images.generate(
-                    model="dall-e-3", prompt=fallback,
-                    size="1024x1792", quality="hd", n=1,
-                )
-                img_data = requests.get(response.data[0].url, timeout=30).content
+                img_data = _generate_image_bytes(fallback)
                 with open(os.path.join(output_dir, f"bg{i+1}.jpg"), "wb") as f:
                     f.write(img_data)
                 print(f"  ✅ bg{i+1}.jpg fallback 완료")
