@@ -282,6 +282,67 @@ toss_miniapp → (추가 예정) 앱인토스 IAP SDK + Toss Ads
 - Google Search Console: 소유권 확인 완료 (2026-05-01)
 - Search Console 인증 파일: googlec5dc85ee5de230fa.html
 
+### 네트워크 구조
+
+```
+인터넷 사용자
+      │ HTTPS (443)
+      ▼
+[Fortigate tl-fw-dc1 — 218.38.161.182]
+ SSL Offloading: Client <-> FortiGate (Full)
+ 인증서: kdclab-cert (Let's Encrypt, 만료 2026-06-29)
+ Load Balancing: First Alive / Health Check: hc_kdclab_http
+      │
+      │ HTTP (80) — 복호화 후 평문 전달
+      ├──────────────────────────┐
+      ▼                          ▼
+[200.200.200.7:80]          [7.7.7.7:80]
+ Active (nginx)               Active (nginx)
+ certbot 자동갱신 있음          인증서 없음
+```
+
+> SSL 종료는 Fortigate에서 처리. 서버의 certbot 갱신 후 **Fortigate 인증서를 수동 교체**해야 함.
+
+### SSL 인증서 관리
+
+| 항목 | 내용 |
+|------|------|
+| Fortigate 인증서명 | `kdclab-cert` (현재), 이후 `kdclab-cert_YYYYMMDD` 날짜 명명 방식 사용 |
+| 현재 만료일 | **2026-06-29** |
+| 발급 기관 | Let's Encrypt (E7) |
+| 서버 certbot 갱신 시점 | 만료 30일 전 → 약 **5월 30일 전후** 자동 갱신 |
+| Fortigate 교체 시점 | certbot 갱신 후 → **6월 초** 수동 교체 필요 |
+
+### Fortigate 인증서 교체 절차 (날짜 이름 방식)
+
+```bash
+# Step 1 — 맥북에서 서버 인증서 다운로드
+scp root@200.200.200.7:/etc/letsencrypt/live/kdclab.kr/fullchain.pem ~/Downloads/kdclab_fullchain.pem
+scp root@200.200.200.7:/etc/letsencrypt/live/kdclab.kr/privkey.pem ~/Downloads/kdclab_privkey.pem
+```
+
+```
+# Step 2 — Fortigate 업로드
+System → Certificates → Create/Import → Certificate
+  Type: Certificate (PKCS#12 아님)
+  Certificate file: kdclab_fullchain.pem
+  Key file: kdclab_privkey.pem
+  Password: 비워둠
+  이름: kdclab-cert_20260930 (실제 만료일로)
+
+# Step 3 — Virtual Server 교체 (무중단)
+Policy & Objects → Virtual Servers → vs_kdclab_https → Edit
+  SSL Offloading → Certificate → kdclab-cert_20260930
+
+# Step 4 — 교체 확인
+echo | openssl s_client -connect kdclab.kr:443 2>/dev/null | openssl x509 -noout -enddate
+
+# Step 5 — 기존 인증서 삭제
+System → Certificates → kdclab-cert_20260629 → Delete
+```
+
+> ⚠️ PFX 방식은 과거 실패 경험 있음. 반드시 **Certificate 타입(PEM 분리)** 으로 올릴 것.
+
 ---
 
 ## 작업 규칙
@@ -383,6 +444,8 @@ toss_miniapp → (추가 예정) 앱인토스 IAP SDK + Toss Ads
 | 앱인토스 기본 정보 입력 | 부제: 별 연결로 우주를 정복하라, 카테고리: 게임>퍼즐, 키워드 7개, 로고/썸네일 업로드, 고객문의: dong8650@gmail.com |
 | 앱인토스 게임 등급분류 입력 | GRAC 자체등급분류 방식. 등급분류번호: GOOG-SG-260504-0447, 날짜: 2026-05-04. 게임 주요화면 4장 PNG 업로드 완료. |
 | 앱인토스 검토 요청 완료 | 모든 항목 입력 후 검토 요청 제출. 영업일 기준 2일 내 dong8650@gmail.com으로 결과 통보 예정. |
+| SSL 인증서 구조 파악 | Fortigate(tl-fw-dc1)에서 SSL 종료. kdclab-cert(만료 2026-06-29) 사용 중. 서버 certbot 자동갱신 정상, Fortigate는 수동 교체 필요. |
+| Fortigate 인증서 교체 절차 정립 | PEM 분리 방식(Certificate 타입), 날짜 이름 방식(kdclab-cert_YYYYMMDD)으로 무중단 교체. PFX 방식은 과거 실패 경험으로 사용 금지. CLAUDE.md에 절차 문서화. |
 
 ### 다음 할 일
 
@@ -409,4 +472,4 @@ toss_miniapp → (추가 예정) 앱인토스 IAP SDK + Toss Ads
 
 ## 마지막 업데이트
 
-2026-05-17 — 보상형 광고 우회 버그 수정, 랜딩 페이지 EASY/HARD 모드 오류 수정, 앱인토스 앱 생성 + 기본정보/게임등급분류 입력 + 검토 요청 완료
+2026-05-17 — 보상형 광고 우회 버그 수정, 랜딩 페이지 EASY/HARD 모드 오류 수정, 앱인토스 검토 요청 완료, Fortigate SSL 구조 파악 및 인증서 교체 절차 정립 (6월 초 교체 예정)
