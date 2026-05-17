@@ -30,8 +30,8 @@ _sys.path.insert(0, "/root/content/runtime/saying")
 from config import BGM_PATH, FONT_PATH
 
 SLOGAN        = "매일, 철학이 말을 걸다"
-TOP_BAR_RATIO = 0.14
-BOT_BAR_RATIO = 0.10
+TOP_BAR_RATIO = 0.22   # mindset과 동일
+BOT_BAR_RATIO = 0.22   # mindset과 동일
 
 W, H = 1080, 1920
 
@@ -42,6 +42,15 @@ def _strip_emoji(text: str) -> str:
         r'[^가-힣ᄀ-ᇿa-zA-Z0-9\s←-⇿!?.,\'"·/():~%\+\-\*\^]',
         '', text
     ).strip()
+
+
+def _kf_line(text: str, dur_cs: int) -> str:
+    """단어별 \kf 카라오케 태그 삽입."""
+    words = text.split()
+    if not words:
+        return text
+    per_word = max(10, dur_cs // len(words))
+    return " ".join(f"{{\\kf{per_word}}}{w}" for w in words)
 
 
 def _chunk_quote(text: str, max_chars: int = 15) -> list:
@@ -74,7 +83,7 @@ def build_ass(script: dict, ep_dir: Path, durations: dict) -> Path:
     content_h = H - top_bar_h - bot_bar_h
     mid_y     = top_bar_h + content_h // 2
 
-    fs_intro, fs_quote, fs_echo = 48, 60, 50
+    fs_intro, fs_quote, fs_echo = 56, 64, 58
 
     intro_dur = durations["intro_dur"] + 0.5
     quote_dur = durations["quote_dur"]
@@ -101,27 +110,29 @@ def build_ass(script: dict, ep_dir: Path, durations: dict) -> Path:
         "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
         # Intro — 크림색, 하단
         f"Style: Intro,NotoSansCJK-Bold,{fs_intro},&H00C8E6F5,&H000000FF,&H00000000,&HAA000000,"
-        f"-1,0,0,0,100,100,2,0,3,3,2,2,60,60,160,1",
-        # Quote — 노래방 스타일: 하단 배치 (alignment=2), 줄 단위 순차 표시
-        f"Style: Quote,NotoSansCJK-Bold,{fs_quote},&H00FFFFFF,&H000000FF,&H00000000,&HAA000000,"
-        f"-1,0,0,0,100,100,1,0,3,3,2,2,80,80,{bot_bar_h + 30},1",
+        f"-1,0,0,0,100,100,2,0,3,3,2,2,60,60,{bot_bar_h + 40},1",
+        # Quote — 카라오케(노란색→흰색), 하단 배치 (alignment=2)
+        f"Style: Quote,NotoSansCJK-Bold,{fs_quote},&H0000FFFF,&H99FFFFFF,&H00000000,&HAA000000,"
+        f"-1,0,0,0,100,100,1,0,3,3,2,2,80,80,{bot_bar_h + 40},1",
         # Echo — 오렌지, 하단
         f"Style: Echo,NotoSansCJK-Bold,{fs_echo},&H00008CFF,&H000000FF,&H00000000,&HAA000000,"
-        f"-1,0,0,0,100,100,2,0,3,3,2,2,60,60,160,1",
+        f"-1,0,0,0,100,100,2,0,3,3,2,2,60,60,{bot_bar_h + 40},1",
         "",
         "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
         f"Dialogue: 0,{_ts(t0_intro)},{_ts(t0_quote - 0.05)},Intro,,0,0,0,,{intro_text}",
     ]
 
-    # Quote — 노래방 스타일: 줄 단위 순차 표시
+    # Quote — 카라오케: 줄 단위 순차 표시 + 단어별 \kf 채우기
     quote_chunks = _chunk_quote(quote_text)
     n = max(1, len(quote_chunks))
     chunk_dur = quote_dur / n
     for j, chunk in enumerate(quote_chunks):
-        t_start = t0_quote + j * chunk_dur
-        t_end   = t0_quote + (j + 1) * chunk_dur - 0.05
-        lines.append(f"Dialogue: 0,{_ts(t_start)},{_ts(t_end)},Quote,,0,0,0,,{chunk}")
+        t_start  = t0_quote + j * chunk_dur
+        t_end    = t0_quote + (j + 1) * chunk_dur - 0.05
+        dur_cs   = int((t_end - t_start) * 100)
+        kf_chunk = _kf_line(chunk, dur_cs)
+        lines.append(f"Dialogue: 0,{_ts(t_start)},{_ts(t_end)},Quote,,0,0,0,,{kf_chunk}")
 
     lines += [
         f"Dialogue: 0,{_ts(t0_echo)},{_ts(t0_echo + echo_dur - 0.05)},Echo,,0,0,0,,{echo_text}",
@@ -141,10 +152,10 @@ def make_video(script: dict, ep_dir: str, durations: dict) -> str:
     # ③ 상단 바 2줄 — 철학자(흰색 작게) / 책 이름(오렌지 크게)
     top_bar_h  = int(H * TOP_BAR_RATIO)
     bot_bar_h  = int(H * BOT_BAR_RATIO)
-    title_y1   = int(H * 0.032)
-    title_y2   = title_y1 + 58
-    title_fs1  = 42   # 철학자 이름
-    title_fs2  = 38   # 책 이름 (길 수 있어 작게)
+    title_y1   = int(H * 0.09)
+    title_y2   = title_y1 + 90
+    title_fs1  = 64   # 철학자 이름 (흰색)
+    title_fs2  = 76   # 책 이름 (오렌지)
     wm_y       = int(H - bot_bar_h + bot_bar_h * 0.20)
     sl_y       = wm_y + 42
 
