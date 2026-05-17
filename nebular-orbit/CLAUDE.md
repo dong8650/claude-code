@@ -160,7 +160,7 @@ android:launchMode="singleTop"
 | 광고 제거 | no_ads | — |
 | 힌트팩 50개 (17% 할인) | hints_50 | ₩3,900 |
 | 힌트팩 10개 | hints_10 | ₩990 |
-| 이동팩 15회 | moves_15 | ₩1,200 (프로덕션 승인 후 등록 예정) |
+| 이동팩 15회 | moves_15 | ₩1,200 ✅ 등록 완료 (2026-05-17) |
 
 - 별힌트 3개 → 이동 +5회 교환 겸용 (이동 횟수 전환 후 적용)
 
@@ -463,6 +463,7 @@ System → Certificates → kdclab-cert_20260629 → Delete
 | Fortigate 인증서 교체 절차 정립 | PEM 분리 방식(Certificate 타입), 날짜 이름 방식(kdclab-cert_YYYYMMDD)으로 무중단 교체. PFX 방식은 과거 실패 경험으로 사용 금지. CLAUDE.md에 절차 문서화. |
 | DR 서버 인증서 자동 동기화 구축 | Active→DR SSH 키 인증 설정. `/etc/letsencrypt/renewal-hooks/deploy/sync-to-dr.sh` 설치. certbot 갱신 후 rsync로 7.7.7.7에 자동 동기화. 로그: `/var/log/certbot-sync-dr.log` |
 | Fortigate HTTP 80 포트 오픈 | certbot HTTP-01 챌린지용. vs_kdclab_http 추가 (218.38.161.182:80 → 200.200.200.7:80, 7.7.7.7:80). certbot dry-run 성공 확인. |
+| moves_15 IAP 추가 | Play Console 일회성 제품 등록 (moves_15, ₩1,200, 대한민국, 활성). 게임 코드 PLAY_SKU_MAP + PURCHASE_ITEMS 추가 (commit 857990b). 양쪽 서버 배포 완료. AAB 재빌드 불필요 (웹 코드만 변경). |
 
 ### 다음 할 일
 
@@ -480,7 +481,7 @@ System → Certificates → kdclab-cert_20260629 → Delete
 - **앱인토스 SDK 연동**: _detectPlatform()에 toss_miniapp 분기 추가, Toss Ads + 앱인토스 IAP SDK 연동, .ait 번들 빌드 후 버전 등록
 - **APK 재빌드**: bubblewrap build → v1.0.32 (versionCode 35) — 이동 횟수 전환 + 팝업 제거 반영
 - **Play Console 업로드**: 새 AAB 업로드
-- **moves_15 IAP 등록**: Google Play Console에 ₩1,200 이동팩 15회 상품 추가
+- ~~**moves_15 IAP 등록**: Google Play Console에 ₩1,200 이동팩 15회 상품 추가~~ ✅ 완료
 - **AdSense**: 재검토 결과 대기 (1~4주, dong8650@gmail.com)
 
 ---
@@ -497,6 +498,8 @@ System → Certificates → kdclab-cert_20260629 → Delete
 ---
 
 ## 마지막 업데이트
+
+2026-05-17 (3차) — moves_15 IAP 추가 완료. Play Console 등록 + 게임 코드(PLAY_SKU_MAP, PURCHASE_ITEMS) 수정 + 양쪽 서버 배포. 이동 추가 +5회는 별힌트×3 소모 교환 방식(IAP 아님) 확인.
 
 2026-05-17 (2차) — DC2 Fortigate (tl-fw-dc2, 175.119.14.194) Virtual Server 이중화 구성 작업. 헬스체크 src-ip 172.26.20.77 설정으로 DC1 백엔드 정상 확인(status=UP). VIP 실제 트래픽 포워딩은 source IP ↔ VPN Phase2 selector 불일치 문제로 미완. Fix: policy #29에 SNAT(172.26.20.77) 추가 예정. 핵심 패턴: DC2에서 DC1으로 가는 모든 트래픽(로컬 originating)은 반드시 src-ip 172.26.20.77 사용해야 VPN 터널 진입 가능.
 
