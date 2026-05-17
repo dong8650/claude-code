@@ -446,9 +446,12 @@ System → Certificates → kdclab-cert_20260629 → Delete
 | 앱인토스 검토 요청 완료 | 모든 항목 입력 후 검토 요청 제출. 영업일 기준 2일 내 dong8650@gmail.com으로 결과 통보 예정. |
 | SSL 인증서 구조 파악 | Fortigate(tl-fw-dc1)에서 SSL 종료. kdclab-cert(만료 2026-06-29) 사용 중. 서버 certbot 자동갱신 정상, Fortigate는 수동 교체 필요. |
 | Fortigate 인증서 교체 절차 정립 | PEM 분리 방식(Certificate 타입), 날짜 이름 방식(kdclab-cert_YYYYMMDD)으로 무중단 교체. PFX 방식은 과거 실패 경험으로 사용 금지. CLAUDE.md에 절차 문서화. |
+| DR 서버 인증서 자동 동기화 구축 | Active→DR SSH 키 인증 설정. `/etc/letsencrypt/renewal-hooks/deploy/sync-to-dr.sh` 설치. certbot 갱신 후 rsync로 7.7.7.7에 자동 동기화. 로그: `/var/log/certbot-sync-dr.log` |
+| Fortigate HTTP 80 포트 오픈 | certbot HTTP-01 챌린지용. vs_kdclab_http 추가 (218.38.161.182:80 → 200.200.200.7:80, 7.7.7.7:80). certbot dry-run 성공 확인. |
 
 ### 다음 할 일
 
+- **nginx 443 제거 (미완료)**: Active 서버(200.200.200.7) nginx에서 443 블록 제거 + certbot webroot 방식 전환. Fortigate 80포트 오픈으로 이제 가능. certbot renewal 설정: `authenticator=webroot, installer=None, webroot=/var/www/html`
 - **앱인토스**: 검토 결과 대기 (2영업일, dong8650@gmail.com) → 승인 후 SDK 연동, Toss Ads 연동, IAP 등록
 - **앱인토스 사업자 정보**: 검토 대기 중 (약 1일) — 완료 후 본인 확인 단계 진행
 - **앱인토스 SDK 연동**: _detectPlatform()에 toss_miniapp 분기 추가, Toss Ads + 앱인토스 IAP SDK 연동, .ait 번들 빌드 후 버전 등록
@@ -472,4 +475,4 @@ System → Certificates → kdclab-cert_20260629 → Delete
 
 ## 마지막 업데이트
 
-2026-05-17 — 보상형 광고 우회 버그 수정, 랜딩 페이지 EASY/HARD 모드 오류 수정, 앱인토스 검토 요청 완료, Fortigate SSL 구조 파악 및 인증서 교체 절차 정립 (6월 초 교체 예정)
+2026-05-17 — 보상형 광고 우회 버그 수정, 랜딩 페이지 모드 오류 수정, 앱인토스 검토 요청 완료, Fortigate SSL 구조 파악·인증서 교체 절차 정립, DR 인증서 자동 동기화 구축, Fortigate 80포트 오픈 (certbot dry-run 정상). nginx 443 제거는 다음 작업으로.
