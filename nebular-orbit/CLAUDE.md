@@ -220,10 +220,29 @@ android:launchMode="singleTop"
 |------|------|
 | Publisher ID | pub-9880579204573301 |
 | ads.txt | /data/app/ads.txt (서버에만 존재) |
-| 상태 | 재검토 요청 완료 (2026-05-01) |
+| 상태 | 재검토 요청 완료 (2026-05-10) |
 | 거절 사유 | 가치가 별로 없는 콘텐츠 |
-| 조치 | index.html 콘텐츠 보강, 메타태그, privacy/terms 링크 추가 |
+| 조치 | sitemap.xml·robots.txt 추가, 가이드 3편 신규 작성, 게임 랜딩 페이지(2000+자) 생성, 아동 타겟 표현 제거, 게임명 성운궤도 통일 |
 | 예상 결과 | 1~4주 내 dong8650@gmail.com 통보 |
+
+---
+
+## 앱인토스 현황
+
+| 항목 | 내용 |
+|------|------|
+| 플랫폼 | 토스 앱 내 WebView 미니앱 (APK 스토어 아님) |
+| 콘솔 | apps-in-toss.toss.im (business.toss.im → 앱인토스 메뉴로 접근) |
+| 앱 이름 | 성운궤도 |
+| appName | nebular-orbit (변경 불가) |
+| 앱 유형 | 게임 |
+| 상태 | 앱 생성 완료, 이후 작업 필요 |
+| 광고 | Toss Ads (AdSense와 별개) — 별도 연동 필요 |
+| 인앱결제 | 앱인토스 IAP SDK 별도 연동 필요 (Google Play Billing과 별개) |
+| 일회성 제품 | 앱인토스 콘솔에 vip_pass, no_ads, hints_50, hints_10 별도 등록 필요 |
+| 게임 등급 증빙 | 구글 플레이 스토어 URL 제출로 대체 가능 |
+| 검수 기간 | 게임 2~4주 |
+| HTML 관리 | 파일 1개 유지, _detectPlatform()에 toss_miniapp 분기 추가 예정 |
 
 ---
 
@@ -235,6 +254,7 @@ android_app  → TWA/Play Billing (document.referrer 또는 getDigitalGoodsServi
 ios          → 결제 모달 표시
 android_web  → Play Store 리다이렉트
 desktop      → QR 코드 표시
+toss_miniapp → (추가 예정) 앱인토스 IAP SDK + Toss Ads
 ```
 
 ### localStorage 키
@@ -352,8 +372,18 @@ desktop      → QR 코드 표시
 | Standby 서버 IP 변경 | 7.7.7.253 → 7.7.7.7, deploy.sh 반영 완료 |
 | Play Store ko-KR 주소 노출 제거 | 개인 주소 포함 구버전 한국어 설명 → 새 내용으로 교체 제출 완료 |
 
+### 2026-05-17 완료 작업
+
+| 작업 | 결과 |
+|------|------|
+| 보상형 광고 우회 버그 수정 | `_openRewardedAdModal()` 공통 함수 추가 — adsbygoogle 슬롯 재생성, 15초 카운트다운 후 버튼 활성화, skipRewardedAd() 타이머 정리. 힌트충전/이어하기/별힌트 3곳 적용. commit b7beef1 |
+| 게임 랜딩 페이지 오류 수정 | /games/starweave/index.html — 존재하지 않는 EASY/HARD 모드 제거, 실제 존재하는 우주탐험/크로스매스 모드로 교체. commit a4f4d54 |
+| 앱인토스 앱 생성 | 앱 이름: 성운궤도, appName: nebular-orbit, 유형: 게임. 생성 완료. |
+| 앱인토스 구조 파악 | APK 스토어 아님. WebView 미니앱. 광고/IAP 별도 SDK. HTML 1개로 플랫폼 분기 관리 가능. |
+
 ### 다음 할 일
 
+- **앱인토스**: 앱 기본 정보 입력, 게임 등급 증빙(플레이스토어 URL), 앱인토스 IAP SDK + Toss Ads 연동
 - **APK 재빌드**: bubblewrap build → v1.0.32 (versionCode 35) — 이동 횟수 전환 + 팝업 제거 반영
 - **Play Console 업로드**: 새 AAB 업로드
 - **moves_15 IAP 등록**: Google Play Console에 ₩1,200 이동팩 15회 상품 추가
@@ -374,4 +404,4 @@ desktop      → QR 코드 표시
 
 ## 마지막 업데이트
 
-2026-05-05 — 게임 중 팝업 전면 제거 완료, 피드백 #5/#6 반영, Play Store ko-KR 주소 노출 수정 제출
+2026-05-17 — 보상형 광고 우회 버그 수정, 랜딩 페이지 EASY/HARD 모드 오류 수정, 앱인토스 앱 생성 완료
