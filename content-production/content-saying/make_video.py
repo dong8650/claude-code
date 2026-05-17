@@ -44,6 +44,22 @@ def _strip_emoji(text: str) -> str:
     ).strip()
 
 
+def _chunk_quote(text: str, max_chars: int = 15) -> list:
+    """명언을 노래방 자막 줄 단위로 분할 (구두점 우선, 글자수 보조)."""
+    chunks = []
+    while len(text) > max_chars:
+        split_at = max_chars
+        for i in range(min(max_chars + 5, len(text)) - 1, max_chars // 2, -1):
+            if text[i] in ',. 。、，':
+                split_at = i + 1
+                break
+        chunks.append(text[:split_at].strip())
+        text = text[split_at:].strip()
+    if text:
+        chunks.append(text)
+    return [c for c in chunks if c]
+
+
 def _ts(sec: float) -> str:
     h = int(sec // 3600)
     m = int((sec % 3600) // 60)
@@ -86,9 +102,9 @@ def build_ass(script: dict, ep_dir: Path, durations: dict) -> Path:
         # Intro — 크림색, 하단
         f"Style: Intro,NotoSansCJK-Bold,{fs_intro},&H00C8E6F5,&H000000FF,&H00000000,&HAA000000,"
         f"-1,0,0,0,100,100,2,0,3,3,2,2,60,60,160,1",
-        # Quote — 흰색 대형, 중앙 (alignment=5)
+        # Quote — 노래방 스타일: 하단 배치 (alignment=2), 줄 단위 순차 표시
         f"Style: Quote,NotoSansCJK-Bold,{fs_quote},&H00FFFFFF,&H000000FF,&H00000000,&HAA000000,"
-        f"-1,0,0,0,100,100,1,0,3,3,2,5,80,80,0,1",
+        f"-1,0,0,0,100,100,1,0,3,3,2,2,80,80,{bot_bar_h + 30},1",
         # Echo — 오렌지, 하단
         f"Style: Echo,NotoSansCJK-Bold,{fs_echo},&H00008CFF,&H000000FF,&H00000000,&HAA000000,"
         f"-1,0,0,0,100,100,2,0,3,3,2,2,60,60,160,1",
@@ -96,7 +112,18 @@ def build_ass(script: dict, ep_dir: Path, durations: dict) -> Path:
         "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
         f"Dialogue: 0,{_ts(t0_intro)},{_ts(t0_quote - 0.05)},Intro,,0,0,0,,{intro_text}",
-        f"Dialogue: 0,{_ts(t0_quote)},{_ts(t0_echo - 0.05)},Quote,,0,0,0,,{quote_text}",
+    ]
+
+    # Quote — 노래방 스타일: 줄 단위 순차 표시
+    quote_chunks = _chunk_quote(quote_text)
+    n = max(1, len(quote_chunks))
+    chunk_dur = quote_dur / n
+    for j, chunk in enumerate(quote_chunks):
+        t_start = t0_quote + j * chunk_dur
+        t_end   = t0_quote + (j + 1) * chunk_dur - 0.05
+        lines.append(f"Dialogue: 0,{_ts(t_start)},{_ts(t_end)},Quote,,0,0,0,,{chunk}")
+
+    lines += [
         f"Dialogue: 0,{_ts(t0_echo)},{_ts(t0_echo + echo_dur - 0.05)},Echo,,0,0,0,,{echo_text}",
     ]
 

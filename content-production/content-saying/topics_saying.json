@@ -49,7 +49,7 @@
     "philosopher_en": "Nietzsche",
     "book": "선악의 저편",
     "book_en": "Jenseits von Gut und Böse",
-    "original": "In individuals, insanity is rare; but in groups, parties, nations and epochs, it is the rule.",
+    "original": "Der Wahnsinn ist bei Einzelnen etwas Seltenes — aber bei Gruppen, Parteien, Völkern, Zeiten die Regel.",
     "quote_ko": "개인의 광기는 드물다. 그러나 집단, 당파, 민족, 시대에서 광기는 규칙이다.",
     "theme": "집단심리",
     "image_set": "nietzsche"
@@ -93,7 +93,7 @@
     "philosopher_en": "Nietzsche",
     "book": "인간적인, 너무나 인간적인",
     "book_en": "Menschliches, Allzumenschliches",
-    "original": "Convictions are more dangerous enemies of truth than lies.",
+    "original": "Die Überzeugungen sind gefährlichere Feinde der Wahrheit als die Lügen.",
     "quote_ko": "확신은 거짓말보다 진실의 더 위험한 적이다.",
     "theme": "진실",
     "image_set": "nietzsche"
@@ -168,11 +168,11 @@
     "id": "nietzsche_016",
     "philosopher": "니체",
     "philosopher_en": "Nietzsche",
-    "book": "선악의 저편",
-    "book_en": "Jenseits von Gut und Böse",
-    "original": "Der Gedanke an den Selbstmord ist ein starkes Trostmittel: mit ihm kommt man gut über manche böse Nacht hinweg.",
-    "quote_ko": "희망이 없어 보이는 밤에도, 새벽은 반드시 온다. 버티는 것 자체가 답이다.",
-    "theme": "희망",
+    "book": "차라투스트라는 이렇게 말했다",
+    "book_en": "Also sprach Zarathustra",
+    "original": "Man muss noch Chaos in sich haben, um einen tanzenden Stern gebären zu können. Ich sage euch: ihr habt noch Chaos in euch.",
+    "quote_ko": "춤추는 별을 낳으려면, 자신 안에 혼돈을 품어야 한다. 당신 안에는 아직 그 혼돈이 있다.",
+    "theme": "가능성",
     "image_set": "nietzsche"
   },
   {
