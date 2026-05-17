@@ -1,14 +1,14 @@
 """
 generate_script_v2.py
 =====================
-건강 상식 연구소 — S급 쇼츠 대본 생성 (Claude API 전용)
+매일의 설계 — 몸의 설계 쇼츠 대본 생성 (Claude API 전용)
 
-v2.5 변경사항:
-- Hook 3대 공식 강제 (정체성 공격형 / 전문가 반전형 / 잘못된상식 직격형)
-- Quality Gate: scroll_stop_power ≥7, emotional_attack ≥7, loop_value ≥6
-- 미달 시 최대 2회 자동 재시도 (Hook 재작성 가이드 포함)
-- 25초 고정 해제 — TTS 실제 길이가 영상 길이 결정
-- 루프트리거: 첫 장면 구체적 복선 언급 강제
+v4.0 변경사항:
+- Hook 3타입 전환: identity_attack 제거 → recovery_design 추가
+- 현실 설계형 대본: persona(3종) + structure_type(5종) + scene_hint 주입
+- 감정충격 → 몸의 공감 (공격형 제거, 회복 신호 공감으로 전환)
+- 저장유도 → 몸의 설계 원칙 (CTA 제거, 24자 이내 실천 원칙)
+- Quality Gate: emotional_attack → body_signal_resonance (≥6)
 """
 import json
 import random
@@ -21,55 +21,56 @@ RUNTIME_DIR   = Path("/root/content/runtime/health")
 USED_FILE     = RUNTIME_DIR / "health_used.json"
 INSIGHTS_FILE = RUNTIME_DIR / "competitor_insights.json"
 
-SCORE_PASS        = 7   # scroll_stop_power / emotional_attack 최소 기준
+SCORE_PASS        = 6   # scroll_stop_power 최소 기준
+RESONANCE_PASS    = 6   # body_signal_resonance 최소 기준
 LOOP_PASS         = 6   # loop_value 최소 기준
 MAX_RETRY         = 2
 HOOK_HISTORY_FILE = RUNTIME_DIR / "hook_history.json"
 HOOK_HISTORY_MAX  = 6   # 최근 N개 hook_type 기록
 
-# 3타입 엄격 순환 주기
-HOOK_TYPE_CYCLE = ["myth_direct", "identity_attack", "expert_reversal"]
+# 3타입 순환 주기 (v4.0 — identity_attack 제거, recovery_design 추가)
+HOOK_TYPE_CYCLE = ["myth_direct", "recovery_design", "expert_reversal"]
 
-# 타입별 표현 후보 (10개 이상) — {placeholder}는 Claude가 주제에 맞게 채움
+# 타입별 표현 후보 — {placeholder}는 Claude가 주제에 맞게 채움
 HOOK_VARIANTS: dict[str, list[str]] = {
     "myth_direct": [
         "{상식}, 틀렸습니다",
-        "당신이 알던 {상식}, 사실이 아님",
-        "모두가 믿는 {상식}, 의사들은 반대로 말해",
-        "{상식}? 99%가 모르는 진실",
-        "{상식}, 사실 완전 반대",
-        "{상식} — 이게 왜 거짓말인지 알아?",
-        "평생 믿었던 {상식}, 오늘 뒤집힙니다",
-        "{상식}? 그거 틀린 거 알았어?",
-        "{상식} 믿는 사람, 지금도 손해 보는 중",
-        "{상식}, 이제 그만 믿어",
-        "30년 된 {상식}, 사실 오해였음",
+        "당신이 알던 {상식}, 사실이 아닙니다",
+        "모두가 믿는 {상식}, 실제로는 반대입니다",
+        "{상식}? 사실은 이렇습니다",
+        "평생 믿었던 {상식}, 오늘 정리합니다",
+        "{상식} — 이게 왜 다른지 아세요?",
+        "{상식}, 연구 결과는 달랐습니다",
+        "{상식}이라고 알고 있었다면",
+        "{상식} 믿고 있다면, 이 부분만 보세요",
+        "30년 된 {상식}, 사실은 오해였습니다",
+        "{상식}이 아니라 {진실}입니다",
     ],
-    "identity_attack": [
-        "매일 {행동}했던 당신, 사실 {충격 사실}",
-        "지금도 {행동}하고 있다면, 이거 몰랐을 걸",
-        "{행동}하는 사람, 몸에 무슨 일 벌어지는지 알아?",
-        "당신이 {행동}할 때마다 몸은 이걸 하고 있었어",
-        "{행동} 중이라면, 지금 당장 봐야 해",
-        "이거 보는 사람 다 해당됨 — {행동}하고 있잖아",
-        "매일 {행동}하면서 왜 안 좋아지는지 이제 알았어",
-        "{행동}? 그게 문제였음",
-        "{행동}하는 당신, 오늘부터 달라져야 해",
-        "당신의 {행동}, 몸이 비명 지르고 있어",
-        "{행동}이 당신 몸을 망가뜨리는 방식",
+    "recovery_design": [
+        "{증상}이 계속된다면 몸이 보내는 신호입니다",
+        "매일 {증상}한 이유, 구조에 있었습니다",
+        "{습관} 때문에 몸에 생기는 변화",
+        "{증상}, 그냥 피로가 아닐 수 있습니다",
+        "{몸 상태}의 진짜 원인은 따로 있습니다",
+        "몸이 회복을 요청하는 방식 — {증상}",
+        "{증상}이 반복된다면 이것부터 보세요",
+        "피로가 쌓이는 이유 — {습관} 때문입니다",
+        "{몸 신호}, 무시하면 생기는 일",
+        "회복이 안 되는 이유 — {원인}이었습니다",
+        "{증상}을 잡는 가장 단순한 방법",
     ],
     "expert_reversal": [
-        "의사들이 절대 말 안 해주는 {주제} 진실",
-        "병원에서 알려주지 않는 {주제}의 진짜 이유",
-        "전문가들이 모르는 척하는 {주제} 비밀",
-        "{주제}, 의사한테 물어보면 안 가르쳐줘",
-        "의학계가 숨기고 싶었던 {주제} 사실",
-        "교수들도 틀렸던 {주제} 진실",
-        "논문에는 있는데 아무도 말 안 해주는 {주제}",
-        "최신 연구가 뒤집은 {주제} 상식",
-        "의사들끼리만 아는 {주제} 진짜 메커니즘",
-        "{주제}, 전문가들은 이미 알고 있었어",
-        "의대에서 배우는데 환자한테 안 알려주는 {주제}",
+        "의학 연구가 말하는 {주제}의 진실",
+        "병원에서 잘 설명 안 해주는 {주제} 원리",
+        "최신 연구가 바꾼 {주제} 상식",
+        "{주제}, 논문에서는 이렇게 나왔습니다",
+        "전문가들이 최근 바꾼 {주제} 권고사항",
+        "{주제}, 연구 결과가 뒤집었습니다",
+        "의대에서 가르치는 {주제}의 실제 메커니즘",
+        "임상에서 확인된 {주제} 사실",
+        "{주제}에 대한 기존 통념이 바뀐 이유",
+        "연구로 밝혀진 {주제}의 진짜 원인",
+        "{주제}, 전문가 권고가 달라진 이유",
     ],
 }
 
@@ -175,15 +176,38 @@ def pick_topic(pool: list, used_ids: set) -> tuple:
     return unused[0], used_ids
 
 
+_PERSONA_TONE: dict[str, str] = {
+    "senior_colleague": "선배 동료 톤: 쓸데없는 조언 말고 진짜 정리된 정보. 숫자와 원리 위주. 친근하지만 간결.",
+    "honest_observer":  "솔직한 관찰자 톤: 다들 아는 척하지만 사실인 것. 판단 없이 관찰. '그렇습니다'가 아니라 '그렇더라고요'.",
+    "same_boat":        "같은 처지 톤: 나도 그랬는데 알고 나서 달라졌어. 같이 겪은 경험 공유. 따뜻하되 과장 없이.",
+}
+
+_STRUCTURE_GUIDE: dict[str, str] = {
+    "fact":        "사실 전달형: 핵심 수치와 메커니즘 먼저. 연구 결과를 근거로.",
+    "reversal":    "반전형: 상식이라 믿던 것을 뒤집어라. 반전 타이밍이 핵심.",
+    "observation": "관찰형: 일상에서 실제 벌어지는 장면 묘사. 독자가 고개 끄덕이게.",
+    "question":    "질문형: 답을 알기 전에 의문이 먼저. 궁금증을 유발한 뒤 해소.",
+    "story":       "스토리형: 한 장면에서 시작해 원리로 확장. 장면 → 문제 → 원인 → 해법.",
+}
+
+
 def _build_prompt(
     topic: dict,
     retry_feedback: str = "",
     forced_hook_type: str = "",
     expression_template: str = "",
 ) -> str:
-    title  = topic["title"]
-    theme  = topic.get("theme", "")
-    myth   = topic.get("myth", "")
+    title      = topic["title"]
+    theme      = topic.get("theme", "")
+    myth       = topic.get("myth", "")
+    scene_hint = topic.get("scene_hint", "")
+    persona    = topic.get("persona", "honest_observer")
+    structure  = topic.get("structure_type", "fact")
+
+    persona_guide   = _PERSONA_TONE.get(persona, _PERSONA_TONE["honest_observer"])
+    structure_guide = _STRUCTURE_GUIDE.get(structure, _STRUCTURE_GUIDE["fact"])
+
+    scene_hint_block = f"\n일상 장면 힌트 (대본에 이 구체적 상황 녹여낼 것): {scene_hint}" if scene_hint else ""
 
     retry_block = ""
     if retry_feedback:
@@ -205,37 +229,47 @@ def _build_prompt(
     if competitor_block:
         competitor_block = "\n" + competitor_block + "\n"
 
-    return f"""너는 유튜브 쇼츠 알고리즘 전문가. 조회수 2.5k 천장을 돌파하는 S급 건강 쇼츠 대본만 작성.
+    return f"""너는 유튜브 쇼츠 대본 전문가. 매일의 설계 채널 — 몸의 설계 편. S급 건강 쇼츠 대본만 작성.
 {retry_block}{hook_directive}{competitor_block}
 주제: {title}
 테마: {theme}
-잘못된 상식 (반전 포인트): {myth}
+잘못된 상식 (반전 포인트): {myth}{scene_hint_block}
+
+━━━ 글쓰기 방향 ━━━
+페르소나: {persona_guide}
+구조 방식: {structure_guide}
+금지: "너는/당신은 이런 사람", 저장 강요, 구독 촉구, 가짜 통계(출처 없는 수치는 "연구에 따르면" 표현 금지)
+허용: 구체적 일상 장면 묘사, "~하더라고요" 관찰 표현, 실제 메커니즘 수치
 
 ━━━ Hook 규칙 (설명형/정보형 절대 금지) ━━━
 위 🔒 강제 지정이 있으면 반드시 그 타입·표현 사용. 없으면 아래 3대 공식 중 1개 선택.
 
-① 정체성 공격형 (identity_attack)
-   예: "매일 {'{'}행동{'}'}했던 당신, 사실 {'{'}충격 사실{'}'}"
-② 전문가 반전형 (expert_reversal)
-   예: "의사들이 절대 말 안 해주는 {'{'}주제{'}'} 진실"
-③ 잘못된상식 직격형 (myth_direct)
+① 잘못된상식 직격형 (myth_direct)
    예: "{'{'}상식{'}'}, 틀렸습니다"
+② 회복 설계형 (recovery_design)
+   예: "{'{'}증상{'}'}이 반복된다면 몸이 보내는 신호입니다"
+③ 전문가 반전형 (expert_reversal)
+   예: "최신 연구가 바꾼 {'{'}주제{'}'} 상식"
 
-금지 Hook: "~하면 일어나는 일" / "~의 효과" / "~알고 계셨나요?"
+금지 Hook: "~하면 일어나는 일" / "~의 효과" / "~알고 계셨나요?" / "매일 ~했던 당신"
 
 ━━━ 장면 구조 (총 7장면, duration은 TTS 예상 기준) ━━━
 0. Hook (duration ~5): 위 3대 공식 중 하나. 2줄 이내.
 1. 과학설명1 (duration ~8): 핵심 메커니즘 + 수치. "→" 기호 활용.
 2. 과학설명2 (duration ~8): 추가 효과/연구. 이모지 + 수치.
 3. 잘못된상식 반전 (duration ~8): "근데 대부분은..." 공감 유발.
-4. 감정충격 (duration ~5): "매일 이렇게 {'{'}행동{'}'}했던 당신..." 😱 짧고 강하게.
-5. 좋아요+저장유도 (duration ~4): "공감됐으면 좋아요 누르고 저장해둬 💾👍" — 좋아요+저장 동시 촉구.
+4. 몸의 공감 (duration ~5): 일상 장면 속 이 신호를 가볍게 공감. 짧고 구체적으로.
+   예: "아침에 물 안 마시고 커피부터 찾았다면, 몸이 이미 말하고 있던 거예요"
+   금지: "매일 이렇게 했던 당신" / "당신의 ~는" 류 정체성 공격
+5. 몸의 설계 원칙 (duration ~4): 오늘 바로 적용할 1가지. 24자 이내. 실천 원칙으로 끝맺음.
+   예: "기상 후 30분 안에 물 한 잔이면 충분합니다"
+   금지: "저장해두세요" / "좋아요 누르세요" / "퍼뜨려야 함" 류 CTA
 6. 루프트리거 (duration ~3): Hook의 구체적 복선 언급. "첫 장면에서 {'{'}복선 내용{'}'} 이미 말했음 👀"
 
 ━━━ narration 글자수 규칙 (핵심, 반드시 준수) ━━━
 한국어 TTS 발화 속도 = 약 5자/초. duration에 비례한 글자수를 엄수.
   duration ~3  → narration 15자 이내
-  duration ~4  → narration 20자 이내
+  duration ~4  → narration 24자 이내
   duration ~5  → narration 25자 이내
   duration ~8  → narration 40자 이내
 전체 7씬 narration 합계: 165자 이내 (영상 35~50초 목표)
@@ -257,8 +291,8 @@ narration은 caption 핵심 1~2문장. 불필요한 부연 설명 금지.
               선택 기준: 눈에 보이지 않는 내부 메커니즘 (뇌·세포·신호전달·장기·화학물질 등)
               glowing neon particles, dark background, 3D render 느낌
 
-  "object"  — 오브젝트 전용, 사람 완전 금지 ← 감정충격 씬(scene5) 필수 (content_policy 방지)
-              선택 기준: 사람이 부정적 감정/상황에 있는 씬 — DALL-E가 차단하므로 오브젝트로 대체
+  "object"  — 오브젝트 전용, 사람 완전 금지 ← 몸의 공감 씬(scene5) 필수 (content_policy 방지)
+              선택 기준: 부정적 감정/상황에 있는 씬 — 오브젝트로 대체
               운동화·가방·타월·음식·약 등 주제 관련 오브젝트만
 
 추가 규칙:
@@ -270,13 +304,13 @@ narration은 caption 핵심 1~2문장. 불필요한 부연 설명 금지.
   "커피 마시는 아침 장면" → photo (실제 생활 장면)
   "목 디스크 구조 압박" → digital (신체 내부 구조)
   "운동 포기하고 쉬는 상황" → object (사람 없이 운동화·짐가방으로 표현)
-  "저장유도 — 동기부여 장면" → photo 또는 digital (긍정적 씬, 자유 선택)
+  "설계 원칙 — 실천 장면" → photo 또는 digital (긍정적 씬, 자유 선택)
 
-공통: DALL-E 3 영문 프롬프트, 9:16 portrait orientation, NO text in image
+공통: Flux 영문 프롬프트, 9:16 portrait orientation, NO text in image
 
 ━━━ Quality 자가 채점 (JSON에 포함) ━━━
 - scroll_stop_power (1~10): Hook이 피드에서 스크롤을 멈추게 하는 힘
-- emotional_attack (1~10): 감정충격 장면의 공감 폭발력
+- body_signal_resonance (1~10): 몸의 공감 장면이 실제 일상 경험과 얼마나 공명하는가
 - loop_value (1~10): 루프트리거가 실제로 다시 보게 만드는 힘
 
 JSON만 출력 (마크다운/설명 없이):
@@ -284,22 +318,22 @@ JSON만 출력 (마크다운/설명 없이):
   "title": "{title}",
   "content_type": "건강상식",
   "hook": "Hook 문장 (15자 이내)",
-  "hook_type": "identity_attack | expert_reversal | myth_direct",
+  "hook_type": "myth_direct | recovery_design | expert_reversal",
   "scenes": [
     {{"duration": 5, "caption": "Hook 자막\\n두 줄 이내", "narration": "25자 이내. 핵심 1문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
     {{"duration": 8, "caption": "과학설명1\\n→ 수치", "narration": "40자 이내. 핵심 1~2문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
     {{"duration": 8, "caption": "과학설명2\\n이모지 + 수치", "narration": "40자 이내. 핵심 1~2문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
     {{"duration": 8, "caption": "잘못된 상식\\n반전 ⚠️", "narration": "40자 이내. 핵심 1~2문장.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
-    {{"duration": 5, "caption": "감정충격 😱", "narration": "25자 이내. 핵심 1문장.", "image_style": "object", "image_prompt": "cinematic still life of [주제 관련 오브젝트], dark moody atmosphere, dramatic spotlight, no people, no text, 9:16 vertical portrait"}},
-    {{"duration": 4, "caption": "좋아요+저장유도 💾👍", "narration": "20자 이내. 핵심 1문장.", "image_style": "photo|digital|object 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
+    {{"duration": 5, "caption": "몸의 공감 — 익숙한 신호", "narration": "25자 이내. 일상 장면 공감 1문장.", "image_style": "object", "image_prompt": "cinematic still life of [주제 관련 오브젝트], warm soft light, calm atmosphere, no people, no text, 9:16 vertical portrait"}},
+    {{"duration": 4, "caption": "몸의 설계 원칙 📌", "narration": "24자 이내. 오늘 바로 적용할 1가지 원칙.", "image_style": "photo|digital 중 씬 내용에 최적인 것 선택", "image_prompt": "씬 내용에 맞는 Flux 영문 프롬프트"}},
     {{"duration": 3, "caption": "루프트리거 👀", "narration": "15자 이내. Hook 복선 언급.", "image_style": "scene1과 동일한 스타일", "image_prompt": "scene1 Hook 장면을 재소환하는 이미지 — 뒷모습/실루엣/개념 재현, mysterious atmosphere, no text, 9:16 vertical portrait"}}
   ],
   "total_duration": 41,
-  "save_trigger": "저장유도 문장",
+  "design_principle": "몸의 설계 원칙 문장 (24자 이내)",
   "loop_trigger": "루프트리거 문장 (Hook 복선 구체적 언급)",
-  "tags_ko": ["건강상식연구소", "건강", "쇼츠", "건강습관", "주제태그"],
+  "tags_ko": ["매일의설계", "건강", "쇼츠", "건강습관", "주제태그"],
   "scroll_stop_power": 8,
-  "emotional_attack": 8,
+  "body_signal_resonance": 7,
   "loop_value": 7
 }}"""
 
@@ -313,21 +347,20 @@ def _parse_json(text: str) -> dict:
 
 def _quality_check(script: dict) -> tuple[bool, str]:
     """Returns (passed, feedback_message)"""
-    ssp = script.get("scroll_stop_power", 0)
-    ea  = script.get("emotional_attack", 0)
-    lv  = script.get("loop_value", 0)
+    ssp       = script.get("scroll_stop_power", 0)
+    bsr       = script.get("body_signal_resonance", 0)
+    lv        = script.get("loop_value", 0)
     hook_type = script.get("hook_type", "")
-    hook = script.get("hook", "")
 
     issues = []
     if ssp < SCORE_PASS:
-        issues.append(f"scroll_stop_power={ssp} (목표 {SCORE_PASS}+) — Hook이 설명형/정보형임. 3대 공식 중 하나로 재작성 필요")
-    if ea < SCORE_PASS:
-        issues.append(f"emotional_attack={ea} (목표 {SCORE_PASS}+) — 감정충격 장면이 약함. '매일 이렇게 했던 당신' 강도 높여야 함")
+        issues.append(f"scroll_stop_power={ssp} (목표 {SCORE_PASS}+) — Hook이 설명형/정보형임. 3대 공식(myth_direct/recovery_design/expert_reversal) 중 하나로 재작성 필요")
+    if bsr < RESONANCE_PASS:
+        issues.append(f"body_signal_resonance={bsr} (목표 {RESONANCE_PASS}+) — 몸의 공감 장면이 약함. 일상 속 구체적 신호 장면으로 재작성 필요")
     if lv < LOOP_PASS:
         issues.append(f"loop_value={lv} (목표 {LOOP_PASS}+) — 루프트리거가 '처음부터 보면 복선 있음' 류. Hook 복선 구체적으로 명시 필요")
-    if not hook_type or hook_type not in ("identity_attack", "expert_reversal", "myth_direct"):
-        issues.append(f"hook_type='{hook_type}' — 3대 공식(identity_attack/expert_reversal/myth_direct) 중 하나여야 함")
+    if not hook_type or hook_type not in ("myth_direct", "recovery_design", "expert_reversal"):
+        issues.append(f"hook_type='{hook_type}' — 3대 공식(myth_direct/recovery_design/expert_reversal) 중 하나여야 함")
 
     if issues:
         return False, "\n".join(f"- {i}" for i in issues)
@@ -366,12 +399,12 @@ def generate_script(topic: dict) -> dict:
         script = _parse_json(msg.content[0].text)
 
         passed, feedback = _quality_check(script)
-        ssp = script.get("scroll_stop_power", "?")
-        ea  = script.get("emotional_attack", "?")
-        lv  = script.get("loop_value", "?")
+        ssp       = script.get("scroll_stop_power", "?")
+        bsr       = script.get("body_signal_resonance", "?")
+        lv        = script.get("loop_value", "?")
         hook_type = script.get("hook_type", "?")
 
-        print(f"  📊 품질 점수 (시도 {attempt+1}): scroll_stop={ssp}, emotional={ea}, loop={lv}, hook_type={hook_type}")
+        print(f"  📊 품질 점수 (시도 {attempt+1}): scroll_stop={ssp}, body_signal={bsr}, loop={lv}, hook_type={hook_type}")
 
         if passed:
             print(f"  ✅ Quality Gate 통과")

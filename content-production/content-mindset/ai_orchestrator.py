@@ -46,19 +46,25 @@ BASE_DIR    = Path(os.getenv("PIPELINE_BASE", "/root/content/runtime/mindset"))
 TOPICS_FILE = Path(os.getenv("TOPICS_FILE",   "/root/content/runtime/mindset/topics.json"))
 
 # ─────────────────────────────────────────────
-# 콘텐츠 타입 비율
+# 콘텐츠 타입 비율 (v4.0 — 일/돈 설계형)
 # ─────────────────────────────────────────────
 CONTENT_RATIO = {
-    "emotion": 30,
-    "ranking": 30,
-    "money":   20,
-    "quote":   20,
+    "work":  50,   # 일의 설계
+    "money": 50,   # 돈의 설계
+}
+
+# persona 순환: 같은 타입이라도 매번 다른 목소리
+PERSONA_CYCLE = {
+    "work":  ["senior_colleague", "honest_observer", "same_boat"],
+    "money": ["honest_observer",  "senior_colleague", "same_boat"],
 }
 
 TYPE_STYLE_MAP = {
+    "work":    "honest_observer",
+    "money":   "senior_colleague",
+    # 기존 호환
     "emotion": "docsul",
     "ranking": "list",
-    "money":   "docsul",
     "quote":   "janas",
     "hybrid":  "docsul",
 }
@@ -168,7 +174,7 @@ def _plan_batch(count: int) -> list[str]:
         n = max(1, round(count * pct / 100))
         types.extend([t] * n)
     while len(types) < count:
-        types.append("emotion")
+        types.append("work")
     random.shuffle(types)
     return types[:count]
 

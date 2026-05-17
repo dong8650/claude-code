@@ -21,13 +21,13 @@
 ## S급 포맷 (7장면, TTS 실제 길이 기준 — 35~50초 목표)
 
 ```
-scene1  🔥 Hook       (~5초, 25자)  — Hook 3대 공식 중 1개 (정체성공격/전문가반전/잘못된상식직격)
-scene2  ✅ 과학설명1  (~8초, 40자)  — 핵심 메커니즘 + 수치 (→ 기호 활용)
-scene3  ✅ 과학설명2  (~8초, 40자)  — 추가 효과 + 이모지 + 수치
-scene4  ⚠️ 잘못된상식 (~8초, 40자) — 반전 포인트 "근데 대부분은..."
-scene5  😱 감정충격   (~5초, 25자)  — "매일 이렇게 했던 당신..." 짧고 강하게
-scene6  💾👍 저장유도  (~4초, 20자)  — 좋아요+저장 동시 촉구
-scene7  👀 루프트리거 (~3초, 15자)  — Hook 복선 구체적 언급 (추상적 "복선 있음" 금지)
+scene1  🔥 Hook         (~5초, 25자)  — Hook 3대 공식 중 1개 (잘못된상식직격/회복설계형/전문가반전)
+scene2  ✅ 과학설명1    (~8초, 40자)  — 핵심 메커니즘 + 수치 (→ 기호 활용)
+scene3  ✅ 과학설명2    (~8초, 40자)  — 추가 효과 + 이모지 + 수치
+scene4  ⚠️ 잘못된상식  (~8초, 40자)  — 반전 포인트 "근데 대부분은..."
+scene5  💡 몸의 공감    (~5초, 25자)  — 일상 속 이 신호를 가볍게 공감. 정체성 공격 금지.
+scene6  📌 몸의 설계 원칙 (~4초, 24자) — 오늘 바로 적용할 1가지 원칙. CTA 금지.
+scene7  👀 루프트리거  (~3초, 15자)  — Hook 복선 구체적 언급 (추상적 "복선 있음" 금지)
 ```
 
 **narration 규칙**: 전체 165자 이내 (5자/초 기준). caption 핵심 1~2문장만.
@@ -337,25 +337,25 @@ _SUFFIX = {
 
 ---
 
-## Quality Gate 기준 (v2.5~)
+## Quality Gate 기준 (v4.0~)
 
 | 지표 | 최소 기준 | 미달 시 |
 |------|---------|--------|
-| scroll_stop_power | 7+ | Hook 재작성 (최대 2회 재시도) |
-| emotional_attack | 7+ | 감정충격 장면 재작성 |
+| scroll_stop_power | 6+ | Hook 재작성 (최대 2회 재시도) |
+| body_signal_resonance | 6+ | 몸의 공감 장면 재작성 (일상 신호 구체화) |
 | loop_value | 6+ | 루프트리거 재작성 (복선 구체화) |
 
-**Hook 3대 공식 + 엄격 순환 (v3.4~)**:
-- 순환 주기: `myth_direct → identity_attack → expert_reversal → myth_direct → ...`
+**Hook 3대 공식 + 엄격 순환 (v4.0~)**:
+- 순환 주기: `myth_direct → recovery_design → expert_reversal → myth_direct → ...`
 - 타입은 Python `get_next_hook_type()`이 강제 결정 (Claude에게 선택 위임 안 함)
 - 표현은 타입별 11개 후보 중 Python `random.choice()`로 매회 랜덤 선택
 - 선택된 `{expression_template}`을 프롬프트에 주입 → Claude는 placeholder만 채움
 
 | 타입 | 예시 표현 (총 11개 중 랜덤) |
 |------|--------------------------|
-| myth_direct | "{상식}, 틀렸습니다" / "평생 믿었던 {상식}, 오늘 뒤집힙니다" / ... |
-| identity_attack | "매일 {행동}했던 당신, 사실 {충격 사실}" / "당신의 {행동}, 몸이 비명 지르고 있어" / ... |
-| expert_reversal | "의사들이 절대 말 안 해주는 {주제} 진실" / "최신 연구가 뒤집은 {주제} 상식" / ... |
+| myth_direct | "{상식}, 틀렸습니다" / "평생 믿었던 {상식}, 오늘 정리합니다" / ... |
+| recovery_design | "{증상}이 반복된다면 몸이 보내는 신호입니다" / "회복이 안 되는 이유 — {원인}이었습니다" / ... |
+| expert_reversal | "최신 연구가 바꾼 {주제} 상식" / "의학 연구가 말하는 {주제}의 진실" / ... |
 
 **TTS 장면별 속도** (알고리즘 완시율 최적화):
 | 장면 | 속도 | 이유 |
@@ -371,6 +371,15 @@ _SUFFIX = {
 ---
 
 ## 마지막 업데이트
+
+2026-05-17 — v4.0 현실 설계형 전환 (identity_attack 완전 제거)
+- Hook 순환: myth_direct → identity_attack → expert_reversal → **myth_direct → recovery_design → expert_reversal**
+- recovery_design 11종 추가: 몸의 신호/회복 설계 중심 표현
+- scene5 감정충격 → **몸의 공감**: "매일 이렇게 했던 당신" 공격형 제거. 일상 신호 공감으로 전환
+- scene6 저장유도 → **몸의 설계 원칙**: CTA 제거, 24자 이내 실천 원칙으로 끝맺음
+- Quality Gate: emotional_attack(7+) → body_signal_resonance(6+)
+- 대본 프롬프트: persona(3종) + structure_type(5종) + scene_hint 주입
+- topics_health.json: 전 주제에 axis/persona/structure_type/scene_hint 필드 추가
 
 2026-05-06 — v3.4 Hook 3타입 엄격 순환 + 표현 11종 random.choice()
 - HOOK_TYPE_CYCLE: myth_direct → identity_attack → expert_reversal (3편 주기 강제 순환)
