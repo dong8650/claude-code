@@ -28,7 +28,7 @@ log = logging.getLogger(__name__)
 # ─────────────────────────────────────────────
 HARD = {
     "hook_length_max":        14,   # v3 12 → v4 14 (설계 원칙형 hook은 조금 더 필요)
-    "script_length_max":     130,   # v3 120 → v4 130
+    "script_length_max":     140,   # v4.5: 구체 시간/숫자 + 문장 리듬 여지
     "sentence_count_max":      5,
     "closing_length_max":     24,   # v3 15 → v4 24 (설계 원칙형 closing)
     "scroll_stop_power_min":   6,   # v3 7 → v4 6 (공격형 아닌 현실 직격형도 OK)
@@ -112,7 +112,7 @@ human_pause          : {human_pause}
 5. human_feel_pass (신규 v4 — 사람 냄새)
    PASS: 아래 중 2개 이상 충족:
          ① 구체적 시간/장소/숫자가 있음 ("점심 11분", "월 30만원", "일요일 밤 11시")
-         ② 문장 길이가 다양함 (짧은 문장 + 조금 긴 문장 혼합)
+         ② 문장 길이가 다양함 (짧은 문장 + 18자 이상 문장 혼합)
          ③ 직접 경험/관찰한 것처럼 쓰여짐
          ④ 완전히 해결된 척 안 함 (답을 강요하지 않음)
    FAIL: 모든 문장이 같은 길이 / 전형적인 AI 패턴 ("~합니다. ~합니다. ~합니다.")
