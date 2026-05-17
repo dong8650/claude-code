@@ -3,8 +3,10 @@ generate_image.py
 =================
 fal.ai Flux.1 Dev — 철학자 분위기 이미지 3장 생성
 에피소드별 철학자 + 테마 기반 프롬프트
+8가지 시각 스타일 랜덤 선택 — 시네마틱/유화/목판화/애니/잉크/실루엣/3D/수채화
 """
 import os
+import random
 import sys
 import time
 import requests
@@ -65,17 +67,51 @@ _THEME_VISUAL = {
 
 _DEFAULT_VISUAL = "ancient philosophical study, candles and shadows, dramatic atmosphere"
 
-_SUFFIX = (
-    ", TALL VERTICAL 9:16 PORTRAIT composition, "
-    "absolutely NO faces, NO people, NO text in image, "
-    "cinematic dark dramatic photography, deep shadows, film grain, "
-    "high contrast chiaroscuro lighting"
-)
+_PORTRAIT = ", TALL VERTICAL 9:16 PORTRAIT composition"
 
-_FALLBACK = (
+# 에피소드마다 랜덤으로 선택되는 8가지 시각 스타일
+_STYLE_SUFFIXES = [
+    # 1. 다크 시네마틱
+    (", absolutely NO faces, NO people, NO text in image,"
+     " cinematic dark dramatic photography, deep shadows, film grain,"
+     " high contrast chiaroscuro lighting"),
+    # 2. 렘브란트 유화
+    (", NO faces, NO people,"
+     " dramatic Rembrandt-style oil painting, impasto brushwork,"
+     " rich dark earth tones, warm candlelight, museum-quality fine art"),
+    # 3. 독일 표현주의 목판화
+    (", NO faces, NO people,"
+     " German expressionist woodcut print, bold stark black lines,"
+     " deep crimson and black limited palette, vintage 1920s graphic art"),
+    # 4. 다크 애니메이션 배경
+    (", no characters visible,"
+     " dark atmospheric anime environment art, no people,"
+     " highly detailed background, Studio Ghibli mood, moody dramatic lighting"),
+    # 5. 잉크 일러스트
+    (", no people,"
+     " detailed editorial ink illustration on aged parchment,"
+     " dense crosshatching, dramatic chiaroscuro, black ink art style"),
+    # 6. 실루엣 인물 (캐릭터 느낌 — 얼굴 없는 실루엣만)
+    (", lone dark human silhouette against dramatic stormy sky,"
+     " absolutely NO face details, strong backlighting,"
+     " cinematic emotional composition"),
+    # 7. 3D 추상 렌더
+    (", no people,"
+     " abstract 3D CGI render, volumetric fog and dramatic light rays,"
+     " dark atmosphere, award-winning visual effects style"),
+    # 8. 수채화 일러스트
+    (", no people,"
+     " moody atmospheric watercolor illustration,"
+     " loose expressive brushwork, deep indigo and burnt sienna tones,"
+     " melancholic emotional"),
+]
+
+def _pick_style() -> str:
+    return random.choice(_STYLE_SUFFIXES) + _PORTRAIT
+
+_FALLBACK_BASE = (
     "old philosopher's desk, stack of ancient books, single candle flame, "
     "dramatic shadow, dark moody atmosphere, no people"
-    + _SUFFIX
 )
 
 
@@ -109,11 +145,16 @@ def generate_images(script: dict, ep_dir: str):
     atmos       = _PHILOSOPHER_ATMOS.get(philosopher, _PHILOSOPHER_ATMOS["nietzsche"])
     theme_vis   = _THEME_VISUAL.get(theme, _DEFAULT_VISUAL)
 
+    # 에피소드 단위로 스타일 1회 선택 → 3장 모두 동일 스타일 (시각적 통일감)
+    style = _pick_style()
+    print(f"  🎨 이미지 스타일: {style[:50]}...")
+
     prompts = [
-        f"{atmos}, wide establishing shot, no people{_SUFFIX}",
-        f"{theme_vis}{_SUFFIX}",
-        f"{atmos}, intimate close-up still life, personal objects{_SUFFIX}",
+        f"{atmos}, wide establishing shot{style}",
+        f"{theme_vis}{style}",
+        f"{atmos}, intimate close-up still life, personal objects{style}",
     ]
+    fallback = _FALLBACK_BASE + style
 
     for i, prompt in enumerate(prompts):
         out = ep / f"bg{i+1}.jpg"
@@ -141,7 +182,7 @@ def generate_images(script: dict, ep_dir: str):
 
         if not success:
             try:
-                data = _call_flux(_FALLBACK)
+                data = _call_flux(fallback)
                 out.write_bytes(data)
                 print(f"  ✅ bg{i+1}.jpg fallback 완료")
             except Exception as e2:

@@ -1,7 +1,11 @@
 """
 generate_script.py
 ==================
-명언 선택 → Claude가 echo(여운) 한마디 생성
+명언 선택 → Claude가 원문(독일어)에서 직접 번역 + echo(여운) 한마디 생성
+
+저작권 정책:
+  원문(독일어)은 공개 도메인이지만 기존 한국어 출판 번역본은 저작권 있음.
+  매 에피소드마다 Claude가 원문에서 새로 의역 → 출판사 번역본 미사용.
 """
 import json
 import os
@@ -16,6 +20,20 @@ from config import CLAUDE_API_KEY, RUNTIME_DIR
 
 TOPICS_FILE = Path(RUNTIME_DIR) / "topics_saying.json"
 USED_FILE   = Path(RUNTIME_DIR) / "saying_used.json"
+
+_TRANSLATE_PROMPT = """\
+다음 독일어 원문을 한국어로 의역해줘.
+
+철학자: {philosopher} (책: {book_en})
+독일어 원문: "{original}"
+테마: {theme}
+
+번역 규칙:
+- 기존 출판된 한국어 번역본 표현을 그대로 사용하지 말 것 (저작권)
+- 원문의 핵심 의미를 살려 30~40대 직장인이 공감할 수 있게 의역
+- 1~2문장, 자연스러운 한국어 구어체
+- 번역체·문어체 표현 금지
+- 따옴표 없이 번역문만 출력"""
 
 _INTRO_PATTERNS = {
     "니체":       ["니체가 말했다", "니체의 말", "프리드리히 니체"],
@@ -73,6 +91,23 @@ def _pick_topic(philosopher: str = None) -> dict:
     return random.choice(pool)
 
 
+def _translate_quote(topic: dict) -> str:
+    """원문(독일어)에서 직접 AI 의역 — 출판사 번역본 미사용."""
+    client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+    prompt = _TRANSLATE_PROMPT.format(
+        philosopher=topic["philosopher"],
+        book_en=topic["book_en"],
+        original=topic["original"],
+        theme=topic["theme"],
+    )
+    msg = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=200,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return msg.content[0].text.strip().strip('"').strip("'")
+
+
 def _generate_echo(topic: dict) -> str:
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
     prompt = _ECHO_PROMPT.format(
@@ -89,23 +124,25 @@ def _generate_echo(topic: dict) -> str:
 
 
 def generate_script(philosopher: str = None, ep_dir: str = None) -> dict:
-    topic  = _pick_topic(philosopher)
-    echo   = _generate_echo(topic)
-    intro  = random.choice(_INTRO_PATTERNS.get(topic["philosopher"], [topic["philosopher"]]))
+    topic     = _pick_topic(philosopher)
+    quote_ko  = _translate_quote(topic)       # 원문에서 직접 AI 의역
+    topic_for_echo = dict(topic, quote_ko=quote_ko)
+    echo      = _generate_echo(topic_for_echo)
+    intro     = random.choice(_INTRO_PATTERNS.get(topic["philosopher"], [topic["philosopher"]]))
 
     script = {
-        "ep_id":        ep_dir,
-        "topic_id":     topic["id"],
-        "philosopher":  topic["philosopher"],
+        "ep_id":          ep_dir,
+        "topic_id":       topic["id"],
+        "philosopher":    topic["philosopher"],
         "philosopher_en": topic["philosopher_en"],
-        "book":         topic["book"],
-        "book_en":      topic["book_en"],
-        "original":     topic["original"],
-        "theme":        topic["theme"],
-        "image_set":    topic["image_set"],
-        "intro_ko":     intro,
-        "quote_ko":     topic["quote_ko"],
-        "echo_ko":      echo,
+        "book":           topic["book"],
+        "book_en":        topic["book_en"],
+        "original":       topic["original"],
+        "theme":          topic["theme"],
+        "image_set":      topic["image_set"],
+        "intro_ko":       intro,
+        "quote_ko":       quote_ko,
+        "echo_ko":        echo,
     }
 
     if ep_dir:
@@ -118,7 +155,7 @@ def generate_script(philosopher: str = None, ep_dir: str = None) -> dict:
     used.append(topic["id"])
     _save_used(used)
 
-    print(f"  📖 [{topic['philosopher']}] {topic['quote_ko'][:30]}...")
+    print(f"  📖 [{topic['philosopher']}] {quote_ko[:30]}...")
     print(f"  ✨ echo: {echo}")
     return script
 
