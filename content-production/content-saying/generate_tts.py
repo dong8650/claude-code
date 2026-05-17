@@ -18,7 +18,7 @@ sys.path.insert(0, "/root/content/runtime/saying")
 from config import RUNTIME_DIR
 
 VOICE = "ko-KR-HyunsuNeural"
-RATE  = {"intro": "-5%", "quote": "-15%", "echo": "-8%"}
+RATE  = {"intro": "-5%", "quote": "-25%", "echo": "-10%"}
 VOLUME = "+2%"
 
 
