@@ -1,7 +1,7 @@
 """
 setup_images.py
 ===============
-공개 도메인 철학자 사진 다운로드 (Wikimedia Commons)
+공개 도메인 철학자 사진 다운로드 (Wikimedia Commons API)
 서버 최초 1회 실행: python3 setup_images.py
 """
 import os
@@ -15,44 +15,43 @@ from config import RUNTIME_DIR
 
 IMAGE_DIR = Path(RUNTIME_DIR) / "images"
 
+# Wikimedia Commons 파일명 (API로 URL을 동적으로 조회)
 PHILOSOPHER_IMAGES = {
     "nietzsche": [
-        {
-            "filename": "nietzsche_01.jpg",
-            "url": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Nietzsche187a.jpg",
-            "desc": "Friedrich Nietzsche, 1869"
-        },
-        {
-            "filename": "nietzsche_02.jpg",
-            "url": "https://upload.wikimedia.org/wikipedia/commons/1/1d/Friedrich_Nietzsche-1872.jpg",
-            "desc": "Friedrich Nietzsche, 1872"
-        },
-        {
-            "filename": "nietzsche_03.jpg",
-            "url": "https://upload.wikimedia.org/wikipedia/commons/0/07/Nietzsche1882.jpg",
-            "desc": "Friedrich Nietzsche, 1882"
-        },
+        {"filename": "nietzsche_01.jpg", "wiki": "Nietzsche187a.jpg",            "desc": "Nietzsche, 1869"},
+        {"filename": "nietzsche_02.jpg", "wiki": "Friedrich_Nietzsche-1872.jpg", "desc": "Nietzsche, 1872"},
+        {"filename": "nietzsche_03.jpg", "wiki": "Nietzsche1882.jpg",            "desc": "Nietzsche, 1882"},
     ],
     "schopenhauer": [
-        {
-            "filename": "schopenhauer_01.jpg",
-            "url": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Schopenhauer.jpg",
-            "desc": "Arthur Schopenhauer portrait"
-        },
-        {
-            "filename": "schopenhauer_02.jpg",
-            "url": "https://upload.wikimedia.org/wikipedia/commons/b/b6/Arthur_Schopenhauer_by_J_Schäfer%2C_1859b.jpg",
-            "desc": "Arthur Schopenhauer, 1859"
-        },
-        {
-            "filename": "schopenhauer_03.jpg",
-            "url": "https://upload.wikimedia.org/wikipedia/commons/9/9d/Schopenhauer_1852.jpg",
-            "desc": "Arthur Schopenhauer, 1852"
-        },
+        {"filename": "schopenhauer_01.jpg", "wiki": "Schopenhauer.jpg",                              "desc": "Schopenhauer portrait"},
+        {"filename": "schopenhauer_02.jpg", "wiki": "Arthur_Schopenhauer_by_J_Schäfer,_1859b.jpg",  "desc": "Schopenhauer, 1859"},
+        {"filename": "schopenhauer_03.jpg", "wiki": "Schopenhauer_1852.jpg",                         "desc": "Schopenhauer, 1852"},
     ],
 }
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; content-saying-bot/1.0)"}
+API_URL = "https://commons.wikimedia.org/w/api.php"
+HEADERS = {
+    "User-Agent": "content-saying-bot/1.0 (educational; https://github.com/dong8650/claude-code)"
+}
+
+
+def _get_image_url(wiki_filename: str, width: int = 1200) -> str:
+    """Wikimedia Commons API로 공식 썸네일 URL 조회."""
+    params = {
+        "action":    "query",
+        "titles":    f"File:{wiki_filename}",
+        "prop":      "imageinfo",
+        "iiprop":    "url",
+        "iiurlwidth": width,
+        "format":    "json",
+    }
+    resp = requests.get(API_URL, params=params, headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+    pages = resp.json().get("query", {}).get("pages", {})
+    for page in pages.values():
+        info = page.get("imageinfo", [{}])[0]
+        return info.get("thumburl") or info.get("url")
+    return None
 
 
 def download_images():
@@ -65,20 +64,19 @@ def download_images():
             if out.exists():
                 print(f"  ✅ {img['filename']} (기존)")
                 continue
-            for attempt in range(3):
-                try:
-                    time.sleep(2)   # Wikimedia 속도 제한 방지
-                    resp = requests.get(img["url"], headers=HEADERS, timeout=20)
-                    resp.raise_for_status()
-                    out.write_bytes(resp.content)
-                    print(f"  ✅ {img['filename']} ({len(resp.content)//1024}KB) — {img['desc']}")
-                    break
-                except Exception as e:
-                    if attempt < 2:
-                        print(f"  ⚠️ 재시도 {attempt+1}/3: {e}")
-                        time.sleep(5 * (attempt + 1))
-                    else:
-                        print(f"  ❌ {img['filename']} 실패: {e}")
+            try:
+                time.sleep(1)
+                url = _get_image_url(img["wiki"])
+                if not url:
+                    print(f"  ❌ {img['filename']} — URL 조회 실패")
+                    continue
+                time.sleep(1)
+                resp = requests.get(url, headers=HEADERS, timeout=20)
+                resp.raise_for_status()
+                out.write_bytes(resp.content)
+                print(f"  ✅ {img['filename']} ({len(resp.content)//1024}KB) — {img['desc']}")
+            except Exception as e:
+                print(f"  ❌ {img['filename']} 실패: {e}")
 
     print("\n🎉 이미지 설정 완료")
     print(f"📂 저장 위치: {IMAGE_DIR}")
