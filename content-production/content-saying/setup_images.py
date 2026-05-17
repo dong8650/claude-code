@@ -18,34 +18,34 @@ PHILOSOPHER_IMAGES = {
     "nietzsche": [
         {
             "filename": "nietzsche_01.jpg",
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Nietzsche187a.jpg/440px-Nietzsche187a.jpg",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Nietzsche187a.jpg",
             "desc": "Friedrich Nietzsche, 1869"
         },
         {
             "filename": "nietzsche_02.jpg",
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Friedrich_Nietzsche-1872.jpg/440px-Friedrich_Nietzsche-1872.jpg",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/1/1d/Friedrich_Nietzsche-1872.jpg",
             "desc": "Friedrich Nietzsche, 1872"
         },
         {
             "filename": "nietzsche_03.jpg",
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Nietzsche1882.jpg/440px-Nietzsche1882.jpg",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/0/07/Nietzsche1882.jpg",
             "desc": "Friedrich Nietzsche, 1882"
         },
     ],
     "schopenhauer": [
         {
             "filename": "schopenhauer_01.jpg",
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Schopenhauer.jpg/440px-Schopenhauer.jpg",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Schopenhauer.jpg",
             "desc": "Arthur Schopenhauer portrait"
         },
         {
             "filename": "schopenhauer_02.jpg",
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Schopenhauer-Gemälde-Caneva.jpg/440px-Schopenhauer-Gemälde-Caneva.jpg",
-            "desc": "Arthur Schopenhauer, painting by Caneva"
+            "url": "https://upload.wikimedia.org/wikipedia/commons/b/b6/Arthur_Schopenhauer_by_J_Schäfer%2C_1859b.jpg",
+            "desc": "Arthur Schopenhauer, 1859"
         },
         {
             "filename": "schopenhauer_03.jpg",
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Schopenhauer_1852.jpg/440px-Schopenhauer_1852.jpg",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/9/9d/Schopenhauer_1852.jpg",
             "desc": "Arthur Schopenhauer, 1852"
         },
     ],
