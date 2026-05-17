@@ -6,6 +6,7 @@ setup_images.py
 """
 import os
 import sys
+import time
 import requests
 from pathlib import Path
 
@@ -64,13 +65,20 @@ def download_images():
             if out.exists():
                 print(f"  ✅ {img['filename']} (기존)")
                 continue
-            try:
-                resp = requests.get(img["url"], headers=HEADERS, timeout=15)
-                resp.raise_for_status()
-                out.write_bytes(resp.content)
-                print(f"  ✅ {img['filename']} ({len(resp.content)//1024}KB) — {img['desc']}")
-            except Exception as e:
-                print(f"  ❌ {img['filename']} 실패: {e}")
+            for attempt in range(3):
+                try:
+                    time.sleep(2)   # Wikimedia 속도 제한 방지
+                    resp = requests.get(img["url"], headers=HEADERS, timeout=20)
+                    resp.raise_for_status()
+                    out.write_bytes(resp.content)
+                    print(f"  ✅ {img['filename']} ({len(resp.content)//1024}KB) — {img['desc']}")
+                    break
+                except Exception as e:
+                    if attempt < 2:
+                        print(f"  ⚠️ 재시도 {attempt+1}/3: {e}")
+                        time.sleep(5 * (attempt + 1))
+                    else:
+                        print(f"  ❌ {img['filename']} 실패: {e}")
 
     print("\n🎉 이미지 설정 완료")
     print(f"📂 저장 위치: {IMAGE_DIR}")
