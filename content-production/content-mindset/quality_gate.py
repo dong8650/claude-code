@@ -244,16 +244,16 @@ def _soft_check(script: dict, client: anthropic.Anthropic) -> dict:
 def _save(result: GateResult, ep_dir: str | None) -> None:
     log.info(
         "[QGate] %s | type=%-8s | hook=%s script=%s sent=%s closing=%s "
-        "ssp=%s emo=%s rep=%s view=%s | "
-        "hook=%s body=%s flow=%s repeat=%s type=%s view=%s",
+        "ssp=%s pv=%s ifit=%s view=%s | "
+        "hook=%s body=%s flow=%s trust=%s feel=%s view=%s",
         result.final_status, result.content_type,
         result.hook_length, result.script_length,
         result.sentence_count, result.closing_length,
-        result.scroll_stop_power, result.emotional_attack,
-        result.repeat_value, result.view_score,
+        result.scroll_stop_power, result.practical_value,
+        result.identity_fit, result.view_score,
         result.semantic_hook_pass, result.semantic_body_pass,
-        result.flow_pass, result.repeat_pass,
-        "?", result.viewability_pass,
+        result.flow_pass, result.trust_pass,
+        result.human_feel_pass, result.viewability_pass,
     )
     if result.final_status == "FAIL":
         log.warning("[QGate] 실패: %s", result.fail_reason)
