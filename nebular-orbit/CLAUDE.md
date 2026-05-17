@@ -287,19 +287,34 @@ toss_miniapp → (추가 예정) 앱인토스 IAP SDK + Toss Ads
 ```
 인터넷 사용자
       │ HTTPS (443)
-      ▼
-[Fortigate tl-fw-dc1 — 218.38.161.182]
- SSL Offloading: Client <-> FortiGate (Full)
- 인증서: kdclab-cert (Let's Encrypt, 만료 2026-06-29)
- Load Balancing: First Alive / Health Check: hc_kdclab_http
-      │
-      │ HTTP (80) — 복호화 후 평문 전달
-      ├──────────────────────────┐
-      ▼                          ▼
-[200.200.200.7:80]          [7.7.7.7:80]
- Active (nginx)               Active (nginx)
- certbot 자동갱신 있음          인증서 없음
+      ├─────────────────────────────────────────┐
+      ▼                                         ▼
+[DC1 Fortigate tl-fw-dc1 — 218.38.161.182]   [DC2 Fortigate tl-fw-dc2 — 175.119.14.194]
+ SSL Offloading: Client <-> FortiGate (Full)   SSL Offloading: Client <-> FortiGate (Full)
+ 인증서: kdclab-cert (만료 2026-06-29)          인증서: kdclab-cert (동일)
+ Load Balancing: First Alive                   Load Balancing: First Alive
+ Health Check: hc_kdclab_http                  Health Check: hc_kdclab_http (src-ip 172.26.20.77)
+      │                                              │ VPN 터널 (tl_fw_m_vpn)
+      │ HTTP (80)                                    │ DC2 내부 IP: 172.26.20.77
+      ├──────────────┐                               │ DC1 VPN 측 첫 홉: 192.168.0.77
+      ▼              ▼                          ┌────┴──────────────────┐
+[200.200.200.7:80] [7.7.7.7:80]               ▼                       ▼
+ Active (nginx)    Standby (nginx)       [200.200.200.7:80]       [7.7.7.7:80]
+ certbot 자동갱신   certbot 없음           Active (Primary)         Standby (Backup)
+                                          status=UP ✅              status=DOWN (비활성)
 ```
+
+**DC2 Virtual Server (`vs_kdclab_https`):**
+- VIP: `175.119.14.194:443` → 백엔드: `200.200.200.7:80` (Primary) / `7.7.7.7:80` (Backup)
+- 헬스체크: `hc_kdclab_http` — HTTP GET /health, src-ip 172.26.20.77 필수 (VPN Phase2 selector 조건)
+- 방화벽 정책 #29: srcintf=any → dstintf=tl_fw_m_vpn, dst=200.200.200.0/24, nat=enable
+
+**⚠️ 미해결 이슈: DC2 VIP → DC1 백엔드 실제 트래픽 포워딩 불가**
+- 헬스체크는 정상 (src-ip 172.26.20.77 강제) → `200.200.200.7 status=UP` ✅
+- 실제 클라이언트 트래픽 포워딩은 미동작 — policy #29 hit count=0
+- **추정 원인**: VIP 백엔드 연결의 source IP가 172.26.20.0/24 밖 → VPN Phase2 selector 불일치 → 터널 진입 불가
+- **진단**: `nc -zv 175.119.14.194 443` 은 SSL 핸드셰이크를 안 하므로 백엔드 연결 생성 안 됨 → `curl -k https://175.119.14.194/` 로 테스트해야 함
+- **Fix 방안**: policy #29에 IP Pool(172.26.20.77 SNAT) 추가 또는 VIP 백엔드 src-ip 강제 설정
 
 > SSL 종료는 Fortigate에서 처리. 서버의 certbot 갱신 후 **Fortigate 인증서를 수동 교체**해야 함.
 
@@ -451,6 +466,14 @@ System → Certificates → kdclab-cert_20260629 → Delete
 
 ### 다음 할 일
 
+- **[긴급] DC2 VIP → DC1 백엔드 포워딩 Fix**:
+  1. `curl -k https://175.119.14.194/` 로 실제 HTTPS 테스트 (nc 아님)
+  2. DC2 Fortigate debug flow 동시 확인 (source IP 확인)
+  3. policy #29에 IP Pool SNAT 추가:
+     ```
+     config firewall ippool → edit "snat-dc2-internal" → startip/endip 172.26.20.77
+     config firewall policy → edit 29 → set ippool enable → set poolname "snat-dc2-internal"
+     ```
 - **nginx 443 제거 (미완료)**: Active 서버(200.200.200.7) nginx에서 443 블록 제거 + certbot webroot 방식 전환. Fortigate 80포트 오픈으로 이제 가능. certbot renewal 설정: `authenticator=webroot, installer=None, webroot=/var/www/html`
 - **앱인토스**: 검토 결과 대기 (2영업일, dong8650@gmail.com) → 승인 후 SDK 연동, Toss Ads 연동, IAP 등록
 - **앱인토스 사업자 정보**: 검토 대기 중 (약 1일) — 완료 후 본인 확인 단계 진행
@@ -475,4 +498,6 @@ System → Certificates → kdclab-cert_20260629 → Delete
 
 ## 마지막 업데이트
 
-2026-05-17 — 보상형 광고 우회 버그 수정, 랜딩 페이지 모드 오류 수정, 앱인토스 검토 요청 완료, Fortigate SSL 구조 파악·인증서 교체 절차 정립, DR 인증서 자동 동기화 구축, Fortigate 80포트 오픈 (certbot dry-run 정상). nginx 443 제거는 다음 작업으로.
+2026-05-17 (2차) — DC2 Fortigate (tl-fw-dc2, 175.119.14.194) Virtual Server 이중화 구성 작업. 헬스체크 src-ip 172.26.20.77 설정으로 DC1 백엔드 정상 확인(status=UP). VIP 실제 트래픽 포워딩은 source IP ↔ VPN Phase2 selector 불일치 문제로 미완. Fix: policy #29에 SNAT(172.26.20.77) 추가 예정. 핵심 패턴: DC2에서 DC1으로 가는 모든 트래픽(로컬 originating)은 반드시 src-ip 172.26.20.77 사용해야 VPN 터널 진입 가능.
+
+2026-05-17 (1차) — 보상형 광고 우회 버그 수정, 랜딩 페이지 모드 오류 수정, 앱인토스 검토 요청 완료, Fortigate SSL 구조 파악·인증서 교체 절차 정립, DR 인증서 자동 동기화 구축, Fortigate 80포트 오픈 (certbot dry-run 정상). nginx 443 제거는 다음 작업으로.
