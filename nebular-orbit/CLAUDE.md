@@ -236,7 +236,7 @@ android:launchMode="singleTop"
 | 앱 이름 | 성운궤도 |
 | appName | nebular-orbit (변경 불가) |
 | 앱 유형 | 게임 |
-| 상태 | 앱 생성 완료, 이후 작업 필요 |
+| 상태 | **검토 중** (2영업일 내 이메일 통보, 2026-05-17 제출) |
 | 광고 | Toss Ads (AdSense와 별개) — 별도 연동 필요 |
 | 인앱결제 | 앱인토스 IAP SDK 별도 연동 필요 (Google Play Billing과 별개) |
 | 일회성 제품 | 앱인토스 콘솔에 vip_pass, no_ads, hints_50, hints_10 별도 등록 필요 |
@@ -380,10 +380,15 @@ toss_miniapp → (추가 예정) 앱인토스 IAP SDK + Toss Ads
 | 게임 랜딩 페이지 오류 수정 | /games/starweave/index.html — 존재하지 않는 EASY/HARD 모드 제거, 실제 존재하는 우주탐험/크로스매스 모드로 교체. commit a4f4d54 |
 | 앱인토스 앱 생성 | 앱 이름: 성운궤도, appName: nebular-orbit, 유형: 게임. 생성 완료. |
 | 앱인토스 구조 파악 | APK 스토어 아님. WebView 미니앱. 광고/IAP 별도 SDK. HTML 1개로 플랫폼 분기 관리 가능. |
+| 앱인토스 기본 정보 입력 | 부제: 별 연결로 우주를 정복하라, 카테고리: 게임>퍼즐, 키워드 7개, 로고/썸네일 업로드, 고객문의: dong8650@gmail.com |
+| 앱인토스 게임 등급분류 입력 | GRAC 자체등급분류 방식. 등급분류번호: GOOG-SG-260504-0447, 날짜: 2026-05-04. 게임 주요화면 4장 PNG 업로드 완료. |
+| 앱인토스 검토 요청 완료 | 모든 항목 입력 후 검토 요청 제출. 영업일 기준 2일 내 dong8650@gmail.com으로 결과 통보 예정. |
 
 ### 다음 할 일
 
-- **앱인토스**: 앱 기본 정보 입력, 게임 등급 증빙(플레이스토어 URL), 앱인토스 IAP SDK + Toss Ads 연동
+- **앱인토스**: 검토 결과 대기 (2영업일, dong8650@gmail.com) → 승인 후 SDK 연동, Toss Ads 연동, IAP 등록
+- **앱인토스 사업자 정보**: 검토 대기 중 (약 1일) — 완료 후 본인 확인 단계 진행
+- **앱인토스 SDK 연동**: _detectPlatform()에 toss_miniapp 분기 추가, Toss Ads + 앱인토스 IAP SDK 연동, .ait 번들 빌드 후 버전 등록
 - **APK 재빌드**: bubblewrap build → v1.0.32 (versionCode 35) — 이동 횟수 전환 + 팝업 제거 반영
 - **Play Console 업로드**: 새 AAB 업로드
 - **moves_15 IAP 등록**: Google Play Console에 ₩1,200 이동팩 15회 상품 추가
@@ -404,4 +409,4 @@ toss_miniapp → (추가 예정) 앱인토스 IAP SDK + Toss Ads
 
 ## 마지막 업데이트
 
-2026-05-17 — 보상형 광고 우회 버그 수정, 랜딩 페이지 EASY/HARD 모드 오류 수정, 앱인토스 앱 생성 완료
+2026-05-17 — 보상형 광고 우회 버그 수정, 랜딩 페이지 EASY/HARD 모드 오류 수정, 앱인토스 앱 생성 + 기본정보/게임등급분류 입력 + 검토 요청 완료
