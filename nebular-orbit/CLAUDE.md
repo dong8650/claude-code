@@ -166,9 +166,30 @@ android:launchMode="singleTop"
 
 ---
 
-## 수익 모델 (이중 구조)
-1. **AdSense** (웹 광고)
-2. **Google Play IAP** (위 4종 상품)
+## 수익 모델 및 수수료 구조
+
+### 플랫폼별 수수료
+
+| 플랫폼 | 수수료 | 예시 (₩9,900 VIP) |
+|--------|--------|-------------------|
+| Google Play IAP | 구글 15% | 개발자 ₩8,415 (85%) |
+| 앱인토스 IAP | 구글/애플 15% + 토스 5% = **20%** | 개발자 ₩7,920 (80%) |
+| Web PG (카드결제) | PG사 2~3% | 개발자 ₩9,600~9,700 (97~98%) |
+| AdSense / Toss Ads | 플랫폼별 상이 | — |
+
+> 구글/애플이 앱인토스에 기여가 없음에도 15% 수수료를 가져가는 구조 (불가피, 스토어 수수료 정책).  
+> Web PG가 수수료 가장 낮지만 접근성이 낮아 현실적으로 IAP가 주력.
+
+### 수익 목표
+- **성운궤도 월 목표**: 200~300만원
+- **전략**: 앱인토스 심사 통과 후 유입 확인 → 난이도 조정 → 결제 전환율 측정
+- 현재 구글 플레이 결제 0건 → 난이도가 너무 쉬워 결제 필요성이 없는 수준으로 판단
+
+### 수익 채널
+1. **AdSense** (웹 광고) — AdSense 승인 대기 중
+2. **Google Play IAP** — 앱 설치 유저
+3. **앱인토스 IAP** — 토스 앱 유저 (심사 통과 후)
+4. **Toss Ads (보상형)** — 광고 시청 보상
 
 ---
 
@@ -232,17 +253,57 @@ android:launchMode="singleTop"
 | 항목 | 내용 |
 |------|------|
 | 플랫폼 | 토스 앱 내 WebView 미니앱 (APK 스토어 아님) |
-| 콘솔 | apps-in-toss.toss.im (business.toss.im → 앱인토스 메뉴로 접근) |
+| 콘솔 | apps-in-toss.toss.im |
 | 앱 이름 | 성운궤도 |
 | appName | nebular-orbit (변경 불가) |
 | 앱 유형 | 게임 |
-| 상태 | **검토 중** (2영업일 내 이메일 통보, 2026-05-17 제출) |
-| 광고 | Toss Ads (AdSense와 별개) — 별도 연동 필요 |
-| 인앱결제 | 앱인토스 IAP SDK 별도 연동 필요 (Google Play Billing과 별개) |
+| 상태 | **게임 심사 중** (2~4주 소요, 2026-05-23 검토 요청 완료) |
+| 광고 | Toss Ads 연동 완료 (현재 테스트 ID 사용, 실제 adGroupId 교체 필요) |
+| 인앱결제 | 앱인토스 IAP SDK 연동 완료 (정산 검토 완료 후 상품 등록 필요) |
 | 일회성 제품 | 앱인토스 콘솔에 vip_pass, no_ads, hints_50, hints_10 별도 등록 필요 |
-| 게임 등급 증빙 | 구글 플레이 스토어 URL 제출로 대체 가능 |
 | 검수 기간 | 게임 2~4주 |
-| HTML 관리 | 파일 1개 유지, _detectPlatform()에 toss_miniapp 분기 추가 예정 |
+| 번들 버전 | 20260522-1 (SDK 2.6.0) |
+| 프로젝트 경로 | ~/ai-works/apps/code/dev/nebular-orbit/ |
+
+### 앱인토스 프로젝트 구조
+
+```
+~/ai-works/apps/code/dev/nebular-orbit/
+  index.html          ← Starweave.html 복사본 (게임 메인)
+  Starweave.html      ← 원본 참조용
+  granite.config.ts   ← appName: nebular-orbit, brand 설정
+  src/toss-bridge.ts  ← Toss SDK를 window.__tossSDK__로 노출
+  nebular-orbit.ait   ← 빌드 결과물 (콘솔에 업로드)
+```
+
+### 앱인토스 빌드/배포 워크플로우
+
+```bash
+cd ~/ai-works/apps/code/dev/nebular-orbit
+
+# 게임 파일 업데이트 (원본 변경 시)
+cp ../games/starweave/Starweave.html ./index.html
+# → index.html에 수동으로 두 가지 재적용:
+#   1. <script type="module" src="/src/toss-bridge.ts"></script> (head에 추가)
+#   2. _detectPlatform()에 toss_miniapp 분기 (첫 줄에 추가)
+
+# 빌드
+npm run build
+# → nebular-orbit.ait 생성
+
+# 콘솔 업로드
+npx ait deploy  # 또는 콘솔에서 수동 업로드
+```
+
+### _detectPlatform() toss_miniapp 분기
+
+```javascript
+function _detectPlatform() {
+  if (window.__tossSDK__) return 'toss_miniapp';  // ← 추가된 부분
+  if (_isTWA()) return 'android_app';
+  // ...
+}
+```
 
 ---
 
@@ -465,9 +526,39 @@ System → Certificates → kdclab-cert_20260629 → Delete
 | Fortigate HTTP 80 포트 오픈 | certbot HTTP-01 챌린지용. vs_kdclab_http 추가 (218.38.161.182:80 → 200.200.200.7:80, 7.7.7.7:80). certbot dry-run 성공 확인. |
 | moves_15 IAP 추가 | Play Console 일회성 제품 등록 (moves_15, ₩1,200, 대한민국, 활성). 게임 코드 PLAY_SKU_MAP + PURCHASE_ITEMS 추가 (commit 857990b). 양쪽 서버 배포 완료. AAB 재빌드 불필요 (웹 코드만 변경). |
 
+### 2026-05-23 완료 작업
+
+| 작업 | 결과 |
+|------|------|
+| 앱인토스 승인 확인 | 2026-05-17 제출 → 승인 완료 |
+| Granite 프로젝트 생성 | npx create-ait-app nebular-orbit (SDK 2.6.0) |
+| 게임 통합 | Starweave.html → index.html, toss-bridge.ts 생성, _detectPlatform() toss_miniapp 분기 추가 |
+| v0.1.0 빌드/업로드 | nebular-orbit.ait → 콘솔 업로드 → QR 테스트 성공 |
+| 게임 심사 요청 | 검토 요청 완료, 영업일 7일 내 결과 통보 |
+| Toss IAP 연동 | _purchaseViaToss() 추가, purchaseItem()에 toss_miniapp 분기 |
+| Toss Ads 연동 | _showTossRewardedAd() 추가, _openRewardedAdModal()에 toss_miniapp 분기 |
+| v0.2.0 빌드/업로드 | IAP/광고 연동 버전 콘솔 업로드 완료 |
+| 정산 정보 등록 | 매일의 설계, 김동천, 토스뱅크 → 검토 요청 완료 (약 1일 소요) |
+
 ### 다음 할 일
 
-- **[긴급] DC2 VIP → DC1 백엔드 포워딩 Fix**:
+#### 🔴 앱인토스 (정산 승인 대기 — 화요일 이후)
+- **정산 검토 완료 후 IAP 상품 5개 등록** (콘솔 → 인앱 결제 → 상품 등록):
+  - `hints_10` (₩990, 소모품), `hints_50` (₩3,900, 소모품), `moves_15` (₩1,200, 소모품)
+  - `no_ads` (₩2,900, 비소모품), `vip_pass` (₩9,900, 비소모품)
+- **광고 그룹 등록**: 콘솔 → 인앱 광고 → 리워드/전면/배너 그룹 생성
+  - 실제 adGroupId 발급 후 게임 코드 `_TOSS_REWARDED_AD_ID` 변수 교체 → 재빌드 → 콘솔 업로드
+  - 현재 테스트 ID: `ait-ad-test-rewarded-id` (index.html 내 변수)
+- **게임 심사 결과 대기**: 영업일 7일, dong8650@gmail.com 통보 (2026-05-23 제출)
+
+#### 🟡 게임 난이도 및 수익화 전략
+- **유저 유입 모니터링**: 앱인토스 심사 통과 후 DAU/리텐션 확인
+- **난이도 조정**: 현재 구글 플레이 결제 0건 → 너무 쉬운 난이도 → 행성별 moveLimit 조정 검토
+  - 목표: 결제 전환율 확보 (VIP ₩9,900 기준 월 200~300건 = 월 200~300만원)
+- **APK 재빌드**: bubblewrap build → v1.0.32 (versionCode 35) — 이동 횟수 전환 + 팝업 제거 반영
+
+#### 🟠 인프라 (언제든 가능)
+- **DC2 VIP → DC1 백엔드 포워딩 Fix**:
   1. `curl -k https://175.119.14.194/` 로 실제 HTTPS 테스트 (nc 아님)
   2. DC2 Fortigate debug flow 동시 확인 (source IP 확인)
   3. policy #29에 IP Pool SNAT 추가:
@@ -475,14 +566,10 @@ System → Certificates → kdclab-cert_20260629 → Delete
      config firewall ippool → edit "snat-dc2-internal" → startip/endip 172.26.20.77
      config firewall policy → edit 29 → set ippool enable → set poolname "snat-dc2-internal"
      ```
-- **nginx 443 제거 (미완료)**: Active 서버(200.200.200.7) nginx에서 443 블록 제거 + certbot webroot 방식 전환. Fortigate 80포트 오픈으로 이제 가능. certbot renewal 설정: `authenticator=webroot, installer=None, webroot=/var/www/html`
-- **앱인토스**: 검토 결과 대기 (2영업일, dong8650@gmail.com) → 승인 후 SDK 연동, Toss Ads 연동, IAP 등록
-- **앱인토스 사업자 정보**: 검토 대기 중 (약 1일) — 완료 후 본인 확인 단계 진행
-- **앱인토스 SDK 연동**: _detectPlatform()에 toss_miniapp 분기 추가, Toss Ads + 앱인토스 IAP SDK 연동, .ait 번들 빌드 후 버전 등록
-- **APK 재빌드**: bubblewrap build → v1.0.32 (versionCode 35) — 이동 횟수 전환 + 팝업 제거 반영
-- **Play Console 업로드**: 새 AAB 업로드
-- ~~**moves_15 IAP 등록**: Google Play Console에 ₩1,200 이동팩 15회 상품 추가~~ ✅ 완료
-- **AdSense**: 재검토 결과 대기 (1~4주, dong8650@gmail.com)
+- **nginx 443 제거**: Active 서버(200.200.200.7) nginx 443 블록 제거 + certbot webroot 방식 전환 (`authenticator=webroot, installer=None, webroot=/var/www/html`)
+
+#### ⚪ 대기
+- **AdSense**: 재검토 결과 대기 (1~4주, dong8650@gmail.com, 2026-05-10 신청)
 
 ---
 
@@ -498,6 +585,8 @@ System → Certificates → kdclab-cert_20260629 → Delete
 ---
 
 ## 마지막 업데이트
+
+2026-05-23 — 앱인토스 승인 완료 → Granite 프로젝트(nebular-orbit) 생성 → 게임 통합(Starweave.html → index.html, toss-bridge.ts) → v0.1.0 빌드/업로드/QR 테스트 → 게임 심사 요청 → IAP/광고 연동(v0.2.0) → 정산 정보 등록(매일의 설계/김동천/토스뱅크, 검토 중). 수익 구조 분석: 앱인토스 IAP는 구글/애플 15% + 토스 5% = 20% 수수료. 월 200~300만원 목표로 유입 확인 후 난이도 조정 예정.
 
 2026-05-17 (3차) — moves_15 IAP 추가 완료. Play Console 등록 + 게임 코드(PLAY_SKU_MAP, PURCHASE_ITEMS) 수정 + 양쪽 서버 배포. 이동 추가 +5회는 별힌트×3 소모 교환 방식(IAP 아님) 확인.
 
