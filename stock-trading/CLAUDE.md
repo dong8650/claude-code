@@ -7,8 +7,8 @@
 
 ## 프로젝트 개요
 - 목적: pykrx 기반 한국 주식 일봉 자동매매 시스템. 소액(10만원) 실전 타겟.
-- 현재 단계: 모의투자(KIS) 자동매매 봇 구축 완료 → 서버 배포 + 전략 엣지 검증.
-- 배포 서버: bastion-dc1 (200.200.200.7), Raspberry Pi aarch64 + Ubuntu 6.8.
+- 현재 단계: 모의투자(KIS) 자동매매 봇 서버 배포 + 작동 검증 완료 → 전략 엣지 검증 단계.
+- 배포 서버: bastion-dc1 (200.200.200.7), Raspberry Pi aarch64 + Ubuntu 6.8. 경로 /data/claude-code/stock-trading.
 - 동거 서비스: 같은 서버에 성운궤도(nebular-orbit) 게임 백엔드 → venv 격리로 충돌 회피.
 
 ## 핵심 원칙 (절대 어기지 말 것)
@@ -20,14 +20,14 @@
 
 ## 파일 구조
 - trading_v2_1.py    : 신호/지표/백테스트 (v2 결함 7건 수정판)
-- kis_broker.py      : KIS 모의투자 API 연동 (python-kis 2.1.6)
+- kis_broker.py      : KIS 모의투자 API 연동 (python-kis 2.1.6, 실전+모의 동시 인증)
 - notifier.py        : 슬랙 알림 (Incoming Webhook, NEAI 방식)
 - live_runner.py     : 메인 실행기 (하루 1회 신호→주문→슬랙→로그)
 - secret_config.template.py : 설정 템플릿 (→ secret_config.py로 복사, git 제외)
 - setup.sh           : aarch64 환경 자동 구성
 
 ## 시스템 구조
-- 데이터: pykrx OHLCV 일봉
+- 데이터: pykrx OHLCV 일봉 (백테스트) / KIS chart (라이브)
 - 지표: MA(5/20), Z-Score(20), RSI(14), ROC(5)
 - 전략: 골든크로스 + Z-Score + RSI/ROC → 가중 결합
 - 리스크: 켈리(쿼터, 거래 손익률 기반) / 손절 -2% / 익절 +5% / max_position 10%
@@ -59,17 +59,33 @@
 - 최적 시스템 = 똑똑한 전략이 아니라 가짜 엣지를 빨리 거르는 검증 파이프라인.
 - 프레임워크: 리서치=VectorBT/pandas, 실매매=Backtrader, 성과=quantstats.
 
-## 알려진 이슈 / TODO
-1. python-kis 2.1.6 메서드명 검증 필요 — kis_broker.py의 quote().price, chart().df(), balance().deposit, buy()/sell()가 실제 API와 다를 수 있음. 첫 실행 에러로 확인 후 수정.
-2. 전략 엣지 미확인 — 합성에선 약함. 실데이터(pykrx) IS/OOS 백테스트로 판정.
-3. FortiGate(tl-fw-dc1): 200.200.200.7 → openapi.koreainvestment.com:443 아웃바운드 허용 확인.
+## 2026-06-15: 서버 배포 완료 + 시스템 작동 검증 ✅
 
-## 다음 단계
-1. 봇 서버 배포 → 모의투자로 시스템 작동 검증
-2. python-kis 메서드명 에러 잡기
-3. v2.1 실데이터 백테스트 → 엣지 판정
-4. 엣지 있으면 소액 실전 / 없으면 VectorBT로 walk-forward 재검증
-5. v3 ML은 한참 뒤 (또는 안 감)
+### 배포 환경 (확정)
+- 서버: bastion-dc1 (200.200.200.7), aarch64 Ubuntu 6.8
+- 경로: /data/claude-code/stock-trading (git clone)
+- venv 패키지: numpy pandas scipy statsmodels python-kis typing_extensions
+- 배포 방식: PC에서 git push → 서버에서 git pull
+
+### 첫 실행 검증 — 전 파이프라인 정상 작동
+- 출력: [KIS] 연결 완료 — 모의투자 | 계좌 50193225-01 / [상태] 신호=+0 | 현재가=322,500 | 보유=0주 | 현금=10,000,000 / [대기] 조건 미충족 / ✅ 오늘 실행 완료
+- KIS 모의투자 연결 OK / 시세조회 OK(삼성 322,500) / 잔고조회 OK(모의 1천만)
+- 신호계산 OK / 슬랙알림 OK / 하루1회 가드 OK
+
+### 해결한 이슈
+1. typing_extensions 누락 → 별도 설치 (python-kis 의존성 누락분). setup.sh에 추가 필요.
+2. "auth에는 실전도메인 인증 정보를 입력해야 합니다" → python-kis는 모의투자라도 실전 앱키 필수(시세용). kis_broker.py를 실전+모의 동시 인증(virtual_appkey) 구조로 수정. secret_config는 실전4+모의2 키로 분리.
+3. 계좌번호 형식 50193225-01 (뒤 -01 필수).
+
+### 알려진 경고 (무시 가능)
+- "API 호출 횟수를 초과하였습니다" — 모의계좌 호출 제한이 빡빡해 일봉 차트 조회 시 발생. python-kis가 자동 대기·재시도로 복구하므로 작동엔 지장 없음. 개선하려면 차트 조회 캐싱/호출 절감.
+
+## 다음 단계 (갱신)
+1. [완료] 모의투자 시스템 작동 검증
+2. 평일 장중 수동 실행 며칠 관찰 → 이상 없으면 systemd timer 등록 (평일 16시)
+3. ★ v2.1 실데이터(pykrx) 백테스트 → IS/OOS 엣지 판정 (제일 중요, 미실행)
+4. 엣지 있으면 소액 실전 / 없으면 VectorBT walk-forward 재검증
+5. v3 ML 보류
 
 ## 실행 방법
 - python trading_v2_1.py            # 실데이터 IS/OOS
